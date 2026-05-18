@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achieving Gold-Medal-Level Olympiad Reasoning via Simple and Unified Scaling</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Achieving Gold-Medal-Level Olympiad Reasoning via Simple and Unified Scaling</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-05-18</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>跨界团队SU-01横空出世：30B模型登顶IMO金牌级推理，测试时扩展突破100K Token</h1>
+<h2>引言</h2>
+<p>在人工智能领域，国际数学奥林匹克（IMO）和物理奥林匹克（IPhO）始终是衡量机器推理能力的“珠穆朗玛峰”。过去，需要像AlphaProof这样结合符号搜索的大规模系统，或DeepMind Gemini这类顶尖大模型才能触及金牌门槛。现在，来自上海人工智能实验室、香港中文大学、清华大学等机构的跨界团队，用一套“简单且统一”的方案，让一个仅有<strong>30B参数（A3B架构）</strong> 的紧凑模型，在<strong>IMO 2025和USAMO 2026上狂揽35分</strong>，直接追平人类金牌选手的最高分。这篇论文展示了如何通过精心设计的后训练流程，让小模型在长程推理上爆发出惊人潜力。</p>
+<h2>一、核心方法：三阶段流水线重塑推理行为</h2>
+<p>论文提出的方法名为<strong>SU-01</strong>，其核心是一条三阶段的训练和推理流水线：<strong>监督微调（SFT）→ 强化学习（RL）→ 测试时扩展（TTS）</strong>。每一步都旨在逐步“驯化”模型，从追求答案正确转向追求严谨的证明过程。</p>
+<p><img alt="图2：SU-01训练和推理流水线概览" src="https://arxiv.org/html/2605.13301/x4.png" /></p>
+<h3>1. 逆困惑度课程微调：行为重塑</h3>
+<p>研究者发现，直接对已经很强的后训练模型（P1-30B-A3B）进行长链思维（Long-CoT）SFT，模型会产生“能力退化”问题——它本能的短回答能力被破坏，新的长推理模式未建立。为了解决这个问题，论文提出了一种<strong>逆困惑度（Reverse-Perplexity）训练课程</strong>。</p>
+<p><strong>关键机制</strong>：在每一轮训练周期中，模型不是随机学习数据，而是<strong>从最陌生（高困惑度）的样本开始，逐渐学习到最熟悉（低困惑度）的样本</strong>。这种“先难后易”的顺序，强迫模型先适应全新的、更严谨的证明搜索模式，再巩固已有的能力。</p>
+<p><img alt="图3：SFT数据组成" src="https://arxiv.org/html/2605.13301/x5.png" /></p>
+<p>SFT数据包含超过33.8万条轨迹，涵盖了数学、科学、代码和自验证/自修正样本。每条轨迹都被截断在8192个token以内，以确保信号集中。</p>
+<h3>2. 两级强化学习：从答案正确到证明质量</h3>
+<p>SFT引入了严格的推理行为，但如何将这个“模式”放大为“能力”？论文通过<strong>两级RL</strong>来解决。</p>
+<p><strong>粗粒度RL（Coarse RL）</strong>：使用可验证奖励（Answer-verifiable Reward），即只检查最终答案是否正确。采用了<strong>分组序列策略优化（GSPO）</strong>，其核心更新公式如下：</p>
+$$ \mathcal{J}_{\mathrm{GSPO}}(\theta)=\mathbb{E}_{q,\{o_i\}}\left[\frac{1}{K}\sum_{i=1}^{K}\min\left(s_i(\theta)\widehat{A}_i,\operatorname{clip}(s_i(\theta),1-\epsilon,1+\epsilon)\widehat{A}_i\right)\right] $$
+
+<p><strong>精细RL（Refined RL）</strong>：将奖励信号提升到<strong>证明级别</strong>。使用DeepSeekMath-V2作为生成式奖励模型（PRM），评估整个推理路径的数学有效性。同时引入了两个关键机制：<br />
+- <strong>自我修正（Self-Refinement）</strong>：将失败的低分响应转化为修正提示，让模型练习批判并修复自己的论证。<br />
+- <strong>经验回放（Experience Replay）</strong>：当模型偶然找到某个难题的正确证明时，立即将这个“稀有好轨迹”存入回放缓冲区，确保它能被反复学习，避免“侥幸成功”被遗忘。</p>
+<h3>3. 测试时扩展：突破100K Token的长程推理</h3>
+<p>这是最终的“临门一脚”。对于最难的奥林匹克问题，模型需要进行多次探索、验证和修正。SU-01采用<strong>自验证和修正循环</strong>：先生成一个初始解，模型自己审核发现漏洞，生成Bug报告，然后修改解。这个过程可以循环进行，直到通过内置的一致性子验证。</p>
+<p>研究者观察到，SU-01在USAMO 2026问题上的推理过程中，<strong>初始生成的token中位数达到106K</strong>，修正阶段的中位数也达到83K。这种长于100K tokens的连贯推理能力，是它从“答案正确”走向“证明完美”的关键。</p>
+<h2>二、实验：逼近并超越人类顶级选手</h2>
+<h3>2.1 可验证任务表现</h3>
+<p>在AIME 2025/2026、AMO-Bench等基准上，SU-01达到了<strong>77.3%的平均分</strong>，与目前最强的同尺寸模型Qwen3.6-35B-A3B持平。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">基准</th>
+<th style="text-align: left;">Qwen3.6-35B-A3B</th>
+<th style="text-align: left;">SU-01</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">AMO-Bench</td>
+<td style="text-align: left;">58.8%</td>
+<td style="text-align: left;"><strong>59.8%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">AIME 2025</td>
+<td style="text-align: left;">92.5%</td>
+<td style="text-align: left;"><strong>94.6%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">AIME 2026</td>
+<td style="text-align: left;">92.9%</td>
+<td style="text-align: left;"><strong>93.3%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3>2.2 证明级任务与金牌表现</h3>
+<p>在IMO-ProofBench上，SU-01直接生成达到了<strong>57.6%</strong>，而使用测试时扩展（TTS）后飙升至<strong>70.2%</strong>，这使其性能逼近Gemini 3.1 Pro Thinking等大型商用模型。</p>
+<p><img alt="图1：IMO-ProofBench整体对比" src="https://arxiv.org/html/2605.13301/x1.png" /></p>
+<p><strong>最惊人的成果来自官方竞赛</strong>：<br />
+- <strong>IMO 2025</strong>：直接生成21分（铜牌线以上），TTS后获得<strong>35分</strong>，追平金牌线。<br />
+- <strong>USAMO 2026</strong>：直接生成15分（铜牌），TTS后获得<strong>35分</strong>，超出金牌线10分，并<strong>匹配了340名人类参赛者中的最高分</strong>。</p>
+<h3>2.3 科学推理的跨域泛化</h3>
+<p>SU-01在仅使用数学和物理信号训练的情况下，在化学（69.4%）和生物学（25.0%）的奥林匹克子集上表现出色。在更具挑战的FrontierScience-Research子集上，SU-01以<strong>11.7%的总体分</strong>，大幅领先所有同尺寸模型（Qwen3.6-35B-A3B仅为5.0%），证明了其强大的跨域科学推理泛化能力。</p>
+<h2>三、深度分析与讨论</h2>
+<h3>3.1 逆困惑度排序的奇效</h3>
+<p>实验表明，数据排序至关重要。随机排序下，模型能力大幅退化，截断率高达8%。而采用逆困惑度排序（从难到易），能力恢复极快，<strong>截断率降至0%</strong>，证明了该课程对保护后训练模型原有能力的有效性。</p>
+<p><img alt="图6：SFT数据排序验证结果" src="https://arxiv.org/html/2605.13301/x10.png" /></p>
+<h3>3.2 成本优势：极简经济</h3>
+<p>相比其他模型动辄数万亿token的预训练和数十亿样本的SFT，SU-01的后训练成本极低：SFT仅用33.8万条子8K轨迹（4轮训练），RL阶段仅用25K提示词、200步训练。这种<strong>经济高效</strong>的方案让小团队也能探索前沿推理。</p>
+<h2>展望</h2>
+<p>SU-01的成功不仅证明了紧凑模型可以达到奥林匹克级别的推理，更重要的是，它描绘了一条清晰的路径：<strong>通过精心设计的后训练和推理策略，将通用能力“专业化”为严谨的专家级证明能力</strong>。这种“专精化-通才”的视角，或许是大模型未来发展的关键方向。研究者留下的悬念是：当SU-01成功解出USAMO 2026的第3、5、6题，却最终折戟于第2题和IMO第6题，那未被触及的“结构约束”短板，是否预示着下一代推理模型需要更底层的认知架构？</p>
+<p><strong>论文标题</strong>：Achieving Gold-Medal-Level Olympiad Reasoning via Simple and Unified Scaling</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2605.13301.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-05-15_Achieving-Gold-Medal-Level-Olympiad-Reasoning-via-Simple-and-Unified-Scaling.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-05-15_Achieving-Gold-Medal-Level-Olympiad-Reasoning-via-Simple-and-Unified-Scaling.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
