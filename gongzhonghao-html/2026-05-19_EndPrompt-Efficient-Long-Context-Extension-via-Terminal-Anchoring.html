@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EndPrompt: Efficient Long-Context Extension via Terminal Anchoring</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">EndPrompt: Efficient Long-Context Extension via Terminal Anchoring</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-05-20</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>百度发布EndPrompt：仅用短序列训练实现64K上下文扩展，RULER评分76.03超越全量微调</h1>
+<h2>引言：长上下文扩展的“成本困境”</h2>
+<p>在大语言模型（LLM）的应用版图中，长文档问答、代码仓库理解、法律文件分析等场景正推动着对模型上下文窗口的无限渴求。然而，一个尖锐的矛盾始终存在：想要模型处理64K甚至128K的文本，通常需要让它在同等长度的序列上训练。这种全量微调方案不仅消耗大量算力——由于注意力机制的二次复杂度，内存和计算成本呈指数级增长，还面临着高质量长文本语料收集的难题。</p>
+<p>难道扩展上下文窗口必须依赖这种“烧钱”训练吗？来自百度（Baidu Inc.）与南开大学、上海交通大学的联合研究团队给出了否定答案。他们在最新论文中提出了<strong>EndPrompt</strong>方法，仅用短训练序列即可将LLaMA系列模型从8K扩展至64K上下文窗口，在RULER基准上取得76.03的平均分，<strong>超越全量微调和LongLoRA等主流方法</strong>，同时大幅降低计算开销。</p>
+<p>这个反直觉的结果背后，是一个精巧的设计：通过在短序列中巧妙模拟长距离位置关系，模型不需要真正“看”完64K文本，就能学会处理长上下文的推理能力。</p>
+<h2>一、核心方法：如何用短序列模拟长上下文？</h2>
+<p>论文的核心洞察非常直观：模型在长上下文推理中需要学习的是<strong>相对位置距离与注意力分数的关系</strong>，而非记忆具体的长文本内容。那么，能否在不构建完整长序列的前提下，让模型“体验”到长距离位置编码？</p>
+<h3>1.1 双段式结构：保留语义连续性</h3>
+<p>传统方法如<strong>PoSE（Positional Skip-Embedding）</strong>通过将长文本切分成多个块（chunk），再拼接成短序列来模拟长距离。但这破坏了文本的语义连贯性——因为相邻token原本的自然顺序被打散了。模型在预测下一个token时，可能因为缺少前文语境而学习到错误的模式。</p>
+<p>EndPrompt的解决方案堪称优雅。它保持原始短上下文（first segment）的完整性，然后在其后直接拼接一个简短的<strong>终端提示（terminal prompt）</strong>作为第二段。关键是位置索引的分配：</p>
+$$
+p_{\ell} = \begin{cases} \ell, & 0 \leq \ell < a, \\ L - b + (\ell - a), & a \leq \ell < a + b. \end{cases}
+$$
+
+<p>其中$a$是原始短上下文的长度，$b$是终端提示的长度，$L$是目标上下文长度（如64K）。这意味着一篇仅包含1K token的文档，其本体在位置0-1000，而终端提示（约100个token）被赋予了接近64K的位置索引。<strong>物理序列很短，但位置编码覆盖了整个目标窗口的两个极端区域</strong>。</p>
+<p><img alt="图1：EndPrompt方法概述" src="https://arxiv.org/html/2605.14589v1/overview_tianhan.png" /></p>
+<h3>1.2 位置索引操控：创造稀疏但有效的位置监督</h3>
+<p>通过上述设计，模型在因果注意力机制下看到的相对距离分为三种：<br />
+- 原始上下文内部的局部关系（位置差：0到a-1）<br />
+- 终端提示内部的局部关系（位置差：0到b-1）<br />
+- 跨段的长距离关系（位置差：L-a-b+1到L-1）</p>
+<p>而<strong>中间区域（gap）</strong>的相对距离（从max(a,b)到L-a-b）并未直接出现在训练中。论文的理论贡献之一，就是论证了这种<strong>稀疏位置监督</strong>为何有效。</p>
+<p>关键在<strong>旋转位置编码</strong>的数学性质。RoPE中的注意力分数是相对距离的三角多项式：</p>
+$$
+S_{\mathrm{RoPE}}(d | \mathbf{x}_m, \mathbf{x}_n; \Theta) = \sum_{j=0}^{D/2-1} a_j(\mathbf{x}_m, \mathbf{x}_n; \Theta) \cos\left(d\theta_j + \phi_j(\mathbf{x}_m, \mathbf{x}_n; \Theta)\right).
+$$
+
+<p>在结合<strong>位置插值</strong>后，注意力分数的一阶变化率和二阶曲率被有效抑制：</p>
+$$
+\sup_d \left| \frac{\partial S_{\mathrm{PI}}}{\partial d} \right| \leq \frac{\theta_0}{s} \sup_d |S_{\mathrm{PI}}(d)|, \quad \sup_d \left| \frac{\partial^2 S_{\mathrm{PI}}}{\partial d^2} \right| \leq \left( \frac{\theta_0}{s} \right)^2 \sup_d |S_{\mathrm{PI}}(d)|.
+$$
+
+<p><strong>公式的意义</strong>：位置插值引入了<strong>平滑约束</strong>，使得注意力分数随相对距离变化的速率有界。模型在训练中已观察到$D_{\mathrm{obs}}$内的相对距离，而平滑性保证了在$D_{\mathrm{gap}}$区域内，注意力分数不会出现剧烈振荡。</p>
+<h3>1.3 终端提示的设计哲学</h3>
+<p>终端提示为什么有效？研究者进行了消融实验，发现<strong>具体的内容对性能影响极小</strong>。无论提示是“Summarize the entire document:”，还是“This is the end.”，甚至不同的措辞变体，在LongBench上仅产生不到0.5%的性能波动（从38.30到37.95）。</p>
+<p><img alt="图2：不同终端提示的消融实验" src="https://arxiv.org/html/2605.14589v1/line.png" /></p>
+<p>这说明终端提示的核心作用是基于<strong>结构位置（structural placement）</strong>，而非语义信息。它就像一个“锚点”，让模型在最长的相对距离上得到直接监督，从而约束共享参数空间。论文公式化地表达了这一思想：</p>
+$$
+\Theta_{\mathrm{valid}} = \left\{ \Theta : \mathcal{L}_{\mathrm{local}}(\Theta) \leq \varepsilon_{\mathrm{local}} \right\} \cap \left\{ \Theta : \mathcal{L}_{\mathrm{global}}(\Theta) \leq \varepsilon_{\mathrm{global}} \right\}.
+$$
+
+<p>这个交集意味着，同时满足局部和全局约束的参数配置，天然排除了那些无法泛化到长距离的参数。</p>
+<h2>二、实验验证：全面超越全量微调</h2>
+<p>研究者以LLaMA-3 8B为基础模型，使用10亿token的训练语料（约1B tokens），将上下文从8K扩展至64K。实验结果令人瞩目。</p>
+<h3>2.1 RULER基准测试</h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>任务</th>
+<th>ET</th>
+<th>LCEG</th>
+<th>LongLoRA</th>
+<th>全量微调</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Niah_S1</td>
+<td>100.00</td>
+<td>100.00</td>
+<td>100.00</td>
+<td>97.56</td>
+</tr>
+<tr>
+<td>Niah_S3</td>
+<td>92.92</td>
+<td>79.68</td>
+<td>86.20</td>
+<td>72.72</td>
+</tr>
+<tr>
+<td>Vt</td>
+<td>82.00</td>
+<td>68.18</td>
+<td>65.70</td>
+<td>68.56</td>
+</tr>
+<tr>
+<td>Fwe</td>
+<td>83.53</td>
+<td>63.01</td>
+<td>58.17</td>
+<td>58.10</td>
+</tr>
+<tr>
+<td><strong>平均</strong></td>
+<td><strong>76.03</strong></td>
+<td>72.24</td>
+<td>72.95</td>
+<td>69.23</td>
+</tr>
+</tbody>
+</table></div>
+<p>在复杂的多针检索任务（如Niah_M3）中，EndPrompt得分62.92，远超LCEG的45.72和全量微调的56.20。这表明<strong>即使在深层信息检索压力下，基于稀疏监督扩展的上下文窗口依然保持了强大的检索能力</strong>。</p>
+<h3>2.2 LongBench实际应用</h3>
+<p>在LongBench上，EndPrompt取得38.30的平均分，<strong>显著高于全量微调的35.63</strong>。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>任务类型</th>
+<th>ET</th>
+<th>全量微调</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单文档问答</td>
+<td>32.03</td>
+<td>28.86</td>
+</tr>
+<tr>
+<td>多文档问答</td>
+<td>30.81</td>
+<td>29.51</td>
+</tr>
+<tr>
+<td>代码补全</td>
+<td>66.48</td>
+<td>47.86</td>
+</tr>
+<tr>
+<td>少样本学习</td>
+<td>68.04</td>
+<td>62.81</td>
+</tr>
+</tbody>
+</table></div>
+<p>尤其在<strong>代码补全</strong>任务上，EndPrompt的优势达20个百分点。这很可能因为代码具有天然的局部依赖结构，保留语义连贯性的双段设计比全量微调更适合这类任务。</p>
+<h3>2.3 与PoSE的混合优化</h3>
+<p>论文最后展示了EndPrompt的可扩展性：将EndPrompt与PoSE的块策略结合（记为ET(PoSE)），在LongBench上达到39.65，在RULER上达到79.44，进一步证明了方法的兼容性。</p>
+<p><img alt="图3：ET、PoSE与混合方法的性能对比" src="https://arxiv.org/html/2605.14589v1/pose.png" /></p>
+<h2>三、展望：稀疏监督的范式启示</h2>
+<p>EndPrompt的核心贡献在于挑战了一个被广泛接受的假设：<strong>可靠的长上下文扩展必须依赖密集的全长度序列训练</strong>。论文通过理论分析和实验证明，精心设计的稀疏位置监督——仅需短训练序列、保留语义连续性的终端锚点——足以诱导出强大的长上下文泛化能力。</p>
+<p>这一发现对实际部署具有直接价值：对于资源受限的团队，只需准备1B token的短文本语料（远比同规模长文本语料易得），即可完成64K上下文的扩展。更重要的是，短序列训练意味着更低的分布式并行成本和更短的迭代周期，这也解释了为何百度这样的工业级团队会率先探索这条路径。</p>
+<p>当然，当前方案仍依赖于显式终端提示。未来，如何将终端锚定与流式处理、层次注意力或多模态扩展结合，将是值得期待的方向。但至少现在，Spare Long-context Adaptation 这个方向，终于有了一个令人信服的起点。</p>
+<hr />
+<p><strong>思考：</strong> 如果长上下文能力真的可以通过稀疏位置监督来诱导，那是否意味着我们高估了模型对“记忆”的依赖？长推理的本质，或许更接近于<strong>位置空间中的平滑插值</strong>，而非海量文本的暴力记忆。</p>
+<p><strong>论文标题</strong>：EndPrompt: Efficient Long-Context Extension via Terminal Anchoring</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2605.14589.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-05-19_EndPrompt-Efficient-Long-Context-Extension-via-Terminal-Anchoring.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-05-19_EndPrompt-Efficient-Long-Context-Extension-via-Terminal-Anchoring.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
