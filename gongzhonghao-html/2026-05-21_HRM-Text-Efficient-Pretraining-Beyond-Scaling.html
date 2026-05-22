@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRM-Text: Efficient Pretraining Beyond Scaling</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">HRM-Text: Efficient Pretraining Beyond Scaling</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-05-22</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>Sapient Intelligence发布HRM-Text：1B参数仅用40B Token训练，性能碾压7B大模型，预训练成本暴降432倍！</h1>
+<p>大语言模型的预训练正在陷入一场“军备竞赛”：从数千亿Token到数万亿Token，从数千张GPU到数万张GPU，模型的训练成本以指数级增长，将绝大多数研究者拒之门外。这种“暴力美学”式的Scaling Law，是否真的是通往通用人工智能的唯一道路？</p>
+<p>近期，来自<strong>Sapient Intelligence</strong>与<strong>MIT</strong>的研究团队，给出了一份令人惊艳的否定答案。他们在论文《HRM-Text: Efficient Pretraining Beyond Scaling》中，展示了一个仅有<strong>1B参数</strong>的模型，在仅用<strong>40B独特Token</strong>、耗时不到<strong>2天</strong>、训练成本仅<strong>1500美元</strong>的极端资源限制下，在MMLU、ARC-C、GSM8K等核心基准上，性能直接对标甚至超越了<strong>2B-7B</strong>参数规模的开放模型，训练效率提升高达<strong>432倍</strong>。</p>
+<p>这绝非简单的模型压缩，而是一场从架构到目标的系统性重构。本文将深入解读HRM-Text背后的关键技术：<strong>层级循环架构</strong>、<strong>魔法归一化</strong>与<strong>任务完成预训练目标</strong>。</p>
+<h2>一、核心方法：从“暴力美学”到“结构智慧”</h2>
+<p>HRM-Text的核心思想源于对生物大脑的模仿。人类在处理复杂任务时，并非对所有信息都进行等量齐观的处理，而是通过一个“慢速思考”的策略层和一个“快速执行”的动作层协同工作。研究者将这一灵感具象化为一个<strong>双时间尺度的循环模型</strong>，彻底颠覆了标准Transformer的一次性前向传播范式。</p>
+<h3>1. 层级循环架构：让模型“思考”得更深</h3>
+<p>传统Transformer受限于固定层数，其“深度”是静态的。而HRM-Text引入了两个核心模块：一个<strong>慢速演化的策略模块</strong>和<strong>一个快速演化的执行模块</strong>。模型的整个前向过程被组织为多个“高电平循环”，每个循环内包含多次低电平模块更新。</p>
+<p><img alt="Figure 2: HRM-Text的层级循环架构。 (a) 双时间尺度循环设计，包含L和H模块。 (b) L/H模块内部结构，包含MagicNorm。 (c) Sigmoid门控多头自注意力。 (d) PrefixLM掩码。" src="https://arxiv.org/html/2605.20613v1/x2.png" /></p>
+<p>这种设计使得模型在相同的参数量下，获得了远超传统模型的“有效深度”。通过循环，模型可以在内部进行多次迭代式的精细计算，而不是仅仅依靠堆叠更多层。</p>
+<h3>2. MagicNorm：让极深循环“驯服”梯度爆炸</h3>
+<p>然而，将循环架构扩展到语言建模面临一个严峻挑战：<strong>梯度不稳定</strong>。随着循环步数的增加，梯度在反向传播时极易发生指数级衰减或爆炸。为了解决这个问题，研究者提出了巧妙的<strong>MagicNorm</strong>技术。</p>
+<p>MagicNorm的精妙之处在于它利用了前向传播与反向传播计算路径的不对称性。它结合了PostNorm和PreNorm的优点，通过一个简单的变换解决了这个矛盾：</p>
+$$z_n = \text{Norm}\left(z_{n-1} + \sum_{l=1}^{L}\text{Sublayer}_l(\text{Norm}(\cdot))\right)$$
+
+<ul>
+<li><strong>前向稳定</strong>：在每次循环结束时，MagicNorm会对累积的隐藏状态进行归一化，像PostNorm一样将激活值方差控制在有限范围内，防止了无界的增长。</li>
+<li><strong>反向流畅</strong>：在反向传播时，由于使用了截断的时序反向传播，梯度只流过最后几步。在这有限的步数内，内部的PreNorm结构又保留了良好的梯度传导路径，避免了梯度消失。</li>
+</ul>
+<p>通过这种“上下其手”的策略，研究者成功训练了一个极深的循环语言模型，而梯度稳定性成了纸老虎。</p>
+<h3>3. 任务完成目标：只学习“有用”的部分</h3>
+<p>如果说架构创新是为了更高效地计算，那么训练目标的创新则是为了更高效地利用数据。当前的大模型普遍采用对“整个文本”进行自回归预训练，这意味着模型需要花费大量容量去预测那些与任务无关的上下文。HRM-Text对此进行了根本性的改革。</p>
+<p>研究者放弃了传统的全文本自回归预训练，转而只使用<strong>指令-响应（Instruction-Response）</strong> 对进行端到端训练。模型优化的目标不再是预测下一个Token，而是<strong>只有在生成响应时，才计算损失</strong>：</p>
+$$-\log P(x_a|x_q)$$
+
+<p>这意味着，对于给定的指令，模型不再需要去还原指令本身。这种<strong>任务完成目标</strong>使得模型的每一次参数更新都直接服务于最终的生成任务，极大提升了每个Token的训练效率。</p>
+<p><img alt="Figure 3: 任务完成和PrefixLM改善了响应建模。 (a) 与完整的因果语言建模相比，仅对响应进行训练降低了响应Token的NLL。PrefixLM进一步改善了响应损失。 (b) 相比因果掩码，PrefixLM增加了逐层注意力熵，表明对prompt的利用更广泛。 (c) 注意力图对比。" src="https://arxiv.org/html/2605.20613v1/x3.png" /></p>
+<p>为了与这种目标配合，论文还采用了<strong>PrefixLM掩码</strong>。在指令部分，所有Token可以互相双向关注（如同编码器），而在响应部分则保持因果掩码（如同解码器）。这种设计让模型对整个任务上下文有了全局性的理解，而非局部的依赖。</p>
+<h2>二、实验结果：以弱胜强的“存在性证明”</h2>
+<p>上述创新并非纸上谈兵，HRM-Text用实实在在的分数证明了其“效率至上”的核心理念。下图直观地展示了其与主流开源模型的成本与性能对比，堪称“降维打击”。</p>
+<p><img alt="Figure 1: 预训练效率。HRM-Text 1B模型从头开始训练，仅用1.9天和16块GPU，其性能与参数量大得多的2-7B基础模型相当，而训练计算量最高减少432倍，训练Token数最高减少900倍。" src="https://arxiv.org/html/2605.20613v1/x1.png" /></p>
+<p>以下表格展示了HRM-Text与多个开放模型的详细对比。在使用了<strong>少96-432倍</strong>的预估计算量和<strong>少100-900倍</strong>的训练Token后，HRM-Text在多个逻辑推理和数学任务上取得了绝对领先。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">参数量</th>
+<th style="text-align: left;">训练Token</th>
+<th style="text-align: left;">FLOPs</th>
+<th style="text-align: left;">MMLU</th>
+<th style="text-align: left;">ARC-C</th>
+<th style="text-align: left;">GSM8K</th>
+<th style="text-align: left;">MATH</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>HRM-Text</strong></td>
+<td style="text-align: left;"><strong>1B</strong></td>
+<td style="text-align: left;"><strong>40B</strong></td>
+<td style="text-align: left;"><strong>1</strong></td>
+<td style="text-align: left;"><strong>60.7</strong></td>
+<td style="text-align: left;"><strong>81.9</strong></td>
+<td style="text-align: left;"><strong>84.5</strong></td>
+<td style="text-align: left;"><strong>56.2</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Llama3.2</td>
+<td style="text-align: left;">3B</td>
+<td style="text-align: left;">9T</td>
+<td style="text-align: left;">162</td>
+<td style="text-align: left;">58.0</td>
+<td style="text-align: left;">69.1</td>
+<td style="text-align: left;">77.7</td>
+<td style="text-align: left;">48.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">Gemma3</td>
+<td style="text-align: left;">4B</td>
+<td style="text-align: left;">4T</td>
+<td style="text-align: left;">96</td>
+<td style="text-align: left;">59.6</td>
+<td style="text-align: left;">56.2</td>
+<td style="text-align: left;">38.4</td>
+<td style="text-align: left;">24.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">Olmo3</td>
+<td style="text-align: left;">7B</td>
+<td style="text-align: left;">6T</td>
+<td style="text-align: left;">252</td>
+<td style="text-align: left;">65.8</td>
+<td style="text-align: left;">81.6</td>
+<td style="text-align: left;">75.5</td>
+<td style="text-align: left;">40.0</td>
+</tr>
+</tbody>
+</table></div>
+<p>分析这些数据可以发现：<br />
+1.  <strong>极致的资源利用效率</strong>：在MMLU这类知识广度型任务上，HRM-Text 1B虽然受限于参数量和训练数据，但与3B的Llama、4B的Gemma不相上下。而在<strong>ARC-C</strong>（科学推理）、<strong>GSM8K</strong>（数学推理）和<strong>MATH</strong>（高难度数学）上，HRM-Text几乎是以碾压性的优势超越了所有对手。这证明了其内部循环计算在处理推理任务上的巨大潜力。<br />
+2.  <strong>有效深度的“实锤”</strong>：研究者进一步通过分析逐层表征变化证明了这一点。HRM-Text的深层网络对于最终输出的信息贡献度远高于标准Transformer和循环Transformer。</p>
+<p><img alt="Figure 5: 逐层logit lens KL散度。HRM在深层中显示出最大的logit lens KL散度，而标准和循环Transformer都在浅层就收敛到了稳定分布。" src="https://arxiv.org/html/2605.20613v1/x5.png" /></p>
+<p>上图清晰地表明，标准Transformer和循环Transformer的模型输出在浅层就基本定型，深层沦为“花瓶”。而HRM-Text的每一层都在持续进行有意义的计算，其“有效深度”才是其强大性能和效率的根本来源。</p>
+<h2>三、展望：预训练民主化的新范式</h2>
+<p>HRM-Text的价值远不止于一个高性能模型，它更像一个<strong>宣言</strong>，宣告了数据与算力的“暴力美学”并非唯一出路。通过智能的架构设计和训练范式，从零开始的预训练不再是超级巨头的专利。小团队、学术机构甚至个人开发者，现在都可以用极低的成本，踏上探索基础模型的征途。</p>
+<p>这不禁让人思考，当Scaling Law遇到“结构性创新”的瓶颈，未来大模型的竞赛是否会从“堆算力”转向“设计算法”？HRM-Text已经给出了一个精彩的答案。关注它，或许就是你在捕捉下一个AI技术风口的第一步。</p>
+<p><strong>论文标题</strong>：HRM-Text: Efficient Pretraining Beyond Scaling</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2605.20613.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-05-21_HRM-Text-Efficient-Pretraining-Beyond-Scaling.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-05-21_HRM-Text-Efficient-Pretraining-Beyond-Scaling.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
