@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsupervised Process Reward Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Unsupervised Process Reward Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-05-24</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>EPFL提出无监督过程奖励模型uPRM：训练成本降低100%，错误步骤检测准确率提升15%</h2>
+<p>过程奖励模型（Process Reward Models，PRMs）通过提供细粒度的步骤级监督，成为引导大语言模型推理的强大机制。然而，这种有效性伴随着显著的成本：PRMs需要为每个推理步骤进行专家标注，这使得它们成本高昂且难以扩展。</p>
+<p>瑞士联邦理工学院（EPFL）的研究团队提出了一种训练<strong>无监督过程奖励模型（uPRM）</strong>的方法，该方法不需要任何人工监督，既不需要逐步标注，也不需要最终答案的真实性验证。这项研究在ProcessBench数据集上实现了高达15%的绝对准确率提升，在测试时扩展中表现优于多数投票基线6.9%，并在强化学习中展现出更强的鲁棒性。</p>
+<h2>一、核心方法：从无监督信号中学习过程监督</h2>
+<h3>1. 基于LLM的联合评分函数</h3>
+<p>论文的核心创新在于定义了一个从LLM下一token概率导出的评分函数，用于联合评估一批推理轨迹中首个错误步骤的候选位置。</p>
+<p>给定一条推理轨迹 $\tau=(x,y_{1},\dots,y_{T})$ 和候选的首个错误步骤位置 $j$ ，研究者构造了一个交替标记序列：</p>
+$$ \mathbf{s}(\tau,j)=[x,\ y_{1},\ \texttt{+},\ \dots,\ y_{j-1},\ \texttt{+},\ y_{j},\ \texttt{-}] $$
+
+<p>其中，“+”和“-”分别表示正确和错误标签。这个序列被输入LLM，提取模型分配给每个标签的下一token概率，定义评分函数：</p>
+$$ \mathcal{S}(j;\mathbf{s})\coloneqq \mathbbm{1}[j\leq T]\cdot\log p_{j}^{\texttt{-}} +\sum_{t<j}\log p_{t}^{\texttt{+}} $$
+
+<p>这里的 $p_{t}^{\texttt{+}}$ 和 $p_{t}^{\texttt{-}}$ 分别表示LLM在对应位置生成“+”和“-”标签token的归一化概率。</p>
+<h3>2. 批量轨迹联合评估</h3>
+<p>研究者发现，当LLM同时评估多个轨迹时，能产生更可靠的判断。因此，他们将评分扩展为对一批轨迹的联合评估：</p>
+$$ \mathcal{S}(j_{1:N};\mathbf{s}_{1:N})=\frac{1}{N}\sum_{n=1}^{N}\Big( \mathbbm{1}[j_{n}\leq T_{n}]\cdot\log p_{n,j_{n}}^{\texttt{-}}+\sum_{t<j_{n}}\log p_{n,t}^{\texttt{+}}\Big) $$
+
+<p>在这个公式中，每个轨迹的评分都基于之前所有轨迹及其候选标签作为上下文示例，从而利用上下文学习能力获得更可靠的评估。</p>
+<h3>3. 通过强化学习优化PRM</h3>
+<p><img alt="" src="https://arxiv.org/html/2605.10158v1/x1.png" /></p>
+<p>论文将PRM参数化为应用LoRA的LLM，并设计了一个熵正则化的强化学习目标来优化模型：</p>
+$$ \max_{\theta}\;\mathbb{E}_{\{\tau_{n}\}_{n=1}^{N}\sim\mathcal{D}} \Bigg[\mathbb{E}_{j_{n}\sim p_{\theta}(\cdot|\tau_{n})}\Big[\mathcal{S}(j_{1:N})\Big]+\frac{\gamma}{N}\sum_{n=1}^{N}\mathbb{H}(p_{\theta}(\cdot|\tau_{n}))\Bigg] $$
+
+<p>这个目标包含两个部分：最大化联合评分函数值，以及维护输出分布的熵以防止过早收敛。研究者还开发了基于actor-critic框架的定制梯度估计器，使训练过程高效可行——在8块H200 GPU上，uPRM训练仅需约5.5小时。</p>
+<h2>二、实验验证：三大场景全面超越</h2>
+<h3>1. ProcessBench错误检测</h3>
+<p>论文首先在ProcessBench基准上评估uPRM识别首个错误步骤的能力，与LLM-as-a-Judge基线进行对比：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>LLM-as-a-Judge</th>
+<th>uPRM（论文方法）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GSM8K</td>
+<td>49.8</td>
+<td>58.3</td>
+</tr>
+<tr>
+<td>MATH</td>
+<td>42.8</td>
+<td>52.6</td>
+</tr>
+<tr>
+<td>OlympiadBench</td>
+<td>29.4</td>
+<td>42.7</td>
+</tr>
+<tr>
+<td>Omni-MATH</td>
+<td>26.6</td>
+<td>39.8</td>
+</tr>
+</tbody>
+</table></div>
+<p>在最具挑战性的OlympiadBench和Omni-MATH上，uPRM分别实现了13.3%和13.2%的绝对准确率提升，显示出无监督训练方法在复杂推理任务中的显著优势。</p>
+<h3>2. 测试时计算扩展</h3>
+<p>在测试时计算扩展实验中，uPRM作为验证器表现出色。对于Llama-3.2-1B-Instruct模型，平均准确率从14.6%（单个候选）提升至31.7%（256个候选），绝对提升达17.1%。与监督PRM相比，uPRM在Best-of-8策略中展现出可竞争的性能：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>MATH-500</th>
+<th>Minerva</th>
+<th>Olympiad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Math-Shepherd-PRM-7B</td>
+<td>86.8</td>
+<td>47.3</td>
+<td>47.1</td>
+</tr>
+<tr>
+<td>Skywork-PRM-7B</td>
+<td>87.4</td>
+<td>46.6</td>
+<td>48.4</td>
+</tr>
+<tr>
+<td>uPRM（无监督）</td>
+<td>86.5</td>
+<td>46.7</td>
+<td>47.1</td>
+</tr>
+</tbody>
+</table></div>
+<p>尽管完全无监督，uPRM与各种监督PRM的性能差距在1%以内，显示出卓越的成本效益比。</p>
+<h3>3. 强化学习中的奖励信号</h3>
+<p>论文探索了uPRM作为强化学习奖励源的可能性，并与真实结果奖励（VR）和监督PRM（sPRM）进行对比：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>奖励源</th>
+<th>MATH-500</th>
+<th>Minerva</th>
+<th>Olympiad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen2.5-Math-1.5B</td>
+<td>VR</td>
+<td>70.0</td>
+<td>26.0</td>
+<td>33.5</td>
+</tr>
+<tr>
+<td></td>
+<td>sPRM</td>
+<td>74.7</td>
+<td>27.8</td>
+<td>35.0</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>uPRM</strong></td>
+<td><strong>73.5</strong></td>
+<td><strong>31.8</strong></td>
+<td><strong>36.6</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>值得注意的是，uPRM训练的策略在Qwen2.5-Math-7B上从始至终未出现奖励黑客行为，而监督PRM在训练开始后不久就崩溃。uPRM展现出更强的鲁棒性，为过程奖励模型在强化学习中的实际应用提供了新思路。</p>
+<h2>三、技术价值与应用展望</h2>
+<p>这项无监督过程奖励模型的研究，开启了一条通往可扩展奖励建模的全新路径。相比需要大量人工标注的监督PRM，uPRM完全消除了标注成本，同时在下游任务中保持竞争性表现。这种训练方法的发布，有望显著降低在数学推理、编程等复杂任务中引入过程监督的门槛。</p>
+<p>论文特别强调，直接最大化错误定位准确率并不完全等同于下游任务效用——即使在ProcessBench上表现不及顶级监督PRM，uPRM在测试时扩展和强化学习中的表现仍十分出色。这一发现提醒研究者：奖励模型的选择标准可能需要重新审视，不应仅依赖定位准确率这一单一指标。</p>
+<p>对于AI开发者来说，这意味着以极低的成本获得推理过程监督的可行性。uPRM在EPFL的实验中展现出显著的成本效益优势，其训练开销仅为额外5.5小时的GPU计算时间，却节省了数月的人工标注工作。这种训练范式能否在更大规模、更多领域的模型训练中展现出类似优势？答案值得期待。</p>
+<p><strong>论文标题</strong>：Unsupervised Process Reward Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2605.10158.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-05-22_Unsupervised-Process-Reward-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-05-22_Unsupervised-Process-Reward-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
