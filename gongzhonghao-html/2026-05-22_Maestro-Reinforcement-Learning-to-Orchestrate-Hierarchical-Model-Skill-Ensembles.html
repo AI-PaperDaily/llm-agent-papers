@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maestro: Reinforcement Learning to Orchestrate Hierarchical Model-Skill Ensembles</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Maestro: Reinforcement Learning to Orchestrate Hierarchical Model-Skill Ensembles</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-05-25</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>清华大学发布Maestro：4B模型用强化学习协调专家模型池，平均性能70.1%超越GPT-5</h1>
+<h2>引言</h2>
+<p>当AI Agent需要同时处理几何证明、医学报告解读和高分辨率卫星图像计数时，单一的大模型往往顾此失彼。当前主流的Agent框架通常依赖固定的单一大模型和静态的逻辑来调用各种技能，这使得不同大模型在各自擅长领域的互补优势被完全浪费。现有的方法假设一个模型能够完美使用任何检索到的技能，这一假设在实际大规模部署中往往失效。</p>
+<p>针对这一瓶颈，清华大学联合浙江大学、香港中文大学、南洋理工大学和同济大学的研究团队提出了<strong>Maestro（Multimodal Agent for Expert-Skill Targeted Reinforced Orchestration）</strong>，一种基于强化学习（RL）的编排框架。该框架将异构的多模态任务重新定义为在层次化模型-技能注册表上的序列决策过程。<strong>仅用一个4B参数量的协调器，Maestro在10个多模态基准上达到70.1%的平均准确率，超越GPT-5（69.3%）和Gemini-2.5-Pro（68.7%）</strong>，且无需针对新模型和技能进行重新训练。</p>
+<h2>一、核心方法</h2>
+<h3>1. 问题形式化：有限视界POMDP</h3>
+<p>Maestro将模型-技能的动态编排形式化为一个有限视界的部分可观测马尔可夫决策过程（POMDP），定义为元组 $(\mathcal{S}, \mathcal{A}, \mathcal{O}, \mathcal{P}, \mathcal{R}, \gamma, T)$。在此设定中，协调器担当高级指挥者的角色，目标是通过战略性资源配置生成最优轨迹 $\tau$，以最大化特定任务的效用。</p>
+<p><img alt="图1：Maestro与传统的单一大模型范式对比。传统Agent（左）使用单一模型和固定逻辑与技能交互；Maestro（右）使用RL训练的协调器动态组合任务特定的专家模型和层次化技能组合。" src="https://arxiv.org/html/2605.22177v1/x2.png" /></p>
+<p><strong>组合动作空间</strong>是Maestro的独特亮点。搜索动作 $a_t^{\text{search}}$ 被定义为一个三元组：</p>
+$$a_t^{\text{search}} = (m_t, s_t, z_t)$$
+
+<p>其中 $m_t \in \mathcal{M}$ 表示选定的专家骨干模型，$s_t \in \mathcal{K}$ 表示功能技能，$z_t$ 是发送给该组合的语义查询字符串。这种结构化的表述强制策略 $\pi_\theta$ 内化异构骨干模型与模块化工具之间的跨模态兼容性。</p>
+<h3>2. RL驱动的序列编排</h3>
+<p>Maestro通过“感知-推理”迭代循环解决复杂的多模态任务。策略被训练为交错执行内部潜在推理（在 <code>&lt;think&gt;</code> 标签内）与上述动态外部调用。</p>
+<p><img alt="图2：Maestro框架概览。与静态Agent系统不同，Maestro将模型选择和技能调用视为统一的组合动作空间，并通过多维奖励函数优化迭代推理过程。" src="https://arxiv.org/html/2605.22177v1/x3.png" /></p>
+<p><strong>优化目标</strong>采用<strong>组相对策略优化（GRPO）</strong>。对于每个查询，采样 $G$ 个轨迹 $\{\tau_1, \dots, \tau_G\}$，计算轨迹 $\tau_i$ 的优势值 $A_i = (R_i - \bar{R})/(\sigma_R + \epsilon)$，其中 $\bar{R}$ 和 $\sigma_R$ 是组内奖励的均值和标准差。协调器通过以下裁剪替代目标进行优化：</p>
+$$\mathcal{L}_{\text{GRPO}}(\theta) = -\frac{1}{G} \sum_{i=1}^{G} \min\left(\rho_i(\theta)A_i, \text{clip}\left(\rho_i(\theta), 1-\epsilon, 1+\epsilon\right)A_i\right)$$
+
+<p>其中 $\rho_i(\theta)$ 是当前策略与先前策略之间的概率比。</p>
+<h3>3. Token级策略梯度与掩码</h3>
+<p>在Maestro框架中，上下文 $c_t$ 是一个由策略生成token和环境观测token组成的混合序列。为防止策略错误地尝试建模外部环境反馈的分布，训练时应用指示掩码 $\mathbb{1}_{\text{Action}}$：</p>
+$$\mathcal{L}_{\text{policy}} = -\sum_{i=1}^{N} \mathbb{1}_{\{w_i \in \text{Action}\}} \log \pi_\theta(w_i | w_{<i})$$
+
+<p>该目标有效将观测token（即<code>&lt;information&gt;</code>块内的token）的损失贡献归零，将优化努力完全集中在协调器的战略推理和路由能力上。</p>
+<h2>二、实验与性能</h2>
+<h3>主要性能对比</h3>
+<p>Maestro在10个代表性多模态基准上进行评估，涵盖数学推理、图表理解、高分辨率感知和领域特定分析。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>领域内平均</th>
+<th>领域外平均</th>
+<th>总平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPT-5</td>
+<td>-</td>
+<td>-</td>
+<td>69.3</td>
+</tr>
+<tr>
+<td>Gemini-2.5-Pro</td>
+<td>-</td>
+<td>-</td>
+<td>68.7</td>
+</tr>
+<tr>
+<td>GLM-4.6V</td>
+<td>-</td>
+<td>-</td>
+<td>66.6</td>
+</tr>
+<tr>
+<td><strong>Maestro (Ours)</strong></td>
+<td><strong>77.4</strong></td>
+<td><strong>86.8</strong></td>
+<td><strong>70.1</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>在<strong>Geometry3K</strong>（几何推理）任务上，Maestro达到77.4%，远超GPT-4o的34.1%和GLM-4.6V的60.4%。在<strong>VStar</strong>（高分辨率感知）上，Maestro达到88.0%，超越专用方法DeepEyes的85.6%。</p>
+<p><img alt="图3：随着技能池大小N的增加，性能与延迟变化。RL路由持续利用额外技能提高准确性，延迟呈亚线性增长。" src="https://arxiv.org/html/2605.22177v1/x5.png" /></p>
+<h3>对未见领域的可扩展性</h3>
+<p>研究者还测试了Maestro对<strong>未见模型和技能</strong>的开箱即用泛化能力。在注册表中新增两个领域外专家和4个新技能，无需重新训练：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>ERQA</th>
+<th>OCRBench</th>
+<th>VlmsAreBlind</th>
+<th>Humaneval_V</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPT-5</td>
+<td>45.8</td>
+<td>75.3</td>
+<td>66.7</td>
+<td>25.3</td>
+<td>53.3</td>
+</tr>
+<tr>
+<td>Gemini-2.5-Pro</td>
+<td>43.0</td>
+<td>82.9</td>
+<td>74.6</td>
+<td>21.7</td>
+<td>55.6</td>
+</tr>
+<tr>
+<td><strong>Maestro</strong>*</td>
+<td><strong>52.5</strong></td>
+<td><strong>85.2</strong></td>
+<td><strong>72.1</strong></td>
+<td><strong>28.1</strong></td>
+<td><strong>59.5</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Maestro*在所有基线中取得最优表现，验证了学习到的策略能够以即插即用的方式利用语义描述的新能力。</p>
+<h3>消融实验</h3>
+<p>组件消融实验揭示关键洞见：<br />
+- 移除技能池 → 性能平均下降2.7%<br />
+- 移除模型池 → 性能平均下降12.1%，在MathVision上从43.4%骤降至27.6%<br />
+- 两者皆移除 → 准确率降至55.8%</p>
+<p>奖励设计消融显示：格式奖励 $r_{\text{fmt}}$ 和结果奖励 $r_{\text{ans}}$ 缺一不可，各自移除导致平均下降13.1%和8.8%。</p>
+<p><img alt="图4：消融研究。(a) 组件消融：模型池和技能库各自独立贡献，组合使用对峰值性能至关重要。(b) 奖励消融：格式奖励和结果奖励对于稳定多轮编排均不可或缺。" src="https://arxiv.org/html/2605.22177v1/x6.png" /></p>
+<h2>三、价值与应用前景</h2>
+<p>Maestro提出了一种<strong>范式转变</strong>：与其将所有专业知识巩固到一个单一模型中，不如训练一个高级协调器来战略性协调异构的外部能力。这种非侵入式的编排系统实现了几项关键突破：</p>
+<ul>
+<li><strong>计算效率</strong>：平均延迟仅2.88秒，token消耗648.20个，远低于其他方法</li>
+<li><strong>即插即用扩展</strong>：向注册表添加新专家和技能时无需重新训练协调器</li>
+<li><strong>真实场景适应性</strong>：在BFCL-V4和tau2-bench等真实Agent基准测试中超越GPT-5.2和Claude-Opus-4.5</li>
+</ul>
+<p>这种轻量级协调器+专家模型池的架构，为<strong>突破模型尺度极限</strong>提供了一条高杠杆路径。当算力瓶颈日益凸显，智能编排或许比无限扩大模型体量更具实用性。未来的探索方向包括自演化技能注册表和在线策略适应，这将使Maestro在更广泛、开放领域的部署中释放更大潜力。</p>
+<p><strong>论文标题</strong>：Maestro: Reinforcement Learning to Orchestrate Hierarchical Model-Skill Ensembles</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2605.22177.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-05-22_Maestro-Reinforcement-Learning-to-Orchestrate-Hierarchical-Model-Skill-Ensembles.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-05-22_Maestro-Reinforcement-Learning-to-Orchestrate-Hierarchical-Model-Skill-Ensembles.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
