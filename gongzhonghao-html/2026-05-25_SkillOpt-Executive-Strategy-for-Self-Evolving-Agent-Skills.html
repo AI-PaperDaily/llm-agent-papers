@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillOpt: Executive Strategy for Self-Evolving Agent Skills</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">SkillOpt: Executive Strategy for Self-Evolving Agent Skills</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-05-26</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>微软提出SkillOpt：为Agent技能引入“学习率”，52项评测全面领先，性能飙升23.5%</h2>
+<p>前沿大模型作为智能体（Agent）部署时，一个核心瓶颈在于如何高效、稳定地提升其<strong>技能（Skill）</strong>。现有方法要么依赖手工编写，要么通过一次性生成或缺乏控制的自我修正，其效果不稳定且难以持续改进。微软研究院及其合作者提出了一种名为<strong>SkillOpt</strong>的全新方法，将技能优化视为一个有界的、受控的文本空间训练过程。该方法在六个基准测试、七个目标模型和三种执行框架下，于全部52个评估项中取得最优或持平成绩，在直接对话模式下将GPT-5.5的平均准确率提升了<strong>23.5个百分点</strong>。</p>
+<h3>一、核心痛点：失控的技能进化</h3>
+<p>当大模型作为智能体运行时，其行为不仅取决于模型权重，还依赖于注入到上下文中的程序化知识——即“技能”。一个典型的技能文档包含工具调用策略、领域约定、输出格式约束等。目前，优化这些技能的方式如同“打补丁”：</p>
+<ul>
+<li><strong>手工编写</strong>：耗时且脆弱，无法适应动态变化的领域。</li>
+<li><strong>一次性生成</strong>：基于任务描述生成，缺乏执行反馈。</li>
+<li><strong>无控制的自我修正</strong>：模型自行修改技能，容易导致规则混乱、性能倒退。</li>
+</ul>
+<p>研究者指出，理想的技能优化应像深度学习训练权重一样，具备可复现性、可控性和稳定性。<strong>SkillOpt</strong>正是为此而生，它首次将技能视为<strong>冻结模型的外部可训练状态</strong>，并引入了一套完整的优化工具。其核心流程如图所示。</p>
+<p><img alt="图1：SkillOpt 概览" src="https://arxiv.org/html/2605.23904v1/x2.png" /></p>
+<p>论文将技能优化类比为深度学习的“前向-反向传播”过程：<br />
+- <strong>前向过程（Rollout）</strong>：冻结的目标模型使用当前技能执行任务，生成轨迹（Trajectory）和分数（Score）。<br />
+- <strong>反向过程（Reflection）</strong>：一个单独的<strong>前沿优化器模型</strong>分析成功与失败的轨迹，提出结构化的增/删/改操作。<br />
+- <strong>验证门控（Validation Gate）</strong>：仅在<strong>保留验证集</strong>上性能有严格提升的候选技能才会被采纳，失败的修改被存入“拒绝编辑缓冲区”，作为后续优化的负反馈。</p>
+<h3>二、核心方法：技能训练的三个关键机制</h3>
+<p>SkillOpt的卓越性能源于其将深度学习训练原则系统性地应用于文本空间。</p>
+<h4><strong>机制一：有界的文本学习率（Bounded Textual Learning Rate）</strong></h4>
+<p>这是SkillOpt区别于“无限制重写”的关键。论文引入了一个<strong>文本学习率预算</strong> $L_t$，即每一步技能文档允许的最大编辑数量。例如，$L_t=4$ 意味着优化器一次最多只能对技能文档进行4处修改。</p>
+<p>这种有界更新防止了技能在一次迭代中发生剧烈变化，从而避免了有用规则的丢失或前后矛盾的指令。优化器会合并并排序所有候选编辑，只保留最高优先级的操作。这相当于深度学习中的<strong>学习率调度</strong>，论文默认采用<strong>余弦衰减</strong>调度，使技能在训练初期变化较大，后期趋于稳定。</p>
+<p>整体流程可形式化为：给定训练集 $D_{tr}$、选择集 $D_{sel}$ 和测试集 $D_{test}$，SkillOpt 从训练集中生成候选技能集合 $\mathcal{C}(D_{tr})$，然后在选择集上选出最佳的技能 $s^{\star}_{\mathrm{sel}}$，最终在测试集上报告性能。</p>
+$$
+s^{\star}_{\mathrm{sel}}=\arg\max_{s\in\mathcal{C}(D_{\mathrm{tr}})}\frac{1}{|D_{\mathrm{sel}}|}\sum_{x\in D_{\mathrm{sel}}}r(s)
+$$
+
+<p><strong>其中，$\mathrm{Test}(s^{\star}_{\mathrm{sel}})$ 表示最终性能</strong>，$r(s)$ 是技能 $s$ 的得分。</p>
+<p><img alt="图2：SkillOpt 管线" src="https://arxiv.org/html/2605.23904v1/x3.png" /></p>
+<h4><strong>机制二：小批量反思与验证门控（Minibatch Reflection &amp; Validation Gate）</strong></h4>
+<p>优化器不会针对单条轨迹进行修正，而是将轨迹分组成“成功”和“失败”的小批次进行反思。这有助于提炼出可复现的程序化错误，例如“Agent总是搜索错误的数据源”或“答案格式不正确”，而非个别的偶发错误。</p>
+<p>验证门控则是整个流程的<strong>“安全网”</strong>。所有候选技能都必须在其保留验证集上通过严格测试：只有当性能指标<strong>严格大于</strong>当前选择集分数时，才会被接受。这个机制确保了每一步技能优化都是向上兼容的，避免了“按下葫芦浮起瓢”的现象。</p>
+<h4><strong>机制三：拒绝编辑缓冲区与慢更新</strong></h4>
+<p>被验证门控拒绝的更新并非无用。SkillOpt 维护一个<strong>拒绝编辑缓冲区</strong>，记录那些被尝试但导致性能下降的修改模式。在后续的反思过程中，优化器会收到这一负反馈，从而避免重复同样的错误。</p>
+<p>此外，论文还引入了<strong>逐时代的慢/元更新</strong>。在每个 epoch 结束时，优化器会比较当前 epoch 初和末的技能表现，总结出“哪些编辑模式有效”、“哪些失败模式持续存在”，并将这些元知识写入一个受保护的字段中，指导下一个 epoch 的优化方向。这类似于深度学习中的<strong>动量项</strong>，确保了长程更新的稳定性。</p>
+<h3>三、实验：全面领先，压倒性优势</h3>
+<p>研究者进行了迄今为止最系统的技能优化研究，在52个评估项上全面碾压所有现有方法。</p>
+<h4><strong>主要结果</strong></h4>
+<p>评估涵盖<strong>SearchQA, SpreadsheetBench, OfficeQA, DocVQA, LiveMathematicianBench</strong>和<strong>ALFWorld</strong>等六个基准测试，跨越GPT-5.5、GPT-5.4-nano、Qwen3.5-4B等7个目标模型，以及在直接对话、Codex和Claude Code三种执行框架下进行。结果如下表所示（部分截取）：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">技能来源</th>
+<th style="text-align: left;">SearchQA</th>
+<th style="text-align: left;">SpreadsheetBench</th>
+<th style="text-align: left;">OfficeQA</th>
+<th style="text-align: left;">...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>GPT-5.5</strong></td>
+<td style="text-align: left;"><strong>无技能</strong></td>
+<td style="text-align: left;">77.7</td>
+<td style="text-align: left;">41.8</td>
+<td style="text-align: left;">33.1</td>
+<td style="text-align: left;">...</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>人类技能</strong></td>
+<td style="text-align: left;">+4.1</td>
+<td style="text-align: left;">+31.1</td>
+<td style="text-align: left;">+33.8</td>
+<td style="text-align: left;">...</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>SkillOpt</strong></td>
+<td style="text-align: left;"><strong>+9.6</strong></td>
+<td style="text-align: left;"><strong>+38.9</strong></td>
+<td style="text-align: left;"><strong>+39.0</strong></td>
+<td style="text-align: left;">...</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPT-5.4-nano</strong></td>
+<td style="text-align: left;"><strong>无技能</strong></td>
+<td style="text-align: left;">55.8</td>
+<td style="text-align: left;">23.5</td>
+<td style="text-align: left;">16.3</td>
+<td style="text-align: left;">...</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>人类技能</strong></td>
+<td style="text-align: left;">+10.3</td>
+<td style="text-align: left;">+18.3</td>
+<td style="text-align: left;">+30.2</td>
+<td style="text-align: left;">...</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>SkillOpt</strong></td>
+<td style="text-align: left;"><strong>+19.0</strong></td>
+<td style="text-align: left;"><strong>+19.0</strong></td>
+<td style="text-align: left;"><strong>+33.7</strong></td>
+<td style="text-align: left;">...</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>52/52全胜</strong>：在所有52个（模型，基准，框架）组合中，SkillOpt均取得最优或持平成绩。</li>
+<li><strong>巨大提升</strong>：在程序化要求高的基准如SpreadsheetBench（41.8→80.7）和OfficeQA（33.1→72.1）上，表现尤其惊人。</li>
+<li><strong>跨模型有效性</strong>：即使对小模型（GPT-5.4-nano），SkillOpt也能提供显著增益。</li>
+</ul>
+<h4><strong>消融实验与分析</strong></h4>
+<p><img alt="图3：跨epoch的性能趋势" src="https://arxiv.org/html/2605.23904v1/x4.png" /></p>
+<p>消融实验证实了每个设计组件的价值：<br />
+- <strong>有界学习率是关键</strong>：移除学习率预算（“without lr”），SpreadsheetBench性能从77.5降至75.7，验证了其稳定性作用。<br />
+- <strong>验证门控不可或缺</strong>：拒绝了大量低效甚至有害的修改，确保正向收敛。<br />
+- <strong>拒绝缓冲区提供负反馈</strong>：移除后，SpreadsheetBench性能从77.5降至72.9，证明历史失败经验的重要性。</p>
+<h4><strong>迁移学习</strong></h4>
+<p>SkillOpt学到的技能展现出强大的可迁移性：<br />
+- <strong>跨模型迁移</strong>：一个在GPT-5.4上优化的SpreadsheetBench技能，直接用在GPT-5.4-mini上，仍能带来9.4个百分点的提升。<br />
+- <strong>跨框架迁移</strong>：在Codex框架下训练的技能，直接用于Claude Code框架，在SpreadsheetBench上获得了<strong>59.7个百分点的惊人增益</strong>。</p>
+<h3>四、展望：AI领域的“操作系统更新”</h3>
+<p>SkillOpt的出现，标志着Agent技能优化从“打地鼠”式的临时修补，迈向了一个成熟的、可训练的、可审计的系统化流程。它证明了通过精心设计的文本空间优化器，性能收益可以远超手工编写和一次性生成。</p>
+<p>这一成果的应用价值巨大。它意味着企业只需为关键任务优化一次技能文档，即可将其作为可复用的资产，部署到不同规模、不同平台的Agent中，而无需修改昂贵的模型权重。未来，随着技能库的丰富和元学习能力的增强，Agent的领域适应将变得像“安装插件”一样简单高效。这为构建真正可进化、可维护的开源或商业化的AI Agent系统，铺平了道路。</p>
+<p><strong>论文标题</strong>：SkillOpt: Executive Strategy for Self-Evolving Agent Skills</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2605.23904.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-05-25_SkillOpt-Executive-Strategy-for-Self-Evolving-Agent-Skills.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-05-25_SkillOpt-Executive-Strategy-for-Self-Evolving-Agent-Skills.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
