@@ -463,99 +463,135 @@
             </div>
             <h1 class="article-title">Colored Noise Diffusion Sampling</h1>
             <div class="article-meta">
-                <span class="meta-item">📅 2026-05-30</span>
+                <span class="meta-item">📅 2026-05-31</span>
             </div>
         </header>
         
         <article class="article-content">
-            <h2>希伯来大学提出CNS采样：噪声“变色”，FID从8.26降至6.27！</h2>
-<p>你是否曾遇到过这样的困扰：用扩散模型生成图片，最终结果总感觉“差点意思”，要么细节模糊，要么整体结构不协调？这背后，可能是你的采样器在“浪费”宝贵的噪声能量。传统采样器不分青红皂白地注入统一的白色噪声，完全忽视了模型生成过程中，低频结构和高频细节其实是“分时”完成的。这就像在给一幅画上色时，不管需要什么颜色，都只泼一桶白水，效率可想而知。</p>
-<p>来自希伯来大学的团队正是看到了这一痛点，他们重新审视了扩散模型的采样过程，并提出了一个无需训练的即插即用方案：<strong>Colored Noise Sampling (CNS)</strong>。该方法通过动态调整注入噪声的“颜色”，将有限能量精准输送到最需要它的频段，从而显著提升生成图像的保真度。在ImageNet-256数据集上，CNS在SiT-XL/2模型上实现了无引导FID从<strong>8.26到6.27</strong>的大幅下降，效果惊人。</p>
-<h3>一、核心方法：将噪声“染色”以动态分配能量</h3>
-<p>传统SDE采样器之所以低效，在于其注入的<strong>白噪声</strong>在整个频谱上具有均匀的能量。然而，研究者们发现，扩散模型的生成过程存在明显的<strong>频谱偏差</strong>：早期采样步骤专注于构建低频全局结构，而后期才填充高频细节。因此，在整个过程中注入均匀噪声，意味着在早期为尚未被“处理”的高频区域浪费了能量，而在后期，又无法为已近完成的结构提供足够的纠正。</p>
-<h4>1. 重新审视能量转移与有限预算</h4>
-<p>论文首先建立了一个数学框架，将噪声注入重新定义为一种<strong>目标导向的能量转移</strong>。研究者通过分析发现，采样轨迹本质上是一个低维旋转，从初始噪声状态转向数据流形。在这个过程中，注入的随机噪声并非被随意丢弃，而是被模型映射到了最终图像的相应空间频率上。</p>
-$$ \mathcal{E} = \int g^2(t) dt < \infty $$
+            <h1>希伯来大学提出CNS采样器：FID最高降低38%，用频域感知噪声突破扩散模型效率瓶颈</h1>
+<h2>一、引言：扩散模型的白噪声困境</h2>
+<p>在图像生成领域，扩散模型已稳居SOTA宝座，其生成轨迹展现出一种关键的<strong>频谱偏见</strong>——早期优先解析低频全局结构，后期才填充高频细节。然而，现有基于随机微分方程的解算器完全忽略了这一动态特性，在整个生成过程中盲目注入均匀白噪声。这种“一刀切”的方式不仅浪费了有限的能量预算，更导致生成的图像频谱偏离真实数据分布。希伯来大学的研究者指出：“我们如何主动利用扩散模型的频谱偏见，设计一种全新的通用采样器来提升生成保真度？”正是带着这一核心问题，研究者引入了<strong>有色噪声采样</strong>——一个无需额外训练的即插即用随机解算器。</p>
+<h2>二、核心方法：CNS的有色噪声革命</h2>
+<h3>2.1 重新审视SDE推理：从噪声注入到能量转移</h3>
+<p>传统SDE解算器在每个步骤注入均匀白噪声，忽略了一个关键事实：生成轨迹本质上是一个<strong>低维旋转</strong>过程，从初始噪声状态向目标数据流形旋转约1弧度。这意味着扩散模型并非任意丢弃初始噪声，而是保留大部分结构信号并将其映射到最终图像特征。</p>
+<p>研究发现，这一信号保留机制同样适用于SDE注入的连续噪声，且是一个<strong>频域解耦过程</strong>——特定频段的注入噪声直接映射到该频段的空间特征。研究者引入傅里叶空间带通投影算子 $P_b[\cdot]$，量化分析了累积注入噪声 $\epsilon_{\text{cumul}}=\sum_{i=0}^{T-1}g(t_i)d\bar{\mathrm{w}}_{t_i}$ 与最终生成图像 $x_0$ 之间的结构对齐：</p>
+$$\mathbb{E}\left[\cos\Big(P_b[\epsilon_{\text{cumul}}],P_b[x_0]\Big)\right]\gg 0$$
 
-<p>这一公式表明，整个生成过程中可注入的总随机能量是<strong>严格有限且固定</strong>的。标准SDE采样器将其均匀地“挥霍”在整个频谱上，而CNS则认为，应将这笔有限的能量集中用于解决频谱上尚未被充分构建的“缺口”。</p>
-<h4>2. 基于频谱偏差的动态调度</h4>
-<p>为了实现这种动态分配，研究者定义了一个 <strong>“进度指标” γ(f,t)</strong>，用以量化在给定时间步 <em>t</em> 下，特定频率 <em>f</em> 的结构被模型完成的程度。</p>
-<p><img alt="图3：采样过程中频带的时间演变。" src="https://arxiv.org/html/2605.30332v1/x2.png" /></p>
-<p>该图清晰地展示了低频（红色/黄色区域）在早期就已完成，而高频（蓝色区域）直到采样末期才被逐渐构建。CNS的核心调度策略正是基于这个进度指标来动态“着色”噪声，其核心公式为：</p>
-$$ \beta(f,t) = \frac{\sqrt{1 - \gamma(f, t)}}{\sqrt{\frac{1}{D} \sum_{f'} (1 - \gamma(f', t))}} $$
+<p>这一显著的正相关性揭示了一个强有力的理论路径：通过策略性地塑造注入噪声的频谱轮廓，可以直接操控生成分布靠近真实数据流形。</p>
+<h3>2.2 频谱鸿沟：标准采样方法的致命伤</h3>
+<p><img alt="图1：不同采样方法生成的频谱对比" src="https://arxiv.org/html/2605.30332v1/x3.png" /></p>
+<p>研究者通过计算信号误差 $\varepsilon(f)=\log_{10}(S_0(f)/S_{\text{data}}(f))$ 发现了一个明显的<strong>频谱鸿沟</strong>：确定性ODE采样过度生成低频结构而不足高频细节，标准SDE采样则在整个频谱上呈现能量赤字。更关键的是，总随机注入能量是一个严格数学上独立的有限预算：</p>
+$$\mathcal{E}=\int g^{2}(t)dt<\infty$$
 
-<p>这个公式的精妙之处在于，它为<strong>每个频率</strong>动态生成一个缩放因子 <em>β</em>。如果某个频段的进度指标 <em>γ</em> 接近1（即已基本完成），缩放因子 <em>β</em> 就会变小，从而减少对该频段的能量注入；反之，如果某个频段进度缓慢（<em>γ</em> 很小），<em>β</em> 会变大，吸引更多能量。公式的分母确保了所有频段的平均注入能量不变，维持了全局的方差守恒，不会将中间状态推出数据分布。</p>
-<p><img alt="图2：不同颜色噪声的PSD。" src="https://arxiv.org/html/2605.30332v1/x1.png" /></p>
-<p>通过这种动态调度，CNS相当于为每个采样步骤定制了不同“颜色”的噪声，将能量从已完成的频段“劫富济贫”地转移至尚未解决的频段。下图直观地展示了这种方法的优越性：</p>
-<p><img alt="图1：Colored Noise Sampling (CNS)。" src="https://arxiv.org/html/2605.30332v1/figures/teaser/sit/001310_tiger_ode.png" /></p>
-<h3>二、实验：性能与鲁棒性的全面检验</h3>
-<p>研究者在多个主流架构上对CNS进行了严格的量化评估，结果全面超越了标准ODE和SDE基线。</p>
-<h4>1. 主导实验结果</h4>
-<p>在ImageNet-256的无引导生成任务中，CNS带来了显著的FID（弗雷歇初始距离，越低越好）提升。</p>
+<p>这意味着无法通过简单放大全局注入来弥补频谱赤字。标准SDE将这一预算平均分配给所有频率，而CNS则将其视为零和博弈——动态减少已解析频率的能量分配，将预算转移到滞后的频段。</p>
+<h3>2.3 动态频谱重分配算法</h3>
+<p>CNS的核心机制是引入一个与时间步和频率相关的缩放权重 $\beta_f(t)$。通过分析 $\gamma(f,t)$ 矩阵（衡量每个频率在特定时间步的解析进度），研究者发现频段吸收注入噪声的能力严格由该频段的解析率决定。当频段接近完全解析时，网络会将多余方差视为瞬态能量消散，能量转化率急剧下降。</p>
+<p><img alt="图2：不同频率随时间的演化进程" src="https://arxiv.org/html/2605.30332v1/x2.png" /></p>
+<p>为此，CNS制定了一个简单的分配策略——方差乘子与结构缺陷严格成正比：</p>
+$$\beta(f,t)=\frac{\sqrt{1-\gamma(f,t)}}{\sqrt{\frac{1}{D}\sum_{f^{\prime}}\left(1-\gamma(f^{\prime},t)\right)}}$$
+
+<p>同时，全局正态化确保总注入能量 $D^{-1}\sum_{f=1}^{D}\beta_{f}^{2}(t)=1$ 保持不变。这种动态着色使得同一有限能量预算得到了更高效利用。</p>
+<h3>2.4 噪声信号保存与传递机制</h3>
+<p><img alt="图3：噪声信号保存与传递的可视化" src="https://arxiv.org/html/2605.30332v1/x5.png" /></p>
+<p>实验证明，初始噪声和累积注入信号都与最终生成图像保持显著正相关。CNS通过选择性将注入信号路由到高频段，实现了对频谱缺口的精准定向修复。</p>
+<h2>三、实验验证：全面超越标准基线</h2>
+<h3>3.1 ImageNet-256无引导生成</h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th style="text-align: left;">模型</th>
-<th style="text-align: left;">采样器</th>
-<th style="text-align: left;">FID ↓</th>
-<th style="text-align: left;">sFID ↓</th>
-<th style="text-align: left;">IS ↑</th>
+<th>模型</th>
+<th>采样器</th>
+<th>FID↓</th>
+<th>sFID↓</th>
+<th>IS↑</th>
+<th>Precision↑</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><strong>SiT-XL/2</strong></td>
-<td style="text-align: left;">ODE</td>
-<td style="text-align: left;">14.39</td>
-<td style="text-align: left;">10.54</td>
-<td style="text-align: left;">99.32</td>
+<td>SiT-XL/2</td>
+<td>ODE</td>
+<td>14.39</td>
+<td>10.54</td>
+<td>99.32</td>
+<td>0.59</td>
 </tr>
 <tr>
-<td style="text-align: left;"></td>
-<td style="text-align: left;">SDE</td>
-<td style="text-align: left;">8.26</td>
-<td style="text-align: left;">6.32</td>
-<td style="text-align: left;">131.65</td>
+<td>SiT-XL/2</td>
+<td>SDE</td>
+<td>8.26</td>
+<td>6.32</td>
+<td>131.65</td>
+<td>0.68</td>
 </tr>
 <tr>
-<td style="text-align: left;"></td>
-<td style="text-align: left;"><strong>CNS (Ours)</strong></td>
-<td style="text-align: left;"><strong>6.27</strong></td>
-<td style="text-align: left;"><strong>4.73</strong></td>
-<td style="text-align: left;"><strong>147.33</strong></td>
+<td><strong>SiT-XL/2</strong></td>
+<td><strong>CNS</strong></td>
+<td><strong>6.27</strong></td>
+<td><strong>4.73</strong></td>
+<td><strong>147.33</strong></td>
+<td><strong>0.71</strong></td>
 </tr>
 <tr>
-<td style="text-align: left;"><strong>JiT-H/16</strong></td>
-<td style="text-align: left;">ODE</td>
-<td style="text-align: left;">12.41</td>
-<td style="text-align: left;">9.35</td>
-<td style="text-align: left;">43.61</td>
+<td>JiT-H/16</td>
+<td>ODE</td>
+<td>12.41</td>
+<td>9.35</td>
+<td>43.61</td>
+<td>0.63</td>
 </tr>
 <tr>
-<td style="text-align: left;"></td>
-<td style="text-align: left;">SDE</td>
-<td style="text-align: left;">11.88</td>
-<td style="text-align: left;">8.64</td>
-<td style="text-align: left;">44.30</td>
+<td>JiT-H/16</td>
+<td>SDE</td>
+<td>11.88</td>
+<td>8.64</td>
+<td>44.30</td>
+<td>0.64</td>
 </tr>
 <tr>
-<td style="text-align: left;"></td>
-<td style="text-align: left;"><strong>CNS (Ours)</strong></td>
-<td style="text-align: left;"><strong>8.31</strong></td>
-<td style="text-align: left;"><strong>7.48</strong></td>
-<td style="text-align: left;"><strong>45.97</strong></td>
+<td><strong>JiT-H/16</strong></td>
+<td><strong>CNS</strong></td>
+<td><strong>8.31</strong></td>
+<td><strong>7.48</strong></td>
+<td><strong>45.97</strong></td>
+<td><strong>0.66</strong></td>
+</tr>
+<tr>
+<td>JiT-B/16</td>
+<td>ODE</td>
+<td>32.39</td>
+<td>11.81</td>
+<td>26.60</td>
+<td>0.47</td>
+</tr>
+<tr>
+<td>JiT-B/16</td>
+<td>SDE</td>
+<td>36.24</td>
+<td>14.32</td>
+<td>25.86</td>
+<td>0.46</td>
+</tr>
+<tr>
+<td><strong>JiT-B/16</strong></td>
+<td><strong>CNS</strong></td>
+<td><strong>26.69</strong></td>
+<td><strong>9.67</strong></td>
+<td><strong>27.95</strong></td>
+<td><strong>0.51</strong></td>
 </tr>
 </tbody>
 </table></div>
-<p>从上表可以看出，CNS在SiT模型上将SDE的FID从8.26降低到了6.27，提升幅度高达24%。对于JiT-H/16模型，提升更为显著，FID从11.88降至8.31。</p>
-<h4>2. 频谱差距的定量分析</h4>
-<p>CNS卓越性能的根本原因在于它有效地弥合了生成图像与真实图像之间的<strong>频谱差距</strong>。下图对此进行了量化分析。</p>
-<p><img alt="图4：各种采样方法下的频谱差距。" src="https://arxiv.org/html/2605.30332v1/x3.png" /></p>
-<p>从图中可以看到，标准ODE（蓝线）在低频区域能量过剩，而高频区域能量不足（过冲与欠冲）。标准SDE（橙色线）则在几乎所有频段都存在能量赤字。相比之下，CNS（绿线）的PSD与真实数据（黑色虚线）的曲线最为贴合，在全频段上的平均绝对误差（MAE）最低。这直接证明了CNS通过动态分配噪声能量，成功地将生成的频谱分布“拉回”到了真实数据流形。</p>
-<h3>三、应用与展望</h3>
-<p>CNS另一个重要特性是其<strong>即插即用</strong>的便捷性。它无需修改任何模型参数或训练流程，可以直接替换现有扩散模型的SDE采样器。研究者在最先进的文生图模型FLUX上进行的测试也证明了这一点，CNS在ImageReward、CLIPScore等多项指标上均取得了提升。</p>
-<p>当然，该方法也存在局限性。它依赖于SDE框架，因此无法与确定性ODE采样器兼容，这限制了它在追求超快速（如10步以内）推断场景中的应用。未来，将这种频率感知的能量路由思想扩展至确定性范式，或将其应用于视频生成等更具挑战性的任务，将是潜在的研究方向。</p>
-<p>对于追求极致生成质量的开发者而言，CNS无疑是一个强大且易用的新工具。这种“噪声着色”的理念，是否也会为其他生成范式带来新的启发呢？</p>
+<p>在SiT-XL/2上，CNS将FID从8.26降至6.27，相对降低24%；JiT-H/16从11.88降至8.30，相对降低30%；JiT-B/16更是实现了38%的FID下降（32.39→26.69）。</p>
+<h3>3.2 跨求解器阶数的一致优越性</h3>
+<p>CNS在1阶Euler-Maruyama、2阶Heun及随机RK求解器上的表现均显著优于对应对照组。即使采用5阶确定性RK（dopri5）的ODE基线（FID 9.04），CNS在1阶方法下（FID 6.27）仍保持大幅优势。</p>
+<h3>3.3 有引导生成（CFG）与文本到图像</h3>
+<p>在CFG设置下，CNS在SiT-XL/2上达到1.98的FID，优于SDE的2.06和ODE的2.15。在FLUX系列模型的DrawBench评测中，CNS在ImageReward、CLIPScore和Aesthetic Score三项指标上均超越ODE和SDE基线。</p>
+<p><img alt="图4：FID随采样步数的变化" src="https://arxiv.org/html/2605.30332v1/x6.png" /></p>
+<h3>3.4 消融实验与正交性验证</h3>
+<p>CNS超越了一系列替代方案，包括50%白噪声混合、打乱时间调度、固定频谱、以及分数布朗运动变体。值得注意的是，即使应用于已采用蓝噪声训练的模型（如BNDM），CNS仍带来额外收益，证明其提供了与训练框架<strong>正交</strong>的提升。</p>
+<h2>四、展望：从图像到视频的未来之路</h2>
+<p>CNS通过将频谱偏见嵌入采样核心机制，从根本上重新定义了扩散模型的随机采样范式。作为一种即插即用的推理替代方案，它无需任何模型重训就能显著提升生成质量。研究者指出，未来工作可以探索将频域能量路由扩展到确定性框架以实现超低步数采样，并应用于视频生成以利用时间频率维度。这场“噪声着色”的革命，或许才刚刚开始。</p>
 <p><strong>论文标题</strong>：Colored Noise Diffusion Sampling</p>
 <p>欢迎投稿！欢迎合作！</p>
         </article>
