@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMG2Skill: Can Agents Distill In-the-Wild Guides into Self-Evolving Skills?</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">MMG2Skill: Can Agents Distill In-the-Wild Guides into Self-Evolving Skills?</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-06-05</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>南京大学&amp;快手提出MMG2Skill：从网络指南蒸馏可进化技能，平均提升12.8-25.3个百分点！</h2>
+<h3>一、引言</h3>
+<p>面对复杂的长时程交互任务，桌面GUI操作、开放世界游戏、策略卡牌等场景，当前视觉语言模型（VLM）Agent面临的核心瓶颈并非感知或下一步动作推理，而是<strong>弱过程基础</strong>——即难以将可重用的过程步骤锚定在自身的运行时状态。网络上充斥着海量的人类撰写的多模态指南，包含丰富的过程知识，但这些指南是面向人类的，存在多模态、异构、含噪、隐含前提等问题，直接使用往往会适得其反。南京大学与快手科技联合提出的<strong>MMG2Skill</strong>框架，首次系统性地解决了“从野生指南到Agent可执行技能”的跨域学习问题，并构建了首个标准评测基准MMG2Skill-Bench，在六个VLM骨干网络上取得了平均12.8至25.3个百分点的提升。</p>
+<h3>二、核心方法</h3>
+<p>MMG2Skill是一个闭环框架，核心思想是将多模态指南编译为可编辑的技能文件，然后通过Agent自身轨迹进行迭代修正，整个过程不依赖于环境奖励分数。框架包含三个关键创新点：</p>
+<h4>1. 多模态技能构造（ConstructSkills）</h4>
+<p>原始指南包含步骤顺序、截图、界面提示等杂乱信息。MMG2Skill将其规范化为一个结构化的<strong>SKILL.md</strong>文件，每个技能是一个四元组：</p>
+$$
+\mathcal{S}_{1} = \textsc{ConstructSkills}(G,I) = \{z_{i}\}_{i=1}^{m}, \quad z_{i} = (u_{i}, c_{i}, v_{i}, q_{i})
+$$
+
+<p>其中 $u_i$ 是可重用过程描述，$c_i$ 为适用条件，$v_i$ 记录预期状态线索，$q_i$ 存储恢复知识。这一结构化表示将指南转化为Agent可直接读取和修改的<strong>可编辑对象</strong>，为后续迭代修正奠定基础。</p>
+<p><img alt="图1：MMG2Skill框架动机与主要发现。野生多模态指南包含有用过程知识，但直接提示可能损害性能，因此需要指导到技能的学习。" src="https://arxiv.org/html/2606.01993v1/x1.png" /></p>
+<p><img alt="图2：MMG2Skill闭环框架。展示了从指南构建技能、在滚动执行中使用技能、并从轨迹诊断中修正技能缓存的完整流程。" src="https://arxiv.org/html/2606.01993v1/x3.png" /></p>
+<h4>2. 技能条件执行（Skill-Conditioned Execution）</h4>
+<p>Agent在每次滚动执行时，将当前技能集注入到上下文提示中，与任务描述和历史轨迹共同指导动作采样：</p>
+$$
+a_t \sim \pi_{\theta}(a_t \mid h_t, I, \mathcal{S}_k)
+$$
+
+$h_t$
+<p>是最近  步的观测-动作历史， 是固定的VLM策略。技能作为稳定的过程上下文，覆盖了Agent本身的短期记忆限制，同时保留了环境交互的所有操作接口。</p>
+<h4>3. 分析与精炼循环（Analyzer &amp; Refiner）</h4>
+<p>每次滚动后，分析器仅根据Agent可见的轨迹（不访问真实分数）生成诊断：</p>
+$$
+\rho_k = \textsc{Analyze}(I, \tau_k) = (e_k, r_k)
+$$
+
+<p>其中 $e_k$ 是轨迹层面的根因证据，$r_k$ 是分析师对是否成功的自我判断（likely_success）。精炼器则结合原始指南、当前技能和累计诊断，生成局部技能编辑：</p>
+$$
+\mathcal{S}_{k+1} = \textsc{Refine}(G, I, \mathcal{S}_k, \rho_{1:k})
+$$
+
+<p>整个闭环循环持续到分析器判定成功或达到最大尝试次数。由于不依赖外部分数，该方法可直接应用于<strong>部署环境</strong>而非仅用于离线评估。</p>
+<h3>三、实验</h3>
+<p>研究者将MMG2Skill在MMG2Skill-Bench上进行了系统评测，该基准包含<strong>130个成功可推断任务</strong>，覆盖GUI控制（OSWorld）、开放世界游戏（Minecraft）和策略卡牌（斗地主、麻将）三个领域，每个任务配有对应的野生多模态指南。</p>
+<p><strong>主要结果</strong>：在六个VLM骨干（Claude-Opus-4.6、GPT-5.5、Claude-Sonnet-4.6、Kimi-K2.6、Gemini-3.1-Pro、Qwen3.6-Plus）上，MMG2Skill在所有18个模型-领域组合上均取得正向增益，宏观平均提升12.8至25.3个百分点。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>GUI (%)</th>
+<th>Game (%)</th>
+<th>Strategy (%)</th>
+<th>Avg (%)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude-Opus-4.6</td>
+<td>64.75</td>
+<td>83.33</td>
+<td>60.83</td>
+<td>69.64</td>
+</tr>
+<tr>
+<td>GPT-5.5</td>
+<td>57.24</td>
+<td>80.00</td>
+<td>65.00</td>
+<td>67.41</td>
+</tr>
+<tr>
+<td>无技能基线Vanilla</td>
+<td>42.74</td>
+<td>43.89</td>
+<td>46.67</td>
+<td>44.43</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>机制消融</strong>：直接使用原始指南（Raw Guide）在Game和Strategy领域反倒降低了性能，而结构化提取（w/o revision）已经优于基线，但完整闭环才发挥最大效力。证据表明，指南-环境基础误差只能通过轨迹驱动的技能修正来修复。</li>
+<li><strong>修订动力学</strong>：修正增益并非单调递增，尤其在策略卡牌领域存在后期退化。这促使研究者进一步设计基于分析器的早停策略。</li>
+<li><strong>早停部署效果</strong>：基于分析器的<code>likely_success</code>信号，在GUI和Game领域实现74%-95%的精度和召回，节省25%-53%的尝试次数，且早停策略在最终得分上显著优于始终使用最新尝试的“全轮次”部署（Game领域早停66.1% vs 全轮次47.8%）。</li>
+</ul>
+<p><img alt="图3：早停与全轮次部署的策略差距。在Game和Strategy领域，早停策略的最终得分显著更高。" src="https://arxiv.org/html/2606.01993v1/x5.png" /></p>
+<p><img alt="图4：修订动态。GPT-5.5和Qwen3.6-Plus在三个领域的逐次得分变化，以及累积成功触发率。" src="https://arxiv.org/html/2606.01993v1/x4.png" /></p>
+<h3>四、展望</h3>
+<p>MMG2Skill方法为Agent从开放网络知识中持续学习技能提供了一条可行路径。未来可扩展至自动化的指南检索与质量过滤，以及在更多真实世界长时程交互场景（如机器人操作、自动驾驶）中验证其泛化能力。你认为，如果Agent能够自主学习并持续优化技能库，是否会彻底改变人机协作的方式？欢迎留言讨论。</p>
+<p><strong>论文标题</strong>：MMG2Skill: Can Agents Distill In-the-Wild Guides into Self-Evolving Skills?</p>
+<p>欢迎投稿！欢迎合作！</p>
+$W$$\pi_{\theta}$
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.01993.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-04_MMG2Skill-Can-Agents-Distill-In-the-Wild-Guides-into-Self-Evolving-Skills.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-04_MMG2Skill-Can-Agents-Distill-In-the-Wild-Guides-into-Self-Evolving-Skills.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
