@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPRD: On-Policy Representation Distillation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">OPRD: On-Policy Representation Distillation</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-06-07</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>Ant Group &amp; Zhejiang University提出OPRD：突破大模型对齐天花板，1.44倍训练加速加54%显存节省！</h1>
+<h2>一、引言</h2>
+<p>在大型语言模型（LLM）的后训练阶段，“在策略蒸馏”（On-Policy Distillation, OPD）已成为提升模型性能的核心技术。它通过让学生模型自己生成回复，再与教师模型的预测分布进行对齐，有效缓解了训练与推理之间的“曝光偏差”问题。然而，现有所有OPD变体——无论是单采样Token、全词汇表还是Top-k方法——都局限于在<strong>输出空间</strong>（Output Space）进行监督。这带来了两个致命伤：一是采样方差极大，导致训练后期信号噪声比崩溃；二是LM Head层本身是一个严重的信息瓶颈（Information Bottleneck），丢弃了大量教师模型内部的结构化知识。</p>
+<p>针对这些痛点，来自浙江大学与蚂蚁集团的研究团队提出了<strong>OPRD（On-Policy Representation Distillation）</strong>，首次将蒸馏从输出空间提升到<strong>隐藏状态空间</strong>（Hidden-State Space）。该方法在数学推理基准测试上实现了与教师模型几乎持平的准确率，同时训练速度提升了1.44倍，并节省了高达54%的显存。</p>
+<h2>二、核心方法：从输出空间到隐藏状态空间的范式迁移</h2>
+<h3>2.1 传统OPD的两大局限</h3>
+<p>传统OPD（如Sampled-Token OPD）的核心公式如下，它通过一个单样本蒙特卡洛估计来近似每个位置的KL散度：</p>
+$$ \mathcal{L}_{\mathrm{OPD}}^{\mathrm{sample}}(\theta)=\mathbb{E}_{x,\hat{y}}\!\left[\sum_{t=1}^{T}\ell_{t}^{\mathrm{sample}}\right], \quad \ell_{t}^{\mathrm{sample}} \triangleq \log p_{t}(\hat{y}_{t})-\log q_{t}(\hat{y}_{t}) $$
+
+<p>论文指出，该估计器虽然无偏，但其方差不会随着训练进行而缩小。当学生模型逐渐接近教师模型（$p_{t} \to q_{t}$）时，真实梯度信号急剧降低，而噪声保持不变，导致损失函数在高维词汇空间（如Qwen系列词汇量达15万）中陷入震荡。</p>
+<p>更根本的问题在于信息瓶颈。教师模型在计算出最终的输出分布之前，内部早已堆叠了$L$层、维度为$d$的隐藏状态$\{h_{T}^{(l)}\}_{l=1}^{L}$。这些状态编码了丰富的注意力模式、中间推理状态等结构化信息。但这些信息几乎全被LM Head的投影矩阵$W_{\mathrm{head}}\in\mathbb{R}^{|\mathcal{V}|\times d}$和随后的Softmax操作所破坏。</p>
+<p><img alt="图1：OPRD与输出空间OPD的架构对比。OPRD在LM Head之前提取监督信号，暴露了输出空间目标必然丢弃的层内结构信息。" src="https://arxiv.org/html/2606.06021v1/x1.png" /></p>
+<h3>2.2 OPRD：直接的隐藏状态对齐</h3>
+<p>OPRD的解决方案直截了当——放弃在输出层后匹配分布，直接让学生在隐藏状态空间中对齐教师。其核心损失函数为：</p>
+$$ \mathcal{L}_{\mathrm{OPRD}}(\theta)=\mathbb{E}_{x,\hat{y}}\left[\frac{1}{|\mathcal{L}_{\text{layer}}|}\sum_{l\in\mathcal{L}_{\text{layer}}}\frac{1}{\sum_{t=1}^{T}m_{t}}\sum_{t=1}^{T}m_{t}\,\frac{1}{d}\Bigl\|h_{\theta,t}^{(l)}-\mathrm{sg}\!\bigl(h_{T,t}^{(l)}\bigr)\Bigr\|_{2}^{2}\right] $$
+
+<p>该公式包含几个关键设计：<br />
+- <strong>确定性梯度</strong>：该MSE目标是rollout的确定性函数，消除了输出空间OPD固有的采样方差。<br />
+- <strong>密集监督</strong>：通过选择特定层集$\mathcal{L}_{\text{layer}}$和位置集$\mathcal{P}(\hat{y})$（如回复的最后2000个token），OPRD每次可提供“层数 × 位置数 × 隐藏维度”量级的结构化监督信号，比单token采样丰富几个数量级。<br />
+- <strong>绕过LM Head</strong>：由于损失路径完全在LM Head之前计算，无需实例化$[B, T, |\mathcal{V}|]$大小的logits张量，这直接带来了内存和计算效率的飞跃。</p>
+<p>论文用两张图解释了为什么OPRD有效。首先，研究者发现学生模型与教师模型的分歧主要集中在回复的末尾（即推理过程收敛到最终答案的部分），这为“监督最后K个token”提供了经验依据。</p>
+<p><img alt="图2：学生与教师模型在回复末尾的表示差异最大。这有力地支持了集中监督回复末尾token的设计选择。" src="https://arxiv.org/html/2606.06021v1/Figure/cos_position2.png" /></p>
+<p>其次，论文通过理论分析指出，输出空间OPD无法惩罚位于LM Head有效零空间（$\mathcal{N}_{W}$）的隐藏状态偏差。这意味着即使学生模型的隐藏状态与教师相去甚远（只要差异被压缩在Softmax的不敏感方向），输出空间的损失依然为零。OPRD则精准地惩罚了这些被忽略的方向。</p>
+<h3>2.3 理论保证：零方差梯度与更丰富的信息通道</h3>
+<p>论文给出了两个核心定理来支撑OPRD的优越性：</p>
+<ul>
+<li><strong>定理1（零方差梯度）</strong>：OPRD在每个输入$(x, \hat{y})$上的梯度条件方差为零。而输出空间OPD的方差正比于$\mathrm{Var}_{\hat{y}_{t}\sim p_{t}}[\log p_{t}(\hat{y}_{t})-\log q_{t}(\hat{y}_{t})]$，该方差在学生接近教师时不会消失。</li>
+<li><strong>定理2（超越LM Head的信息）</strong>：输出空间损失$\ell_{\text{out}}$对位于LM Head有效零空间$\mathcal{N}_{W}$的隐藏状态变化完全不敏感。而OPRD能直接约束这些方向，为优化提供更准确的信号。</li>
+</ul>
+<h2>三、实验：数学推理的全方位超越</h2>
+<p>论文选用JustRL-Deepseek-1.5B作为教师模型，DeepSeek-R1-Distill-Qwen-1.5B作为学生模型，在AIME 2024、AIME 2025和AIMO三个竞赛级数学推理基准上进行测试。</p>
+<h3>3.1 主要结果：逼近教师，碾压基线</h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">方法</th>
+<th style="text-align: left;">AIME24</th>
+<th style="text-align: left;">AIME25</th>
+<th style="text-align: left;">AIMO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">教师 (JustRL-1.5B)</td>
+<td style="text-align: left;">50.8</td>
+<td style="text-align: left;">35.6</td>
+<td style="text-align: left;">79.5</td>
+</tr>
+<tr>
+<td style="text-align: left;">学生 (R1-distill-1.5B)</td>
+<td style="text-align: left;">32.9</td>
+<td style="text-align: left;">21.9</td>
+<td style="text-align: left;">62.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">OPD top-1</td>
+<td style="text-align: left;">42.3</td>
+<td style="text-align: left;">33.5</td>
+<td style="text-align: left;">77.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">OPD top-16</td>
+<td style="text-align: left;">47.1</td>
+<td style="text-align: left;">34.0</td>
+<td style="text-align: left;">76.5</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>OPRD (Ours)</strong></td>
+<td style="text-align: left;"><strong>49.8</strong></td>
+<td style="text-align: left;"><strong>34.6</strong></td>
+<td style="text-align: left;"><strong>79.1</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>如上表所示，传统OPD（无论top-1还是top-16）均出现了明显的“平台期”，无法完全弥合与教师的差距。而OPRD不仅在三项基准上全面超越了最强基线，更是将学生与教师的差距缩小到几乎可以忽略不计（如AIMO仅差0.4个百分点）。</p>
+<p><img alt="图3：训练动态对比。OPRD（蓝色）在全程保持单调提升，几乎收敛到教师水平；而输出空间OPD（橙色和绿色）在训练早期改善后便陷入平台期或震荡。" src="https://arxiv.org/html/2606.06021v1/Figure/AIME24-avg16-OPRD_last2000_coef1-OPD_top16.png" /></p>
+<h3>3.2 效率与行为分析：又快又好</h3>
+<p>除了精度的提升，OPRD在效率上实现了严格的帕累托改进（Pareto Dominance）：</p>
+<ul>
+<li><strong>训练速度</strong>：在相同的500步训练中，OPRD仅需563分钟，而OPD top-1和top-16分别需要813和812分钟，实现了<strong>1.44倍的加速</strong>。</li>
+<li><strong>显存节省</strong>：OPRD的峰值显存需求仅为20.5 GB，比OPD top-16的45.0 GB节省了<strong>54%</strong>。</li>
+<li><strong>生成效率</strong>：OPRD训练出的模型收敛到更短的回复（约5700 tokens），而OPD模型则需要约7000 tokens。这表明隐藏状态监督引导学生学习了更简洁的推理链。</li>
+</ul>
+<p><img alt="图4：OPRD在准确率、训练速度和显存消耗上全面领先。其气泡位于所有基线的右上角，表明同时实现了更高的精度和更低的计算成本。" src="https://arxiv.org/html/2606.06021v1/Figure/teaser18.png" /></p>
+<h2>四、展望与思考</h2>
+<p>OPRD的价值不仅在于它提升了数学推理的准确率，更在于它打开了一个全新的监督维度。它将教师模型从一个简单的“概率预言机”重新定义为“结构化内部计算知识的来源”，让学生模型不仅能模仿输出，更能学习教师“思考”的过程。</p>
+<p>尽管当前OPRD受限于同架构蒸馏（学生和教师需相同深度和宽度），但其在<strong>多模型强化学习合并</strong>（Multi-Model RL Merging）和<strong>在策略自蒸馏</strong>（On-Policy Self-Distillation）等高价值场景中展现出巨大潜力。未来，能否通过对比学习或可学习投影头打破跨架构的壁垒？能否将注意力图的蒸馏也纳入框架？这些问题都值得整个领域去探索。</p>
+<p>这不禁让人思考：当模型参数不再是秘密，当“学习如何学习”变得比学习最终答案更重要，我们是否正在逼近大模型能力提升的下一个临界点？</p>
+<p><strong>论文标题</strong>：OPRD: On-Policy Representation Distillation</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.06021.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-05_OPRD-On-Policy-Representation-Distillation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-05_OPRD-On-Policy-Representation-Distillation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
