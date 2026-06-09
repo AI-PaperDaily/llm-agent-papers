@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dots.tts Technical Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">dots.tts Technical Report</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-06-09</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>小红书发布dots.tts：2B参数连续自回归TTS模型，WER低至2.92%登顶Seed-TTS-Eval</h1>
+<h2>一、引言</h2>
+<p>在文本转语音（TTS）领域，“听得清”早已不是难题，用户真正期待的是：<strong>富有表现力的输出、实时合成速度、以及对朗读、对话、副语言事件、甚至唱歌和通用音频的全覆盖</strong>。然而，当前的TTS技术路线——无论是非自回归的流匹配生成，还是离散语音令牌的自回归预测，都面临各自的瓶颈：离散令牌的量化瓶颈限制了音色和副语言细节的表达，而连续自回归模型则受困于长程误差累积。</p>
+<p>小红书的Hilab与上海交通大学X-LANCE实验室联合推出的<strong>dots.tts</strong>，以2B参数的规模，首次在完全连续的潜在空间实现端到端自回归语音生成，在Seed-TTS-Eval基准上取得<strong>WER 2.92%、SIM 79.2</strong>的行业最佳平均成绩，标志着连续自回归TTS正式迈入生产级成熟度。</p>
+<h2>二、核心方法</h2>
+<h3>2.1 三模块解耦架构：语义规划与声学渲染分离</h3>
+<p>研究者将连续语音生成为三个专门模块：<br />
+- <strong>语义编码器</strong>：将每4帧（25Hz）VAE潜在块压缩为单个6.25Hz的语义嵌入，剥离高层声学细节，供LLM处理。<br />
+- <strong>LLM</strong>：处理BPE文本令牌与6.25Hz音频语义嵌入流，负责长程文本到语义的建模。<br />
+- <strong>自回归流匹配头（AR-FM）</strong>：基于DiT的逐帧声学渲染器，在每个自回归步生成下一块VAE潜在。<br />
+<img alt="图1: dots.tts架构概览" src="https://arxiv.org/html/2606.07080v1/x1.png" /></p>
+<p>这种解耦设计让LLM专注于语义推理，而声学渲染由专用的流匹配头完成，有效缓解了连续生成中预测误差的逐帧累积。</p>
+<h3>2.2 双阶段训练的语义AudioVAE</h3>
+<p>dots.tts的关键基础是一个<strong>因果语义VAE</strong>，以48kHz输入、25Hz帧率输出128维连续潜在。训练分为两阶段：</p>
+<p><strong>第一阶段</strong>：遵循BigVGAN-v2配方，结合多周期+多尺度子带CQT对抗损失、多尺度梅尔谱重构损失、特征匹配损失以及KL+流正则化，追求极致重构质量。</p>
+<p><strong>第二阶段</strong>：在保持重构能力的同时，加入WavLM表征对齐损失和多任务下游目标（包括ASR、情感、语者分类），使潜在空间既具语义结构又易于LLM学习。</p>
+<p>最终VAE在LibriSpeech test-other上实现PESQ 4.09、STOI 0.973、SIM 0.969，几乎不引入端到端误差瓶颈。</p>
+<h3>2.3 块因果注意力与训练机制</h3>
+<p>AR-FM头的训练采用<strong>块因果注意力掩码</strong>，在单次前向传播中模拟逐步推理的上下文：<br />
+<img alt="图2: 块因果注意力机制与RoPE位置编码" src="https://arxiv.org/html/2606.07080v1/x2.png" /></p>
+<p>训练序列由两部分构成：历史部分$C$（含LLM隐藏状态和已生成的干净块）和生成部分$Z$（含噪声块）。块因果掩码确保了$Z$中的每一步仅能访问其应有的历史上下文，实现了并行训练且与推理行为一致。</p>
+<p>核心损失定义为流匹配均方误差：</p>
+$$\mathcal{L}_{\text{fm}}=\mathbb{E}_{n,\,t\sim\mathcal{U}(0,1),\,\epsilon\sim\mathcal{N}(0,I),\,P_{n}}\left\|v_{\theta}\!\left(Z_{n}^{t},\,t,\,H_{{\leq}n},\,P_{<n},\,s\right)-\left(P_{n}-\epsilon\right)\right\|^{2}$$
+
+<h3>2.4 无奖励自纠正对齐</h3>
+<p>受SOAR启发，dots.tts的后训练阶段采用了<strong>无奖励自纠正</strong>方法。模型生成的离轨状态通过单步Euler展开得到，然后重新加噪并训练模型将其向干净终点引导：</p>
+$$\hat{x}_{\tau_{+}}^{(b)}=\operatorname{sg}\!\left[x_{\tau^{(b)}}^{(b)}+\left(\tau_{+}^{(b)}-\tau^{(b)}\right)v_{\theta}^{\text{cfg}}\!\left(x_{\tau^{(b)}}^{(b)},\tau^{(b)},c^{(b)};\gamma_{\text{soar}}\right)\right]$$
+
+<p>这种方法无需奖励模型或外部教师，直接解决训练与推理之间的ODE失配问题。</p>
+<h3>2.5 CFG感知MeanFlow蒸馏</h3>
+<p>为了推理效率，研究者将CFG融入MeanFlow蒸馏目标：教师模型生成的CFG引导平均速度被学生模型一次性预测，避免了CFG所需的两次前向评估。调整后的模型在NFE=4时就能保持SOAR的质量水平，首次包延迟低至85ms。</p>
+<h2>三、实验</h2>
+<h3>3.1 训练数据与配置</h3>
+<p>模型在<strong>150万小时</strong>多语言语音上训练，来源包括：<br />
+- 小红书内部中英文语音池（约120万小时）<br />
+- 开源语料库（约30万小时，涵盖Emilia、LibriTTS-R等）<br />
+- 自然语言描述的有标注数据（约7000小时）</p>
+<p>预训练分三个阶段进行：模态对齐（LLM冻结）、通用训练（全量微调）、退火（高质量子集精调）。</p>
+<h3>3.2 零样本语音克隆：Seed-TTS-Eval</h3>
+<p>在Seed-TTS-Eval所有三个子集上，dots.tts均取得最佳平均成绩：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>test-en WER</th>
+<th>test-en SIM</th>
+<th>test-zh WER</th>
+<th>test-zh SIM</th>
+<th>test-zh-hard WER</th>
+<th>test-zh-hard SIM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CosyVoice 3</td>
+<td>2.22</td>
+<td>72.0</td>
+<td>1.12</td>
+<td>78.1</td>
+<td>5.83</td>
+<td>75.8</td>
+</tr>
+<tr>
+<td>IndexTTS 2</td>
+<td>2.23</td>
+<td>70.6</td>
+<td>1.03</td>
+<td>76.5</td>
+<td>7.12</td>
+<td>75.5</td>
+</tr>
+<tr>
+<td>Qwen3-TTS</td>
+<td>1.23</td>
+<td>71.7</td>
+<td>1.22</td>
+<td>77.0</td>
+<td>6.76</td>
+<td>74.8</td>
+</tr>
+<tr>
+<td><strong>dots.tts (SOAR)</strong></td>
+<td><strong>1.30</strong></td>
+<td><strong>77.1</strong></td>
+<td><strong>0.94</strong></td>
+<td><strong>81.0</strong></td>
+<td><strong>6.60</strong></td>
+<td><strong>79.5</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3>3.3 多语言与跨语言表现</h3>
+<p>在24语言MiniMax测试集上，dots.tts平均说话人相似度达到<strong>83.9</strong>，领先第二名VoxCPM 2的82.3达1.6个点。在CV3-Eval跨语言克隆子集上，中英文双向的SIM均领先CosyVoice 3约6-8个点。</p>
+<h3>3.4 情感与表现力</h3>
+<p>在EmergentTTS-Eval上，dots.tts在六大表现力场景中的“句法复杂度”维度取得<strong>65.7%</strong>的胜率，超过所有闭源系统（包括Gemini-2.5-Pro-TTS的61.8%），同时在“情感”维度以72.7%领跑开源系统。</p>
+<h2>四、展望</h2>
+<p>dots.tts的发布意味着：<strong>连续自回归TTS这条路终于走通了</strong>。2B参数的小体量模型就能在极低延迟（54ms首包延迟）下实现行业顶尖的语音克隆、多语种覆盖和情感表现力，为实时对话、内容生产、游戏配音等场景提供了高保真、低门槛的技术方案。</p>
+<p>最具想象力的或许不是它的性能数字，而是它<strong>开源的完整技术栈</strong>——从训练代码到预训练、后训练、蒸馏后的完整检查点，研究者可以在Apache 2.0许可下自由复现和改进。这让连续TTS的研究从“知其然”迈向“知其所以然”。</p>
+<p>你觉得，当连续TTS彻底跨越离散化瓶颈后，语音交互的下一个“奇点时刻”会是怎样的形态？</p>
+<p><strong>论文标题</strong>：dots.tts Technical Report</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.07080.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-08_dotstts-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-08_dotstts-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
