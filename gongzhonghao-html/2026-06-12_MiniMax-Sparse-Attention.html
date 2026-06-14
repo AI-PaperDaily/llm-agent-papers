@@ -463,55 +463,56 @@
             </div>
             <h1 class="article-title">MiniMax Sparse Attention</h1>
             <div class="article-meta">
-                <span class="meta-item">📅 2026-06-13</span>
+                <span class="meta-item">📅 2026-06-14</span>
             </div>
         </header>
         
         <article class="article-content">
-            <h1>MiniMax发布MSA稀疏注意力：109B模型性能持平GQA，1M上下文计算量暴降28倍</h1>
-<h2>引言</h2>
-<p>当大模型的应用场景从短问答扩展到代码仓库级推理、Agent工作流和持久记忆时，上下文长度正成为决定模型能力的核心维度。然而，标准Softmax注意力机制的二次方计算复杂度让超长上下文推理成为AI部署的“阿喀琉斯之踵”——当序列长度达到百万级别，单次前向传播的计算成本将变得不可承受。业界一直在探索如何在保持模型质量的前提下突破这一瓶颈。MiniMax研究团队最新提出的<strong>MiniMax Sparse Attention（MSA）</strong>，以极简设计实现了令人瞩目的结果：在109B参数的MoE多模态模型上，该方法在性能与标准GQA注意力持平的同时，将1M上下文下的单token注意力计算量降低了<strong>28.4倍</strong>，并带来了<strong>14.2倍</strong>的预填充加速和<strong>7.6倍</strong>的推理加速。</p>
-<hr />
-<h2>核心方法</h2>
-<h3>稀疏注意力的双分支架构</h3>
-<p>MSA将稀疏注意力分解为两个协同工作的分支。该架构基于Grouped Query Attention（GQA）构建，通过引入一个轻量级的索引分支来指导主要分支的计算范围。</p>
-<p><img alt="图1：MSA架构概览" src="https://arxiv.org/html/2606.13392v1/figures/msa_arch.png" /></p>
-<p><strong>索引分支</strong>仅需两个投影矩阵，为每个GQA组独立评估所有可见的键值块。该分支首先计算查询与键之间的点积得分，然后通过最大池化聚合到块级别，最终为每个组选择Top-k个最相关的块。一个关键的设计是：<strong>局部块始终被强制包含</strong>，这确保了模型不会忽略查询位置的邻域信息。</p>
-$${\mathcal{I}}_{i}^{(r)} \;=\; \mathrm{TopK}_{b\in\{1,\dots,B\}}\!\bigl(M^{\mathrm{idx},(r)}_{i,\cdot},\,k\bigr)$$
+            <h1>MiniMax发布MSA：革新百万级上下文处理，计算量暴降28倍，推理速度狂飙14倍</h1>
+<p>大模型正在从短文本对话转向长程Agent工作流、仓库级代码推理和持久化记忆，这些场景要求模型同时关注数十万到数百万个token。然而，标准Softmax注意力机制的计算量随序列长度呈二次方增长，使得超长上下文推理在部署时几乎不可行。MiniMax团队最新提出的<strong>稀疏注意力机制MSA</strong>，以精妙极简的设计攻克了这一瓶颈，在109B参数模型上实现28.4倍计算缩减和14.2倍推理加速。</p>
+<h2>二、背景：注意力机制的效率困局</h2>
+<p><strong>Grouped-Query Attention（GQA）</strong> 是目前主流大模型的标准配置。它将查询头分组，每组共享键-值头，从而减少KV缓存。然而，GQA的计算复杂度依然是$O(N^2)$（N为序列长度），在百万token级别下，计算代价仍然难以承受。</p>
+<p>标准因果注意力计算公式为：</p>
+$${\bm{o}}_{t}^{(h)} = \sum_{i\leq t}\alpha_{t,i}^{(h)}\,{\bm{v}}_{i}^{(h)},\qquad\alpha_{t,i}^{(h)} = \frac{\exp\!\big(\langle{\bm{q}}_{t}^{(h)},{\bm{k}}_{i}^{(h)}\rangle/\sqrt{d_{h}}\big)}{\sum_{j\leq t}\exp\!\big(\langle{\bm{q}}_{t}^{(h)},{\bm{k}}_{j}^{(h)}\rangle/\sqrt{d_{h}}\big)}$$
 
-<p>其中$M^{\mathrm{idx},(r)}_{i,b}$表示第$i$个位置在第$r$个GQA组中，对第$b$个块的得分。</p>
-<p><strong>主要分支</strong>则执行标准的缩放点积注意力，但仅针对索引分支选定的关键块集合。这使得每个查询的注意力成本从$O(N)$降低到$O(kB_k)$，其中$B_k$是块大小，$k$是选择的块数。</p>
-$${\bm{O}}_{i}^{(h)} \;=\; \mathrm{softmax}\Biggl(\frac{{\bm{Q}}_{i}^{(h)}\,\bigl({\bm{K}}^{(r)}\!\bigl[{\mathcal{I}}_{i}^{(r)}\bigr]\bigr)^{\top}}{\sqrt{d_{h}}}\Biggr){\bm{V}}^{(r)}\!\bigl[{\mathcal{I}}_{i}^{(r)}\bigr]$$
+<p>该公式的计算量约为$2H_q N^2 d_h$ FLOPs，随着序列长度增加呈二次增长，成为长上下文推理的核心瓶颈。</p>
+<h2>三、核心方法：MSA架构解析</h2>
+<h3>3.1 双分支架构设计</h3>
+<p>MSA的核心创新在于将注意力层拆分为<strong>索引分支</strong>和<strong>主分支</strong>，实现“先筛选、后计算”的高效范式。</p>
+<p><img alt="图1：MSA架构总览" src="https://arxiv.org/html/2606.13392v1/figures/msa_arch.png" /></p>
+<p>索引分支使用极轻量的单头对完整因果上下文进行评分，为每个查询和GQA组独立选择Top-k个关键块；主分支则仅对筛选出的块执行精确的块级稀疏注意力。这种设计将注意力计算从全文范围降低到固定预算，且始终保留当前位置所在块，确保训练稳定性。</p>
+<h3>3.2 索引分支：轻量级智能筛选器</h3>
+<p>索引分支的设计极致简约，仅引入两个额外的投影矩阵。对于每个GQA组，索引分支计算块级评分，通过max-pooling聚合块内token分数：</p>
+$${\bm{S}}^{\text{idx},(r)}_{i,j} = \frac{\bigl({\bm{Q}}^{\text{idx}}\bigr)^{(r)}_{i}\,\bigl({\bm{K}}^{\text{idx}}\bigr)_{j}^{\top}}{\sqrt{d_{\text{idx}}}}, \qquad M^{\text{idx},(r)}_{i,b} = \max_{\substack{j\in{\mathcal{B}}_{b} \\ j\leq i}}{\bm{S}}^{\text{idx},(r)}_{i,j}$$
 
-<h3>训练机制：KL对齐与梯度分离</h3>
-<p>由于Top-k选择操作不可微，直接通过语言建模损失训练索引分支是不可行的。研究者设计了一套精巧的训练机制：</p>
-<p><strong>KL对齐损失</strong>：让索引分支的分布去匹配主要分支在选定token上的平均分布。这里的关键设计是，教师分布（主要分支）经过stop-gradient处理，使得KL损失仅影响索引分支的参数。</p>
-<p><strong>梯度分离</strong>：进一步对索引分支的输入也应用stop-gradient，确保KL损失不会反向传播到主干网络。这使得KL损失成为索引投影矩阵的“干净”学习信号。</p>
-$${\bm{Q}}^{\mathrm{idx}} \;=\; \mathrm{stopgrad}({\bm{X}}){\bm{W}}^{\mathrm{idx}}_{q},\qquad{\bm{K}}^{\mathrm{idx}} \;=\; \mathrm{stopgrad}({\bm{X}}){\bm{W}}^{\mathrm{idx}}_{k}$$
+<p>然后执行Top-k选择：${\mathcal{I}}_{i}^{(r)} = \mathrm{TopK}_{b\in\{1,\dots,B\}}\!\bigl(M^{\text{idx},(r)}_{i,\cdot},\,k\bigr)$，始终包含本地块。关键的训练策略包括：</p>
+<ul>
+<li><strong>KL对齐损失</strong>：通过最小化索引分支分布与主分支概率分布之间的KL散度，使索引分支学习到语义上有意义的选择模式</li>
+<li><strong>梯度截断</strong>：将索引分支的梯度与主分支解耦，确保辅助损失不会影响主分支的训练</li>
+<li><strong>两阶段预热</strong>：先以全注意力训练索引分支，再切换到稀疏模式</li>
+</ul>
+<h3>3.3 高效内核设计：理论加速到实际收益</h3>
+<p>MSA团队还设计了专用的GPU内核，将理论稀疏性转化为实际加速。核心创新包括：</p>
+<ul>
+<li><strong>无exp的Top-K选择</strong>：利用softmax保持排序顺序的特性，直接对原始分数排序，避免计算指数运算</li>
+<li><strong>KV-outer稀疏注意力</strong>：采用KV-outer迭代顺序，即将KV块放在外层循环，收集选择该块的查询进行批量计算，显著提高张量核心利用率</li>
+<li><strong>预调度分块机制</strong>：对热点块进行查询维度分割，避免原子操作带来的性能损失</li>
+</ul>
+<p>完整的计算复杂度对比：</p>
+$$F_{\text{GQA}}(N)=2H_{q}d_{h}N^{2}, \qquad F_{\text{MSA}}(N)=\underbrace{H_{kv}d_{\text{idx}}N^{2}}_{\text{Index Branch}}+\underbrace{4H_{q}d_{h}NkB_{k}}_{\text{Main Branch}}$$
 
-<p><strong>双阶段训练</strong>：首先在几轮迭代中使用全注意力训练索引分支（预热阶段），之后才切换到稀疏注意力模式。这种策略有效避免了早期随机选择带来的训练不稳定。</p>
-<h3>定制化GPU内核</h3>
-<p>理论上的稀疏性要转化为实际加速，需要算法与GPU执行路径的协同设计。研究团队开发了三个关键内核：</p>
-<p><strong>无指数Top-K选择</strong>：由于softmax保持排序不变，直接对原始得分进行排名，避免了不必要的softmax计算。</p>
-<p><strong>KV-外循环稀疏注意力</strong>：不同于传统的查询-外循环，该方法以外部的KV块为循环对象，收集选择了该块的所有查询再并计算。这让张量核心的利用率显著提升，因为同一个KV块可以被多个查询共享。</p>
-$$ \mathrm{FLOPs/IO} \approx \tfrac{2}{3}B_{k} $$
-
-<p>相比查询-外循环的$\mathrm{FLOPs/IO} \approx G$，KV-外循环获得了更高的算术强度，在块大小$B_k=128$时优势明显。</p>
-<p><strong>预调度块分片</strong>：针对某些“热门”KV块被大量查询选中的情况，内核会将这些块的任务拆分到多个CTA上，并通过预分配的输出槽位避免了昂贵的原子操作。</p>
-<hr />
-<h2>实验验证</h2>
-<h3>训练动态</h3>
-<p>研究者在一个109B参数的MoE多模态模型上验证了MSA的有效性。所有模型在3T token的预算下训练，使用块大小$B_k=128$，每个查询选择$k=16$个块。</p>
+<p>在$B_k=128, k=16$的设置下，每个查询仅需处理2048个token的注意力计算，与上下文长度无关。</p>
+<h2>四、实验评估：效率与效果的完美平衡</h2>
+<h3>4.1 训练动态</h3>
 <p><img alt="图2：预训练动态对比" src="https://arxiv.org/html/2606.13392v1/x1.png" /></p>
-<p>从预训练过程的损失曲线和梯度范数曲线看，MSA与全注意力基线几乎完全重叠，表明稀疏注意力没有引入额外的优化困难或训练不稳定性。</p>
-<h3>性能结果</h3>
-<p>下表展示了MSA在多种基准上的表现：</p>
+<p>研究者将MSA与全注意力基线在109B参数的MoE模型上进行对比，使用3T token的训练预算。实验表明，MSA的损失曲线与全注意力几乎重合，梯度范数也保持在同一水平，证明稀疏注意力不会引入训练不稳定问题。</p>
+<h3>4.2 综合评估结果</h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>组别</th>
-<th>基准</th>
-<th>全注意力</th>
+<th>领域</th>
+<th>基准测试</th>
+<th>Full Attention</th>
 <th>MSA-PT</th>
 <th>MSA-CPT</th>
 </tr>
@@ -521,15 +522,8 @@ $$ \mathrm{FLOPs/IO} \approx \tfrac{2}{3}B_{k} $$
 <td>通用</td>
 <td>MMLU</td>
 <td>67.0</td>
-<td><strong>67.2</strong></td>
+<td>67.2</td>
 <td>66.8</td>
-</tr>
-<tr>
-<td></td>
-<td>BBH</td>
-<td>67.7</td>
-<td>66.6</td>
-<td>66.1</td>
 </tr>
 <tr>
 <td>数学</td>
@@ -539,13 +533,6 @@ $$ \mathrm{FLOPs/IO} \approx \tfrac{2}{3}B_{k} $$
 <td>73.7</td>
 </tr>
 <tr>
-<td></td>
-<td>MathVista</td>
-<td>43.8</td>
-<td><strong>46.8</strong></td>
-<td>44.5</td>
-</tr>
-<tr>
 <td>代码</td>
 <td>HumanEval</td>
 <td>61.0</td>
@@ -553,21 +540,7 @@ $$ \mathrm{FLOPs/IO} \approx \tfrac{2}{3}B_{k} $$
 <td>57.9</td>
 </tr>
 <tr>
-<td></td>
-<td>EvalPlus</td>
-<td>59.4</td>
-<td><strong>61.8</strong></td>
-<td>60.0</td>
-</tr>
-<tr>
-<td>图像</td>
-<td>CVBench</td>
-<td>57.0</td>
-<td><strong>59.7</strong></td>
-<td>58.8</td>
-</tr>
-<tr>
-<td>视频</td>
+<td>多模态</td>
 <td>VideoMME</td>
 <td>41.11</td>
 <td><strong>45.48</strong></td>
@@ -575,14 +548,15 @@ $$ \mathrm{FLOPs/IO} \approx \tfrac{2}{3}B_{k} $$
 </tr>
 </tbody>
 </table></div>
-<p>两种训练路线各有优势：<strong>MSA-PT</strong>（从头预训练）在数学、多模态和长上下文检索上表现更佳，说明稀疏感知的训练能更充分地调整模型表征；<strong>MSA-CPT</strong>（从稠密检查点继续训练）则更保守地保留了原模型行为，适合已有训练好的稠密模型的情况。</p>
-<h3>效率对比</h3>
-<p><img alt="图4：MSA vs GQA效率对比" src="https://arxiv.org/html/2606.13392v1/x5.png" /></p>
-<p>在1M上下文长度下，MSA的理论FLOPs降低达到了<strong>28.4倍</strong>。实际运行时的加速虽然因为稀疏计算的额外开销而有所折扣，但仍然实现了<strong>14.2倍</strong>的预填充加速和<strong>7.6倍</strong>的推理解码加速。而且随着上下文长度增长，加速比持续提高——这正是超长上下文场景最需要的特性。</p>
-<p>在长上下文扩展实验中，经过140B token继续训练的MSA-CPT模型在128K上下文长度的RULER和HELMET基准上与全注意力基线差距小于1%，展现了在极紧的注意力预算下保持长上下文能力。</p>
-<hr />
-<h2>展望</h2>
-<p>MSA的核心理念——基于GQA组的独立选择、块级粒度和KL对齐训练——与当前大多数开源前沿模型所采用的GQA架构天然兼容。这意味着该技术方案具有很高的可迁移性。对于Agent系统、代码仓库级推理和长期记忆等需要处理海量上下文的场景，MSA为在有限计算预算内运行超长上下文提供了工程化的解决方案。未来值得关注的方向包括：通过更长稀疏训练或更大选择预算来缩小残余的长上下文检索差距，以及将这种“选择器仅用于路由”的设计扩展到RL后训练和Agent部署中。</p>
+<p>MSA在多个基准上匹配甚至超越全注意力基线，特别是在原生稀疏训练（MSA-PT）的情况下，在数学、代码和视频理解任务上取得最佳结果。</p>
+<h3>4.3 效率提升</h3>
+<p><img alt="图3：效率对比" src="https://arxiv.org/html/2606.13392v1/x5.png" /></p>
+<p>在100万token上下文中，MSA实现了：<br />
+- <strong>28.4倍</strong>的理论计算缩减<br />
+- <strong>14.2倍</strong>的Prefill阶段实际加速<br />
+- <strong>7.6倍</strong>的Decoding阶段实际加速</p>
+<h2>五、展望</h2>
+<p>MSA以极简设计证明了稀疏注意力在大规模模型中的实用价值。其与GQA的兼容性使得可以直接从现有预训练检查点转换，无需从头训练。随着Agent和长上下文应用成为主流，这种高效注意力机制将在实际部署中发挥关键作用。未来方向包括进一步缩小长上下文检索差距，以及将相同的选择器设计扩展到RLHF后训练和Agent部署场景。</p>
 <p><strong>论文标题</strong>：MiniMax Sparse Attention</p>
 <p>欢迎投稿！欢迎合作！</p>
         </article>
