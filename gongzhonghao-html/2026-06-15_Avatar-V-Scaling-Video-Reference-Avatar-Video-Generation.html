@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avatar V: Scaling Video-Reference Avatar Video Generation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Avatar V: Scaling Video-Reference Avatar Video Generation</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-06-16</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2><strong>HeyGen发布Avatar V：视频参考Avatar生成突破1080p无限时长，Sparse Reference Attention核心驱动性能碾压SOTA</strong></h2>
+<h3><strong>一、引言</strong></h3>
+<p>生成一个数字人，使其不仅外貌与真人几乎无差，连讲话的节奏、习惯性的小动作都具备高相似度，这曾是视频生成领域的“圣杯”。现有方法大多依赖单张静态参考图，但这显然不够——一张图无法捕捉一个人的动态行为模式，导致生成的数字人普遍存在“身份漂移”和“机械感”的问题。为解决这一挑战，HeyGen研究团队推出了名为 <strong>Avatar V</strong> 的生产级框架。该方案通过直接将参考视频的完整Token序列作为身份条件，利用<strong>Sparse Reference Attention</strong>机制线性地处理任意长度的参考视频，并能在单一系统中实现1080p、无限时长的数字人视频生成。在“跨场景”基准测试中，Avatar V在身份保持、唇音同步和生成质量上全面超越Seedance 2.0、Kling O3 Pro等业界竞品。</p>
+<h3><strong>二、核心方法</strong></h3>
+<p><img alt="图1：Avatar V架构图：多模态输入被 Patchify 为统一Token序列，通过Sparse Reference Attention和运动注入模块等处理" src="https://arxiv.org/html/2606.13872v1/x1.png" /></p>
+<p>Avatar V的核心架构基于 Diffusion Transformer（DiT），其最大创新在于将身份建模重新定义为一个<strong>视频参考条件</strong>问题。整套系统包含三大核心支柱：视频参考身份建模（Sparse Reference Attention）、<strong>运动建模（Motion Representation）</strong>，以及<strong>身份感知超分辨率细化器</strong>。</p>
+<h4><strong>1. 视频参考身份建模与 Sparse Reference Attention</strong></h4>
+<p>过去，系统要么将身份压缩成固定长度的嵌入向量（造成信息丢失），要么简单地将所有参考Token与生成Token拼接（导致二次方计算复杂度）。Avatar V提出了不对称的 <strong>Sparse Reference Attention</strong> 机制来化解这一矛盾。</p>
+<p>具体来说，生成Token会“关注”所有参考Token，以提取全局的静态与动态特征；而参考Token则仅进行自注意力计算，无需关注回生成Token。通过引入结构化稀疏掩码，该机制将计算复杂度从二次方降低为线性。引入该机制后，系统处理数分钟长的参考视频变得可行，从而可以捕获人物的说话节奏、习惯性微表情和手势倾向。</p>
+<p>核心优势在于：</p>
+$$O(T_{ref}^2 + T_{gen}^2) \rightarrow O(T_{ref} + T_{gen}^2)$$
+<p>这一公式揭示了系统如何在不牺牲性能的前提下，将计算量从二次方缩减至线性增长。</p>
+<h4><strong>2. 运动表示流：闭环式风格建模</strong></h4>
+<p>除了外貌，一个令人信服的数字人必须“动起来也像那个人”。传统方法往往将运动信号视为分离的条件，无法捕捉人物的个体化动作风格。Avatar V为此设计了一个专用的<strong>运动表示流</strong>。该流在整个生成过程中扮演“双重角色”：</p>
+<ul>
+<li><strong>作为生成目标</strong>：模型学习生成匹配该人物风格的运动序列。</li>
+<li><strong>作为条件信号</strong>：在训练时，该运动流又回传给模型，形成一个闭环的优化信号。</li>
+</ul>
+<p>这种联合优化设计使模型能够统一理解目标讲话者的运动动力学，即使面对全新的语音内容，也能生成具有<strong>行为一致性</strong>的视频。</p>
+<p><img alt="图2：Avatar V训练流程：五阶段渐进式训练，从文本到视频预训练到人类反馈对齐" src="https://arxiv.org/html/2606.13872v1/x2.png" /></p>
+<h4><strong>3. 身份感知超分辨率细化器</strong></h4>
+<p>基础DiT模型通常在较低分辨率下运行以控制计算成本。为了获得高清输出，Avatar V配备了一个<strong>身份感知超分辨率（SR）</strong>细化器。该细化器并非一个独立于身份的小模型，而是完整继承了视频参考条件装置。它利用参考视频的身份特征和音频信号，在放大分辨率的同时精准恢复面部细节（如牙齿结构、皮肤纹理和微表情）。</p>
+<p>为了兼顾推理效率，细化器采用了<strong>稀疏时间注意力</strong>，将每帧的视野限制在局部时间窗口内。结合蒸馏技术，该SR模块仅需单步去噪即可完成从低分到1080p的细节还原，在保证画质的同时创造了极低的推理延迟。</p>
+<h3><strong>三、实验与性能</strong></h3>
+<p>为验证Avatar V的鲁棒性，研究者构建了一个极具挑战性的<strong>跨场景</strong>基准（70个测试案例），要求模型在给定参考视频后，基于“目标人物在同一场景”“跨场景”以及“AI生成的场景”三种不同模式下完成视频生成。评估维度包括自动客观指标和人类主观评价。</p>
+<p><strong>客观指标对比：</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">方法</th>
+<th style="text-align: left;">Sync-C ↑</th>
+<th style="text-align: left;">Face Sim ↑</th>
+<th style="text-align: left;">Q-Align ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Kling O3 Pro</td>
+<td style="text-align: left;">5.16</td>
+<td style="text-align: left;">0.838</td>
+<td style="text-align: left;">4.80</td>
+</tr>
+<tr>
+<td style="text-align: left;">Veo 3.1</td>
+<td style="text-align: left;">8.05</td>
+<td style="text-align: left;">0.714</td>
+<td style="text-align: left;">4.95</td>
+</tr>
+<tr>
+<td style="text-align: left;">OmniHuman 1.5</td>
+<td style="text-align: left;">7.53</td>
+<td style="text-align: left;">0.732</td>
+<td style="text-align: left;">4.70</td>
+</tr>
+<tr>
+<td style="text-align: left;">Seedance 2.0</td>
+<td style="text-align: left;">8.86</td>
+<td style="text-align: left;">0.823</td>
+<td style="text-align: left;">4.85</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Avatar V（Ours）</strong></td>
+<td style="text-align: left;"><strong>8.97</strong></td>
+<td style="text-align: left;"><strong>0.840</strong></td>
+<td style="text-align: left;"><strong>4.85</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>表中可以看到，Avatar V在音唇同步（Sync-C）和身份保持（Face Sim）上取得了最高分，尤其Face Sim（0.840）非常接近真实视频的上限（0.861）。</p>
+<p><strong>主观评价：</strong></p>
+<p><img alt="图10：MOS雷达图：Avatar V在身份一致性、唇音同步、运动自然性等6个维度均获得最高分" src="https://arxiv.org/html/2606.13872v1/x7.png" /></p>
+<p>在人类评分的主观评价（Mean Opinion Score，MOS）中，Avatar V在“身份一致性”、“运动自然性”和“伪影控制”等所有六个维度上均以显著优势领先。特别是在“身份一致性”上获得了接近满分的4.98分。</p>
+<p>在成对盲测（Pairwise Win Rate）中，Avatar V相对于OmniHuman 1.5的胜率高达85.7%，相对于Seedance 2.0的胜率为68.9%，表明在复杂跨场景任务下，该方案的用户偏好压倒性胜出。</p>
+<p>此外，在“图灵测试”中，有61.1%的测试案例里，至少有一位人类评审员将Avatar V生成的视频误认为是真人录制，证明了其极高的视觉逼真度。</p>
+<h3><strong>四、展望</strong></h3>
+<p>Avatar V通过将身份建模从单张图像升级为完整的视频参考条件，以及Sparse Reference Attention等工程创新，显著拉近了数字人与真人之间的界限。这套系统不仅可作为个人虚拟分身、影视制作工具，在直播、远程会议和游戏交互等追求“视觉真实感”的领域也具有极强的应用潜力。</p>
+<p>随着数据引擎和RLHF对齐（Reinforcement Learning from Human Feedback）进一步优化，未来通用视频生成模型的标准，很可能从“理解画面”全面转向“理解人物性格与行为”。到那时，我们该如何定义屏幕中的“身份”？或许，答案已经体现在Avatar V的每一个Token之中。</p>
+<p><strong>论文标题</strong>：Avatar V: Scaling Video-Reference Avatar Video Generation</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.13872.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-15_Avatar-V-Scaling-Video-Reference-Avatar-Video-Generation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-15_Avatar-V-Scaling-Video-Reference-Avatar-Video-Generation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
