@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProCUA-SFT Technical Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">ProCUA-SFT Technical Report</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-06-18</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>NVIDIA联合华盛顿大学发布ProCUA-SFT：合成3.1M样本驱动GUI Agent，OSWorld性能猛增18.7个百分点，人类演示数据竟成负优化？</h2>
+<h3>一、引言：桌面智能体的“数据饥荒”与“负迁移陷阱”</h3>
+<p>训练一个能像人类一样操控桌面软件（如Excel、Chrome）的计算机使用智能体（CUA），核心瓶颈早已不是模型架构，而是高质量的训练数据。不同于纯文本指令，每一个CUA轨迹都需要一个完整的、活生生的桌面环境——包含启动的虚拟机、安装好的应用程序、以及真实复杂的文件内容。这使得大规模数据采集的成本极其高昂。</p>
+<p>当前最大的公开资源是拥有22,500条人类演示轨迹的 <strong>AgentNet</strong> 数据集。然而，一个令人震惊的实验结果揭示了该领域的深层矛盾：当使用AgentNet对强基座模型 <strong>UI-TARS 7B</strong> 进行监督微调（SFT）后，其在业界公认的基准 <strong>OSWorld</strong> 上的成功率非但没有提升，反而从 <strong>26.3% 急剧下跌至 8-10%</strong>。这种“负迁移”现象意味着，低质量、多样性不足的人类演示数据正在严重阻碍智能体性能的提升。</p>
+<p>为了破解这一困局，NVIDIA与华盛顿大学的研究团队联合推出了 <strong>ProCUA-SFT</strong>。这是一套完全合成的、经过严格验证的大规模CUA训练数据集。实验证明，使用ProCUA-SFT微调后的模型，在OSWorld上的成功率飙升至 <strong>45.0%</strong>，不仅远超使用人类数据的模型，更比基础模型高出18.7个百分点。本篇文章将深入解读这一突破性工作的核心技术细节。</p>
+<h3>二、核心方法：一场针对“幻觉”与“复杂内容”的合成革命</h3>
+<p>ProCUA-SFT的价值并非来自模型本身的进步，而在于其创造了一条颠覆性的<strong>自动化数据生产流水线</strong>。其核心设计思想包含三大创新点，旨在解决合成数据常见的“任务不可行”和“内容过于简单”两大通病。</p>
+<h4>1. 引子：前件校验——防止模型“画饼”</h4>
+<p>一个常见的问题是：大模型作为任务生成器时，常常会提出当前桌面状态下无法完成的任务，例如要求“打开桌面上的Q3报告”，但该文件实际并不存在。为解决此问题，ProCUA-SFT构建了一个<strong>闭环的任务合成与校验机制</strong>。其核心是一个“任务生成器-裁判员”双角色模型（均基于Kimi-K2.5 VLM实现）。</p>
+<p>任务生成器在生成目标 $g^{(k)}$ 时，必须同时提交一组可验证的、二进制的<strong>前件条件</strong> $R^{(k)}$，这些条件描述了任务可行的前提。</p>
+$$ \pi_{G}:(s_{0},\;c,\;a,\;V_{<k})\;\longmapsto\;\big(g^{(k)},\;R^{(k)}\big),\qquad R^{(k)}=\{r_{1},r_{2},\ldots,r_{5}\} $$
+
+<p>其中，$s_0$是初始桌面截图，$c$是配置状态，$a$是风格锚点，$V_{<k}$是历史校验结果。</p>
+<p>随后，“裁判员”角色 $\pi_J$ 对这些条件逐一进行审查，只有当所有条件都满足时，生成的合成任务才算“有效”，才会进入下一个执行阶段。这种先校验、后执行的设计，从根本上杜绝了模型生成“空中楼阁”式任务的可能，确保了每一条合成轨迹的可行性。</p>
+<h4>2. 注入：真实世界的复杂种子——从报表到演示文稿</h4>
+<p>如果只使用空白文档和默认应用状态生成任务，产出的轨迹将毫无挑战。ProCUA-SFT的第二个杀手锏是为桌面环境注入<strong>真实世界的外部内容</strong>。</p>
+<p>研究团队并未使用空白的电子表格，而是从 <strong>SpreadsheetBench</strong> 中引入了 <strong>912个</strong> 真实世界的电子表格，这些表格行数超过20,000行，列数超过100列，并包含复杂的公式、图表和多表引用。同样，他们还从 <strong>Zenodo10K</strong> 中引入了近10,000个符合许可协议的 <strong>.pptx</strong>格式演示文件。</p>
+<p>通过在这些“饱含信息”的桌面状态上生成任务，智能体必须执行真正的<strong>跨应用推理</strong>：例如，从复杂的电子表格中提取数据，将其总结后插入一个演示文稿中。这迫使模型在<strong>多个应用之间切换，进行信息传递与操作</strong>，从而大幅提升了任务的复杂度和实用价值。</p>
+<h4>3. 执行与扩展：单模型闭环与步长前缀采样</h4>
+<p>在数据收集阶段，ProCUA-SFT使用<strong>同一个VLM</strong>同时扮演任务生成、轨迹执行和最终状态判断的角色。这消除了“规划者-执行者”之间的能力鸿沟，即模型不会给自己提出根本完成不了的目标，从而最大化轨迹的成功率。</p>
+<p>最后，一条轨迹被巧妙地转化为多个训练样本。研究者应用 <strong>步长前缀扩展</strong> 方法：一条包含 $T$ 步的轨迹 $\tau$，被扩展为 $T$ 个独立的训练样本。</p>
+$$ \mathcal{D}(\tau)\;=\;\big\{(x_{t},\,o_{t})\big\}_{t=1}^{T},\qquad x_{t}\;=\;\big(g,\;V_{t}(\tau),\;H_{t}(\tau)\big) $$
+
+<p>每个样本都包含了从初始状态到第 $t$ 步的完整上下文：目标 $g$、最新的最多3张截图 $V_t$ 和之前步骤的文字摘要 $H_t$。这确保了模型在训练和推理时看到的上下文布局完全一致，并且让模型学到了如何在任务的早期阶段正确启动，极大提升了数据利用效率。</p>
+<p><img alt="图1：ProCUA-SFT管道流程图，展示了从桌面种子、VLM任务生成、轨迹执行到SFT样本扩展的完整自动化流程。" src="https://arxiv.org/html/2606.17321v1/assets/figure1_procua_pipeline.png" /></p>
+<h3>三、实验结果：对“负迁移”的彻底反攻</h3>
+<p>论文通过一系列严谨的实验，验证了ProCUA-SFT的巨大优势。</p>
+<h4>1. OSWorld基准上的压倒性胜利</h4>
+<p>研究者将<strong>UI-TARS 7B</strong>作为基座模型，分别使用ProCUA-SFT和AgentNet数据进行一轮微调。结果异常清晰：</p>
+<ul>
+<li><strong>ProCUA-SFT模型</strong>：在OSWorld上取得了 <strong>45.0%</strong> 的最终成功率。</li>
+<li><strong>UI-TARS 7B基础模型</strong>：原始成功率为 <strong>26.3%</strong>。</li>
+<li><strong>AgentNet训练模型</strong>：成功率不升反降，仅维持在 <strong>8-10%</strong> 的低水平，成为典型的“负迁移”。</li>
+</ul>
+<p>ProCUA-SFT带来的18.7个百分点的绝对提升，证明了合成数据的巨大潜力，尤其是在对比之下，它完全反超了劣质人类数据的负面效应。</p>
+<p><img alt="图2：OSWorld成功率对比。(a) 展示了ProCUA（蓝线）的训练曲线稳步上升至45.0%，而AgentNet（红线）则远低于基准线（26.3%）。(b) 最佳检查点柱状图对比。" src="https://arxiv.org/html/2606.17321v1/assets/figure_experiments.png" /></p>
+<h4>2. 远不止步数更多：数据多样性的关键</h4>
+<p>为什么ProCUA-SFT表现如此出色？论文通过数据分析揭示，其优势源于数据结构的根本性差异。</p>
+<ul>
+<li><strong>更长远的任务规划</strong>：ProCUA轨迹的平均步长是 <strong>29.7步</strong>，几乎是AgentNet（18.6步）的1.6倍，这意味着模型学会了执行更复杂的、长期的子任务。</li>
+<li><strong>更契合真实场景的应用分布</strong>：ProCUA轨迹大量涉及 <strong>LibreOffice套件（Impress, Calc, Writer）</strong> 的操作，这与OSWorld评估场景高度吻合。而AgentNet的多半数据来自Windows/Mac平台，其Ubuntu子集的分布并不匹配。</li>
+<li><strong>更可预测的操作偏好</strong>：ProCUA模型更倾向于使用 <strong>键盘快捷键</strong>，而前者则严重依赖鼠标点击。键盘操作具有更高的确定性，避免了像素级点击带来的脆弱性，这在高频的菜单导航和表单填写任务中至关重要。</li>
+</ul>
+<p><img alt="图3：ProCUA与AgentNet数据集统计对比。左：轨迹长度分布，ProCUA具有更长的尾部。中：应用分布对比。右：操作类别分布对比。" src="https://arxiv.org/html/2606.17321v1/x1.png" /></p>
+<h3>四、展望</h3>
+<p>ProCUA-SFT的成功证明，当合成数据的质量、多样性和可行性得到根本性提升时，可以完全超越依赖昂贵、嘈杂的人工标注的传统范式。它不仅为CUAs提供了一种更高效、更可靠的数据生产路径，更揭示了当前合成数据领域一个未被充分发掘的巨大潜力。</p>
+<p>这项工作的价值是开放和普适的。其数据集和自动化管道思路，为任何试图构建CUA的团队（无论是基于开源模型还是闭源API）提供了强有力的基础设施。未来，随着更强视觉语言模型和外部奖励模型的出现，可以预见，一套完全由机器学习驱动的、能自我进化的复杂桌面操作智能体正在成为现实。</p>
+<p><strong>论文标题</strong>：ProCUA-SFT Technical Report</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.17321.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-17_ProCUA-SFT-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-17_ProCUA-SFT-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
