@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kairos: A Native World Model Stack for Physical AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Kairos: A Native World Model Stack for Physical AI</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-06-19</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>Kairos发布原生世界模型堆栈：4B参数超越14B模型，效率提升85倍</h1>
+<h2>引言</h2>
+<p>当机器人需要在真实环境中自主导航、操作物体、完成长时间任务时，它们需要的不只是一个会生成漂亮视频的模型，而是一个能够理解物理规律、维持世界状态、并将感知与行动统一起来的基础设施。当前的世界模型面临着四个相互交织的瓶颈：数据来源碎片化导致知识学习不完整、长时域状态维持困难、感知与动作控制脱节、以及实际部署效率低下。</p>
+<p>Kairos团队最新发布的技术报告，系统地回应了这些挑战。研究者提出了一个原生世界模型堆栈，在4B参数规模下，在多个具身智能和世界建模基准测试上超越了14B甚至28B参数规模的模型，同时实现了更高效的推理性能。<strong>这项工作不仅是模型性能的提升，更是对世界模型设计理念的重构：从"生成逼真像素"转向"构建可部署、可进化的物理智能基础设施"。</strong></p>
+<h2>一、核心创新：三个维度的系统性突破</h2>
+<p>Kairos的核心贡献围绕三个维度展开：<strong>如何学习世界、如何维持世界、如何运行世界</strong>。这三个维度不是孤立的工程改进，而是对结构瓶颈的联合响应。</p>
+<h3>1. 跨具身数据课程（CEDC）：从观众到参与者的渐进训练</h3>
+<p>传统方法通常是在通用视频生成模型上进行后训练或微调，这种"拼接"方式导致物理知识和具身控制之间存在严重的鸿沟。Kairos提出了一种<strong>原生预训练范式</strong>：通过三个阶段的渐进训练，让模型从被动观察者逐步转变为主动参与者。</p>
+<p><strong>第一阶段（物理预训练）</strong>：模型通过海量开放世界视频，内部化物理规律——重力、物体恒存、碰撞力学。这些视频提供了广泛的物理和环境规律，但缺乏动作信息。</p>
+<p><strong>第二阶段（人类中心预训练）</strong>：模型内化人类行为数据中的"行为经验"，学习任务组织和因果推理。人类演示揭示了结构化行为模式，但需要映射到机器人具身空间。</p>
+<p><strong>第三阶段（联合世界-动作训练）</strong>：模型将物理先验和行为先验锚定到机器人交互数据，实现感知-动作对齐。这需要解决机器人数据在分布上的稀疏性。</p>
+<p>这一渐进式设计背后的洞察在于：不同来源的数据蕴含的知识形式存在错配，简单的混合训练无法有效统一。通过分阶段预训练，模型逐步积累从被动物理知识到主动动作控制的能力。</p>
+<h3>2. 混合线性时间注意力：长时域状态维持的理论保证</h3>
+<p>长期视频生成的稳定性是当前世界模型的重大挑战。许多模型在短时域表现良好，但随生成时长增加，物体恒存、延迟物理效应等结构性问题导致性能急剧下降。</p>
+<p>Kairos提出了一个分层的注意力机制：</p>
+<ul>
+<li><strong>滑动窗口注意力（SWA）</strong>：捕捉局部动态</li>
+<li><strong>膨胀滑动窗口注意力（DSWA）</strong>：捕捉中程交互</li>
+<li><strong>门控线性注意力（GLA）</strong>：作为全局因果记忆</li>
+</ul>
+<p>研究者从理论上证明了，纯局部注意力存在不可消除的超额风险。公式化地，近窗口预测的最优风险与全历史最优风险之间的差异为：</p>
+$$R_{w}^{\star}-R_{\mathrm{full}}^{\star}=\mathbb{E}\bigl[(m_{t}-m_{t}^{(w)})^{2}\bigr]=\mathbb{E}\bigl[\mathrm{Var}(m_{t}\mid\mathcal{W}_{t}^{(w)})\bigr]$$
+
+<p>当影响目标的重要事件落在当前上下文窗口外部时，模型只能对多种可能的未来进行平均，由此产生的预测误差受底层的不确定性限制。<strong>这个下界是信息论层面的，与模型容量或训练计算量无关，必须通过保持历史信息的架构机制来解决。</strong></p>
+<p>门控线性注意力中的带门控增量更新满足压缩性质：</p>
+$$\mathbf{S}_{t}=\alpha_{t}\mathbf{S}_{t-1}-\mathbf{v}_{t}^{\text{old}}\mathbf{k}_{t}^{\top}+\mathbf{v}_{t}^{\text{new}}\mathbf{k}_{t}^{\top}$$
+
+<p>这种机制确保了长期误差被严格限制在$e_{t}\leq\bar{\xi}/(1-\rho)$的界限内，而不是像简单自回归那样指数级放大。</p>
+<p><img alt="图1：Kairos架构总览" src="https://arxiv.org/html/2606.16533v2/figures/framework_new_v1.png" /></p>
+<h3>3. 部署感知的系统协同设计</h3>
+<p>Kairos将实时边缘端执行视为一阶建模原则，而非后处理加速选项。这包括时间步蒸馏、硬件感知推理优化、FP8低精度计算、以及面向消费级设备的显存优化。</p>
+<p>如图2所示，Kairos通过精心设计的混合并行策略和算子融合，在消费级GPU上实现了低延迟、低内存的高效推理。</p>
+<p><img alt="图2：推理效率对比" src="https://arxiv.org/html/2606.16533v2/x5.png" /></p>
+<h2>二、实验结果：小模型的大胜利</h2>
+<p>Kairos的实验结果覆盖了具身世界模型、世界动作模型和通用世界模型三个维度。</p>
+<p>在<strong>WorldModelBench-机器人子集</strong>上，Kairos-4B以9.30的总分超越了所有基线，包括16B的Cosmos3-Nano（9.26）和28B的Lingbot（9.04）。物理一致性方面，该模型在牛顿力学、流体动力学和重力上均获得满分1.00。</p>
+<p>在<strong>DreamGen Bench</strong>上，Kairos-4B在平均物理一致性（0.538）和平均总分（0.618）上均排名第一，甚至超越了14B的Wan2.2（0.611）。</p>
+<p>在<strong>LIBERO-plus</strong>基准上，Kairos的联合推理变体（Kairos-joint）达到了90.8的平均分，远超基于VLA的最强基线（88.0）和WAM基线（84.8）。</p>
+<p>在<strong>RoboTwin 2.0</strong>上，Kairos以96.1的平均成功率排名第一，超过了G0.5（93.2）和MotuBrain（96.0）等强基线。</p>
+<p>最重要的是效率对比：在相同设置下，Kairos-4B仅需23.5GB内存和2.3PFlops计算量，而Cosmos-Predict2.5-14B需要70.2GB和156.5PFlops。<strong>Kairos在720P、5秒视频生成任务上，4卡推理仅需9秒，而Lingbot-28B需要1436秒——效率提升约160倍。</strong></p>
+<p><img alt="图3：性能对比" src="https://arxiv.org/html/2606.16533v2/x3.png" /></p>
+<h2>三、消融研究：每个组件都不可或缺</h2>
+<p>研究者通过消融实验揭示了各组件的重要性：</p>
+<ul>
+<li><strong>人类中心数据扩展</strong>：注入大规模人类中心数据后，指令跟随得分从2.10提升至2.33，总分从9.08提升至9.25</li>
+<li><strong>更强的VLM编码器</strong>：将Qwen2.5-VL-7B升级为Qwen3.5-2B（更少参数但更强理解能力），总分进一步提升至9.30</li>
+<li><strong>生成与预测联合训练</strong>：仅训练动作分支会导致LIBERO-plus从89.0降至65.8，联合训练带来23.2的提升</li>
+<li><strong>联合去噪</strong>：推理时联合生成未来视频和动作，性能从89.0进一步提升至90.8</li>
+</ul>
+<p>这一系列实验有力证明了Kairos架构设计的合理性和组件之间的协同效应。</p>
+<h2>四、展望：迈向自进化物理智能</h2>
+<p>Kairos的终极愿景并非静态推理引擎，而是<strong>可自进化的物理智能基础设施</strong>。论文描绘了两个前沿方向：一是通过递归想象实现完全闭环的自进化框架，让模型在真实环境中持续交互、评估策略漂移、并通过多阶段想象细化内部物理模拟器；二是将Kairos扩展为通用具身基座，跨越不同的硬件形态，从复杂的人形平台到灵巧的多指操作设置。</p>
+<p>当世界模型不再被视为"生成逼真视频的工具"，而是"持续学习和适应物理世界的运营基础设施"时，物理AI才真正具备了自主进化的可能性。Kairos在这一方向上迈出了关键一步，但它提出了一个值得深思的问题：<strong>如果模型不仅仅是预测未来，而是可以不断修正对未来的理解，那么"世界模型"的定义还会保持多久不变？</strong></p>
+<p><strong>论文标题</strong>：Kairos: A Native World Model Stack for Physical AI</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.16533.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-18_Kairos-A-Native-World-Model-Stack-for-Physical-AI.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-18_Kairos-A-Native-World-Model-Stack-for-Physical-AI.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
