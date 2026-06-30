@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimFoundry: Modular and Automated Scene Generation for Policy Learning and Evaluation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">SimFoundry: Modular and Automated Scene Generation for Policy Learning and Evaluation</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-06-30</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>NVIDIA 发布SimFoundry：零样本视频转仿真场景，策略训练效率提升40%，加速机器人部署</h1>
+<h2>引言</h2>
+<p>训练和评估机器人策略在真实世界中的成本高昂且难以规模化。一个简单的抓取任务，往往需要数十人、数月时间进行遥操作数据采集；而评估一个基础模型的表现，则需要在不同任务上运行数千次试验。这种“数据黑箱”和“评估迷宫”已成为机器人研究从实验室走向现实应用的核心瓶颈。</p>
+<p>针对这一痛点，英伟达（NVIDIA）联合斯坦福大学、德州大学奥斯汀分校、佐治亚理工学院等机构，提出了一项突破性系统——<strong>SimFoundry</strong>。这是一种模块化、自动化的场景生成系统，能够从单段视频中“零样本”构建交互式仿真环境。它不仅能重建出高保真的数字孪生场景，更能自动生成海量的“数字表亲”场景——在保持任务相关功能的前提下，对物体实例、场景布局和任务规范进行多样化变异。该工作在7项操作任务和5种策略架构上，实现了仿真评估与真实世界性能之间的<strong>Pearson相关系数达到0.911</strong>，并将策略在真实世界的任务成功率<strong>平均提升17-40%</strong>。这项成果有望彻底改变机器人策略的训练和评估范式。</p>
+<h2>一、核心方法</h2>
+<p>SimFoundry的核心是一个三级流水线，将单段RGB视频转化为可交互的仿真场景。研究者将其设计为<strong>提取（Extraction）、生成（Generation）、增强（Augmentation）</strong>  三个阶段，每个阶段都可以独立地替换为更先进的模型，确保系统能随着AI能力的发展而不断进化。</p>
+<p><img alt="图1：SimFoundry方法总览" src="https://arxiv.org/html/2606.28276v1/x2.png" /></p>
+<h3>1. 提取阶段：从视频到场景理解</h3>
+<p>SimFoundry的输入是一段原始RGB视频。系统首先提取代表性帧并利用现成的深度估计模型生成对应的深度图。通过相机内参，系统将该RGB-D观测提升为场景点云，用于后续的场景对齐。</p>
+<p>关键创新在于<strong>迭代式前景物体分解</strong>：系统使用场景理解视觉大模型（VLM）检测场景中的物体，并逐一提取其分割掩码、RGB和深度像素。每提取一个物体后，系统使用图像和深度修补技术将其从观测中移除，然后重复此过程，直到所有前景物体都被分离。这种“剥洋葱”式的处理方式，有效解决了复杂场景中的遮挡和物体堆叠问题。</p>
+<h3>2. 生成阶段：构建“模拟就绪”的数字孪生</h3>
+<p>获得每个物体的RGB-D裁剪图后，SimFoundry利用2D转3D网格生成模型创建视觉网格。系统通过将网格与场景点云对齐，估计并精化物体姿态。对于被识别为可动部件（如抽屉、柜门）的物体，系统会通过专门的<strong>关节模块检测可移动部分、分割网格并生成关节参数</strong>。</p>
+<p>最后，系统为每个生成物体创建碰撞几何体，并赋予物理属性（如质量、摩擦系数）。待所有物体生成、对齐并注释完毕后，SimFoundry在物理引擎PyBullet中组合场景，解决物体穿透问题，最终将场景导出为下游机器人仿真环境（如IsaacLab）兼容的格式。</p>
+<p>核心公式涉及仿真与真实世界策略性能的相关性度量。论文采用<strong>Pearson相关系数（r）</strong>  和<strong>平均最大排名违规（MMRV）</strong>  来量化这种相关性：</p>
+$$r = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2}\sqrt{\sum_{i=1}^{n}(y_i - \bar{y})^2}}$$
+
+<p>其中，$x_i$和$y_i$分别代表第$i$个策略在仿真和真实世界中的任务成功率。理想情况下，$r$接近1，表明仿真评估能完美预测真实世界表现。</p>
+<h3>3. 增强阶段：生成“数字表亲”，引爆策略泛化</h3>
+<p>这是SimFoundry最具革命性的部分。一旦初始场景重建完成，系统能自动将其扩展为一个“数字表亲”家族——<strong>保持任务相关语义的同时，沿三个轴进行变异</strong>：</p>
+<ul>
+<li><strong>物体表亲</strong>：改变物体的几何形态和外观，同时保留其功能属性。例如，一个重建的杯子可以转换为不同形状、不同颜色、不同把手的多个杯子。</li>
+<li><strong>场景表亲</strong>：改变物体的空间布局，例如将物体从“放在旁边”变为“放在上面”，或添加新的干扰物体。</li>
+<li><strong>任务表亲</strong>：基于重建场景中的物体，自动提出并生成新的可行操作任务，实现多任务数据生成。</li>
+</ul>
+<p>这种变异为策略训练提供了前所未有的多样性，直接转化为模型在真实世界中的泛化能力。实验表明，在仿真中引入<strong>物体、场景和任务表亲训练</strong>，分别使真实世界任务成功率平均提升<strong>17%、21%和40%</strong>。</p>
+<p><img alt="图3：SimFoundry场景生成样本，展示从真实图像到数字孪生再到数字表亲的转化" src="https://arxiv.org/html/2606.28276v1/x1.png" /></p>
+<h2>二、实验与性能</h2>
+<p>SimFoundry的实验在两个关键维度上展开：<strong>使用仿真环境评估真实世界策略</strong>，以及<strong>使用仿真数据训练能迁移到真实世界的策略</strong>。</p>
+<h3>1. 仿真评估：接近完美的性能预测</h3>
+<p>研究者在DROID和YAM两种机器人本体上，对5种不同的策略架构（包括π₀、GR00T N1.6/N1.7、DreamZero等）进行了测试。结果表明，SimFoundry的仿真评估结果与真实世界表现高度一致：</p>
+<ul>
+<li><strong>平均Pearson相关系数达到0.911</strong></li>
+<li><strong>平均MMRV仅为0.018</strong></li>
+<li>相比之下，当前最先进基线<strong>PolaRiS</strong>的相关系数在相同条件下比SimFoundry<strong>低0.59以上</strong></li>
+</ul>
+<p><img alt="图4：SimFoundry与PolaRiS的评估相关性对比" src="https://arxiv.org/html/2606.28276v1/x3.png" /></p>
+<p>更精细的<strong>子任务评估</strong>进一步将相关系数从0.90提升至0.95，尤其对于多步骤任务，能准确定位策略性能瓶颈。</p>
+<h3>2. 策略训练：零样本迁移到真实世界</h3>
+<p>SimFoundry不仅能评估策略，更能直接训练策略：</p>
+<ul>
+<li><strong>零样本迁移</strong>：仅在SimFoundry数据上训练的策略，可直接部署在真实场景中。在“锅放炉灶”任务中达到<strong>99%成功率</strong>，在“叠放餐具”任务中达到<strong>100%成功率</strong>。</li>
+<li><strong>联合训练</strong>：将仿真数据与少量真实数据联合训练，进一步提升了性能。在“收纳马克笔”任务中，成功率从<strong>60%跃升至92%</strong>。</li>
+<li><strong>泛化能力</strong>：增加物体表亲数量，使策略在从未见过的“锅放炉灶”任务物体上获得<strong>50个百分点的真实世界成功率提升</strong>；场景表亲使策略能够成功迁移到全新布局的场景中。</li>
+</ul>
+<p><img alt="图5：SimFoundry数据多样性对策略性能的提升" src="https://arxiv.org/html/2606.28276v1/x5.png" /></p>
+<h3>3. 系统分析</h3>
+<p>SimFoundry的场景重建忠实度也超越了现有方法。在全自动化模式下，其在三个3D几何指标上全面超过SAM3D，<strong>F1分数达到0.81-0.92</strong>。每物体的平均重建时间约为<strong>5分钟</strong>，额外3分钟的人工微调即可将F1提升至<strong>0.93-0.99</strong>。</p>
+<h2>三、未来展望</h2>
+<p>SimFoundry提出了一个变革性的机器人策略开发范式：<strong>在仿真中“繁殖”多样性，再“播种”到真实世界</strong>。该工作为“仿真→真实”闭环提供了首个端到端、自动化的解决方案。</p>
+<p>当然，系统目前主要面向桌面布局场景，且高度依赖现成基础模型的表现。不过，其模块化设计允许随着AI能力进步而不断进化。当未来的3D重建、物理仿真或生成模型取得突破时，SimFoundry可以无缝接入这些新能力。</p>
+<p>看完SimFoundry，你是否也期待它能让机器人在家里“自己学会”收拾房间？你觉得在向真机迁移时，是“仿真数据的广度”更重要，还是“场景重建的精度”更关键？欢迎在评论区留言讨论。</p>
+<p><strong>论文标题</strong>：SimFoundry: Modular and Automated Scene Generation for Policy Learning and Evaluation</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.28276.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-29_SimFoundry-Modular-and-Automated-Scene-Generation-for-Policy-Learning-and-Evaluation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-29_SimFoundry-Modular-and-Automated-Scene-Generation-for-Policy-Learning-and-Evaluation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
