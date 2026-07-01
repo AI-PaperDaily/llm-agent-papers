@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scaling the Horizon, Not the Parameters: Reaching Trillion-Parameter Performance with a 35B Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Scaling the Horizon, Not the Parameters: Reaching Trillion-Parameter Performance with a 35B Agent</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-01</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>上海AI实验室发布35B Agent模型Agents-A1：长程任务性能全面超越万亿参数模型，科学推理领先40%？</h1>
+<h2>引言</h2>
+<p>当AI从被动语言模型迈向自主Agent，真实世界的长程任务——软件工程、科学研究、复杂决策——要求Agent能够在数千步的交互中保持目标稳定、合理调用工具、从反馈中持续调整。然而，现有路径面临两难：靠堆参数（万亿级模型）成本高昂且难以复现；靠扩展决策过程（horizon scaling）又受限于基础设施和跨领域能力融合的瓶颈。</p>
+<p>近日，上海AI实验室（Shanghai Artificial Intelligence Laboratory）发布<strong>Agents-A1</strong>，一个仅35B参数的Mixture-of-Experts Agent模型，通过<strong>扩展Agent的决策视野而非参数规模</strong>，在多道长程Agent基准上达到甚至超越万亿参数模型（如Kimi-K2.6、DeepSeek-V4-Pro）的水平。在SEAL-0、HiPhO、FrontierScience-Olympiad等任务上，Agents-A1分别取得56.4、46.4、79.0的领先分数，而在BrowseComp、HLE等任务上也极具竞争力。这篇论文为社区提供了一条清晰的“用35B模型匹敌1T模型”的实用技术路径。</p>
+<h2>一、核心方法：三阶段训练 + 知识-动作基础设施</h2>
+<p>Agents-A1的核心创新在于<strong>用结构化的知识-动作基础设施支撑长程轨迹学习，并通过领域路由的在线蒸馏融合异构能力</strong>。整个训练分为三个阶段，如下图所示。</p>
+<p><img alt="图1：Agents-A1的三阶段训练流水线。从多领域数据到领域专用教师，再到多教师在线蒸馏。" src="https://arxiv.org/html/2606.30616v1/figures/train_framework.png" /></p>
+<h3>1. 长程知识-动作基础设施（KAG）</h3>
+<p>论文首先构建了一个<strong>知识-动作图（Knowledge-Action Graph, KAG）</strong>，将外部知识、中间动作、观察结果、执行反馈和验证信号连接为结构化的四元组记录。</p>
+<p><strong>定义（知识-动作图）</strong>：给定领域$\mathcal{B}_d$，KAG是一个四元组：</p>
+$$\mathcal{G}_d = (\mathcal{C}_d, \mathcal{A}_d, \mathcal{O}_d, \mathcal{V}_d)$$
+<p>其中$\mathcal{C}_d$是领域语料，$\mathcal{A}_d$是动作空间，$\mathcal{O}_d$是观察空间，$\mathcal{V}_d$是验证器集合。图中的边表示支持、依赖、产生、验证等关系。</p>
+<p>这个基础设施使得模型能够从<strong>过程级</strong>的监督中学习，而不仅仅是最终答案。例如，在搜索任务中，KAG记录每一步的查询、浏览页面、提取证据、验证路径等完整轨迹，平均长度达<strong>45K tokens</strong>。</p>
+<p><img alt="图2：知识-动作基础设施概览。异构语料被分解为原子能力并组织成KAG，工具增强的自对弈循环扩展出领域子图。" src="https://arxiv.org/html/2606.30616v1/figures/KAG_infra.png" /></p>
+<h3>2. 三阶段训练配方</h3>
+<p><strong>第一阶段：全领域监督微调（SFT）</strong><br />
+使用约100K条长程轨迹（涵盖深度搜索、编码工程、科学推理、指令跟随、通用Agent任务），对Qwen3.5-35B-A3B进行微调，使模型具备广泛的长程Agent行为基础。</p>
+<p><strong>第二阶段：领域级教师训练</strong><br />
+针对六个异构领域（搜索、机器学习工程、科学研究、指令跟随、工具调用、通用Agent），分别训练领域专用教师模型。例如，搜索教师采用GRPO强化学习，奖励设计包含正确性、搜索效率惩罚、格式校准；科学教师采用两阶段SFT（先增强纯推理，再增强工具交互）；指令跟随教师采用两阶段RL。</p>
+<p><strong>第三阶段：多教师在线蒸馏（OPD）</strong><br />
+这是解决跨领域冲突的关键。论文提出<strong>领域路由的显著词汇对齐（Salient Vocabulary Alignment, SVA）</strong>，让每个样本只接受其所属领域教师的监督，并在教师选择的显著词汇子集上对齐学生和教师的分布。</p>
+<p>核心损失函数——领域归一化的SVA目标：</p>
+$$\mathcal{L}_{\mathrm{MT\text{-}SVA}}(\theta_s') = \frac{1}{|\mathcal{D}_{\mathcal{B}}|}\sum_{d\in\mathcal{D}_{\mathcal{B}}}\frac{1}{|\mathcal{B}_d|}\sum_{i\in\mathcal{B}_d}\ell_{\mathrm{SVA}}^{(i)}(\theta_s'; \theta_{t,i})$$
+
+<p>其中每个样本的SVA损失定义为在教师选择的top-k词汇支持集上的截断反向KL散度：</p>
+$$\ell_{\mathrm{SVA}}^{(i)}(\theta_s';\theta_{t,i})=\frac{1}{|R_i|}\sum_{t\in R_i}\sum_{u\in\mathcal{S}_{i,t}^{(k)}}\bar{p}_{s'}(u)\log\frac{\bar{p}_{s'}(u)}{\bar{p}_{t,i}(u)}$$
+
+<p>这种设计避免了不同领域推理模式（如单步长思考vs多步工具调用）之间的干扰，使得蒸馏后的学生模型能同时保持多个领域的专长。</p>
+<h2>二、实验结果：35B参数力压1T模型</h2>
+<p>论文在10余个长程Agent基准上进行了全面评估。以下是Agents-A1与35B/1T级别模型的性能对比：</p>
+<p><img alt="图3：Agents-A1与35B及1T模型的基准性能对比。" src="https://arxiv.org/html/2606.30616v1/x2.png" /></p>
+<p><strong>关键发现</strong>：<br />
+- <strong>长程搜索</strong>：SEAL-0上56.4分，超越Kimi-K2.6（50.5）和DeepSeek-V4-Pro Max（55.0）；GAIA上96.0，远超GPT-5.5的87.4。<br />
+- <strong>科学研究</strong>：HiPhO上46.4，领先所有对比模型（Kimi-K2.6为41.1，GPT-5.5为43.3）；FrontierScience-Olympiad上79.0，仅次于GPT-5.5的78.0。<br />
+- <strong>指令跟随</strong>：IFBench上80.6，大幅高于Kimi-K2.6（71.8）和GPT-5.5（75.9）。<br />
+- <strong>工程任务</strong>：SciCode上44.3，MLE-Bench-Lite上43.9，领先所有同规模35B模型，但与1T模型仍有差距，论文指出这主要是因为MLE任务要求完整的工程流程，对目标稳定性要求更高。</p>
+<p><strong>消融分析</strong>：全领域SFT后模型在某些任务（如指令跟随、HLE）上反而下降，说明不同推理模式存在冲突。而通过OPD蒸馏后，Agents-A1在这些任务上显著回升（IFBench从68.7提升至80.6，HLE从41.6提升至47.6），验证了多教师蒸馏的有效性。</p>
+<h2>三、案例展示：12小时优化与地球科学闭环</h2>
+<p>论文通过两个长程任务展示了Agents-A1的实际能力：</p>
+<p><strong>案例1：机器学习工程优化</strong><br />
+在ICML 2013鲸鱼声音检测任务上，Agents-A1从简单CNN基线出发，自主进行时间数据分析、音频增强、架构改进（Mel谱图CNN集成）、大规模数据增强，在12小时内将验证AUC从0.58提升至<strong>0.9935</strong>，达到金牌水平。</p>
+<p><strong>案例2：地球科学闭环分析</strong><br />
+针对2008年热带气旋“纳尔吉斯”，Agents-A1自动识别数据源（IBTrACS），完成数据提取、清洗、衍生指标计算、可视化、结果合成，生成了包含路径图、强度演化、移速分析等完整诊断报告。</p>
+<p>这些案例表明，Agents-A1具备了“计划-执行-验证-反思”的长程闭环能力，而不仅仅是孤立的工具调用。</p>
+<h2>展望</h2>
+<p>Agents-A1证明了一条极具潜力的技术路径：<strong>用35B参数，通过扩展Agent的决策视野与结构化的训练方法，达到万亿参数模型的水平</strong>。这对于降低大模型部署成本、推动Agent在科研、工程等长程任务中的落地具有重要意义。</p>
+<p>未来工作将聚焦于提升Agent的基本原子能力——如“先规划再推理”、“先反思再行动”、“长上下文关键信息总结”——这些能力被认为是支撑更长程、更复杂任务的基础。Agents-A1已为Agent社区提供了可复现、可扩展的蓝本，下一个问题或许是：当参数不再成为瓶颈，Agent还能跑多远？</p>
+<p><strong>论文标题</strong>：Scaling the Horizon, Not the Parameters: Reaching Trillion-Parameter Performance with a 35B Agent</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.30616.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-06-30_Scaling-the-Horizon-Not-the-Parameters-Reaching-Trillion-Parameter-Performance-with-a-35B-Agent.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-06-30_Scaling-the-Horizon-Not-the-Parameters-Reaching-Trillion-Parameter-Performance-with-a-35B-Agent.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
