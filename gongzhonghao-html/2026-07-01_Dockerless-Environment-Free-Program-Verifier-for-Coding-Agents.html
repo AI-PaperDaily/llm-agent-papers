@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dockerless: Environment-Free Program Verifier for Coding Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Dockerless: Environment-Free Program Verifier for Coding Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-02</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>清华&amp;达摩院推出Dockerless：环境无关代码验证器，SFT+RL全流程超越Docker方案，AUC提升14.3%</h1>
+<h2>引言</h2>
+<p>程序验证器是训练编码Agent的核心组件。无论是为监督微调（SFT）筛选高质量轨迹，还是为强化学习（RL）提供奖励信号，验证器的准确性直接决定了Agent能否真正学会修复代码Bug。</p>
+<p>当前主流的验证方案依赖于在隔离的Docker容器中执行测试用例，这要求为每个代码仓库定制构建Docker镜像、解析依赖、识别相关测试、编写执行脚本。这种工程开销极其高昂——许多私有代码库、企业遗留系统甚至无法复现编译环境。研究显示，即使最先进的自动化流水线，也只能在有限比例的候选仓库上成功搭建环境。</p>
+<p>针对这一瓶颈，清华大学与阿里达摩院的研究团队提出<strong>Dockerless</strong>——一种完全无需执行环境（Environment-Free）的智能体验证器。该方法不依赖任何Docker容器，通过让Agent主动探索代码仓库收集证据来评判补丁正确性，在验证器评估基准上超越最强开源方案14.3个AUC点。更关键的是，Dockerless使完整的后训练流水线（SFT过滤+RL奖励）彻底摆脱环境依赖，最终模型在SWE-bench Verified/Multilingual/Pro上分别达到62.0%、50.0%和35.2%的解决率，超越Qwen3.5-9B基线2.4/8.7/2.9个点，性能与依赖Docker环境的后训练方案持平。</p>
+<h2>一、核心方法：Agent驱动的证据收集式验证</h2>
+<h3>1.1 问题设定与验证器设计理念</h3>
+<p>传统的环境无关验证器（如LLM直接打分）仅利用表面信息（如文本差异）进行判断，这对于复杂的软件工程任务远远不够——例如，修改的函数是否被故障行为实际调用？替代实现是否正确集成到周围模块？这些问题需要深入仓库上下文的证据才能回答。</p>
+<p>Dockerless的核心设计理念是：<strong>将验证本身转化为一个Agent问题</strong>。给定一个Issue描述、一个参考补丁和一个候选补丁，Dockerless不直接比对文本，而是先生成一组验证问题，然后派遣子Agent深入代码库收集证据，最终根据证据做出判决。</p>
+<p><img alt="图1：不同验证器对比。Docker测试准确但依赖昂贵环境，LLM打分器绕过环境但仅基于表面信息，Dockerless深度探索仓库进行判断。" src="https://arxiv.org/html/2606.28436v1/x1.png" /></p>
+<h3>1.2 两阶段架构：问题驱动+证据聚合</h3>
+<p>Dockerless的架构分为两个阶段：</p>
+<p><strong>阶段一：问题生成与证据探索</strong></p>
+<p>给定Issue和参考补丁，模型首先提出$K$个验证问题（$K=2-4$）。这些问题涵盖：修复应该在仓库的哪个位置生效？补丁代码的预期行为是什么？哪些测试或断言可以确认正确性？其他部分是否会因此断裂？</p>
+<p>针对每个问题，一个子Agent使用只读Shell工具（如find、grep、rg）探索仓库，返回带有证据支撑的简短答案$A_k$。$K$个子Agent并行运行以确保效率。</p>
+<p><strong>阶段二：综合判决</strong></p>
+<p>收集所有证据后，Dockerless对候选补丁做出二值判决（1表示正确补丁）。模型输出一个二元token（0/1），其logits转换为连续评分：</p>
+$$r_{\phi}(x,y)=\frac{\exp(\ell_{1})}{\exp(\ell_{0})+\exp(\ell_{1})}$$
+
+<p>其中$\ell_0$和$\ell_1$分别代表0和1的logits。</p>
+<p><img alt="图2：Dockerless架构。输入Issue &lt;!-- LATEX_FORMULA_8 --&gt;、参考补丁&lt;!-- LATEX_FORMULA_9 --&gt;和候选补丁&lt;!-- LATEX_FORMULA_10 --&gt;，先生成&lt;!-- LATEX_FORMULA_11 --&gt;个验证问题并派遣并行子Agent收集证据，再综合判决输出评分。" src="https://arxiv.org/html/2606.28436v1/x2.png" /></p>
+<h3>1.3 训练策略：拒绝采样保证信号一致性</h3>
+<p>Dockerless的训练采用拒绝采样框架。每个训练样本是一个四元组$(x, y_{ref}, y, r^{\star})$，其中$r^{\star}\in\{0,1\}$是通过执行原子测试获得的真实标注（ground-truth）。</p>
+<p>训练过程如下：教师模型驱动的Agent为每个样本生成完整的问答-判决轨迹$\tau$，产生判决$\hat{r}$。仅保留$\hat{r}$与$r^{\star}$一致的轨迹构成数据集$\mathcal{D}_{rej}$。这意味着模型学习的是<strong>如何通过正确推理得出正确结论</strong>，而不是靠运气匹配答案。</p>
+<p>训练目标为标准的下一个token交叉熵：</p>
+$$\mathcal{L}_{\phi}=-\mathbb{E}_{\mathcal{D}_{\text{rej}}}\left[\sum_{t=1}^{T}\log p_{\phi}(z_{t}\mid x,y_{\text{ref}},y,z_{<t})\right]$$
+
+<p>其中$z = (z_1, \ldots, z_T)$是问答-判决轨迹的token序列。一个统一的模型骨干同时承担问题生成、子Agent探索和最终判决三个角色。</p>
+<p><img alt="图3：Dockerless训练流水线。教师生成的问答-判决轨迹通过拒绝采样（匹配预测判决与真实标注）后用于微调基础模型。" src="https://arxiv.org/html/2606.28436v1/x3.png" /></p>
+<h2>二、实验：全面超越基线，匹配Docker方案</h2>
+<h3>2.1 验证器性能评估</h3>
+<p>研究者在SWE-bench Verified和Multi-SWE-bench Flash上构建了776个样本的平衡验证器评估基准。Dockerless与两类基线对比：四个前沿LLM（零样本裁判）和四个开源训练验证器。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>SWE-bench Verified AUC</th>
+<th>Multi-SWE Flash AUC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek-V3.2</td>
+<td>69.4</td>
+<td>58.5</td>
+</tr>
+<tr>
+<td>Kimi-K2.5</td>
+<td>70.7</td>
+<td>63.9</td>
+</tr>
+<tr>
+<td>GLM-5</td>
+<td>73.2</td>
+<td>62.5</td>
+</tr>
+<tr>
+<td>GPT-5.4</td>
+<td>75.9</td>
+<td>59.5</td>
+</tr>
+<tr>
+<td>SWE-Gym Verifier</td>
+<td>61.0</td>
+<td>53.7</td>
+</tr>
+<tr>
+<td>R2E-Gym Verifier</td>
+<td>64.3</td>
+<td>55.1</td>
+</tr>
+<tr>
+<td>DeepSWE Verifier</td>
+<td>66.7</td>
+<td>62.9</td>
+</tr>
+<tr>
+<td><strong>Dockerless</strong></td>
+<td><strong>81.0</strong></td>
+<td><strong>72.1</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Dockerless以81.0和72.1的AUC分远超所有基线：相比最强开源验证器DeepSWE Verifier提升14.3个点（Verified）和9.2个点（Multi-SWE），相比最强LLM裁判GPT-5.4提升5.1个点和8.2个点。</p>
+<h3>2.2 全无环境后训练效果</h3>
+<p>研究者使用Qwen3.5-9B作为骨干模型，构建了完整的无环境后训练流水线：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>训练方式</th>
+<th>环境依赖</th>
+<th>Verified</th>
+<th>Multilingual</th>
+<th>Pro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3.5-9B</td>
+<td>-</td>
+<td>-</td>
+<td>59.6</td>
+<td>41.3</td>
+<td>32.3</td>
+</tr>
+<tr>
+<td>Env-SFT-9B</td>
+<td>SFT</td>
+<td>是</td>
+<td>60.0</td>
+<td>48.3</td>
+<td>33.9</td>
+</tr>
+<tr>
+<td>Dockerless-SFT-9B</td>
+<td>SFT</td>
+<td><strong>否</strong></td>
+<td>60.6</td>
+<td>47.7</td>
+<td>35.3</td>
+</tr>
+<tr>
+<td>Dockerless-RL-9B</td>
+<td>SFT+RL</td>
+<td><strong>否</strong></td>
+<td><strong>62.0</strong></td>
+<td><strong>50.0</strong></td>
+<td><strong>35.2</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>关键发现：<br />
+- <strong>无环境SFT匹配有环境SFT</strong>：Dockerless-SFT-9B在三个基准上与Env-SFT-9B性能接近（60.6 vs 60.0，47.7 vs 48.3，35.3 vs 33.9）<br />
+- <strong>无环境RL接近有环境RL</strong>：Dockerless-RL-9B与Test-Execution RL（使用Docker执行测试的oracle奖励）几乎持平（62.0 vs 62.4，50.0 vs 51.3，35.2 vs 35.7）<br />
+- <strong>超越所有开源同规模模型</strong>：比SWE-Lego-8B提升20.8/31.0/19.1个点</p>
+<h3>2.3 SFT数据过滤效果</h3>
+<p>研究表明，原始无环境轨迹直接训练甚至可能降低性能（All 16K达到58.8%，低于基线的59.6%）。Dockerless筛选出的4K轨迹在三个基准上大幅优于随机采样4K（60.6 vs 58.2，47.7 vs 44.3，35.3 vs 32.0），且与有环境收集的4K轨迹性能相当。</p>
+<p><img alt="图5：验证问题数量&lt;!-- LATEX_FORMULA_20 --&gt;对AUC的影响。从&lt;!-- LATEX_FORMULA_21 --&gt;的78.3提高到&lt;!-- LATEX_FORMULA_22 --&gt;的80.8，之后趋于平稳。" src="https://arxiv.org/html/2606.28436v1/x5.png" /></p>
+<h3>2.4 案例研究：表面形式不同但功能等价</h3>
+<p>一个典型案例展示了Dockerless的核心优势。在matplotlib的offsetText颜色问题上，候选补丁使用内联条件语句而非参考补丁的辅助变量重构。两种LLM裁判（文本相似度0.468，DeepSWE Verifier 0.035）均给出低分，但Dockerless派生子Agent验证了修复应用到了XAxis和YAxis的初始化路径，且语义一致，给出0.996的高分，与执行测试结果完全一致。</p>
+<h2>展望</h2>
+<p>Dockerless的提出标志着代码验证迈入了一个新范式：<strong>证据驱动的智能体验证</strong>。它证明了在RL训练中，Agent执行成本占据绝大多数时间（约92.8%），验证器额外开销微乎其微，但验证质量的提升却可带来显著的性能增益。</p>
+<p>这一技术对于私域代码库、缺乏测试套件的企业遗留系统、以及需要超大规模后训练的场景尤为关键。研究者认为，Agent式的证据收集验证为代码奖励建模提供了全新视角，开启了在无法复现执行环境的真实仓库上进行后训练的规模化路径。</p>
+<p>Dockerless的成功也提出了一个有趣的问题：在不需要Docker环境的前提下，纯代码分析与推理能否达到甚至超越执行测试的效果？这或许将推动模型在代码理解深度上的进一步进化。</p>
+<p><strong>论文标题</strong>：Dockerless: Environment-Free Program Verifier for Coding Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.28436.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-01_Dockerless-Environment-Free-Program-Verifier-for-Coding-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-01_Dockerless-Environment-Free-Program-Verifier-for-Coding-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
