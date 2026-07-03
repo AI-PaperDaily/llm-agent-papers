@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboServe: Serving Streaming Video Generation Efficiently and Economically</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">TurboServe: Serving Streaming Video Generation Efficiently and Economically</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-03</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>数势科技发布TurboServe：流式视频生成延时降低37.5%，GPU成本节省37.2%！</h1>
+<p>当用户还在为AI视频生成漫长的等待时间而烦恼时，新一代流式视频生成技术已悄然兴起。然而，服务于这一新范式的底层系统却面临巨大挑战：会话状态需要跨空闲期持久保留，用户需求在爆发与空闲间剧烈波动。数势科技联合上海交大、清华大学的研究者推出了<strong>TurboServe</strong>——首个专为流式视频生成工作负载设计的服务系统，在真实生产环境中实现了最差情况单块延迟降低37.5%，GPU运营成本减少37.2%的惊人效果。</p>
+<h2>引言：从离线生成到流式生成的系统革命</h2>
+<p>传统视频生成模型（如Sora、HunyuanVideo）采用离线、一次性的生成方式：用户提交提示词后，等待数秒至数分钟才能获得完整视频。这种模式下，用户无法在生成过程中进行干预或调整。新兴的流式视频生成模型（如StreamDiffusionV2、Self-Forcing、LongLive）则彻底改变了这一范式——视频被逐块生成，用户可实时观察并交互，每块必须在严格的延迟目标内交付。</p>
+<p>这种范式转变带来了两个核心系统挑战：<strong>会话持续时间异构性</strong>（不同会话的时长从数秒到数十分钟不等，导致静态部署策略迅速失效）和<strong>时间用户需求异构性</strong>（用户活跃状态在爆发与空闲间剧烈波动，静态资源分配无法兼顾成本与延迟）。TurboServe正是为解决这两个难题而生。</p>
+<h2>一、核心方法：闭环调度框架</h2>
+<h3>1.1 问题形式化：在线调度与资源协同</h3>
+<p>研究者将流式视频生成服务问题形式化为一个<strong>在线调度问题</strong>，联合决策会话放置与GPU资源供给。</p>
+<p>在每个事件驱动的时间点$t$，系统需要决定两个关键变量：活跃GPU数量$M(t)$和会话放置函数$\phi_i(t)$。优化目标为联合最小化GPU运营成本和最差情况单块延迟：</p>
+$$ \operatorname*{arg\,min}_{M(t),\;\phi(t)} \mathcal{C}(t)+\lambda(t)\cdot\mathcal{L}(t) $$
+
+<p>其中，$\mathcal{C}(t)=c_{\text{gpu}}\cdot M(t)$为GPU运营成本，$\mathcal{L}(t)$为所有活跃会话中的最差单块延迟。该问题受两个约束：每个GPU最多容纳$K$个会话，以及所有接收用户输入的会话必须处于执行状态。</p>
+<h3>1.2 闭环调度算法：放置与自动扩缩容的协同</h3>
+<p><img alt="图1：TurboServe系统概览" src="https://arxiv.org/html/2606.19271v1/x5.png" /></p>
+<p>TurboServe的核心创新在于<strong>闭环调度算法</strong>，它由两个紧密耦合的控制器组成：</p>
+<p><strong>迁移感知的放置控制器</strong>在每次事件驱动时执行两个步骤：首先，处理需要分配的新会话或恢复的会话，将其放置到当前负载最低的GPU；随后，执行<strong>迁移感知的最小-最大再平衡</strong>——从当前瓶颈GPU中选取会话，评估迁移到其他GPU的收益函数：</p>
+$$ \Gamma_{i,j^{\prime}}(t)=\mathcal{L}(t)-\mathcal{L}^{\prime}(t)-\eta\cdot\kappa_{i}(t) $$
+
+<p>该函数平衡了延迟降低与迁移开销，仅当净收益为正时才执行迁移。这种事件驱动的局部搜索算法逐渐降低瓶颈延迟，同时确保迁移开销可控。</p>
+<p><strong>负载驱动的自动扩缩容控制器</strong>则根据放置控制器反馈的负载信号$\rho_{\max}(t)$，通过目标跟踪策略调整GPU预算。采用滞后机制避免震荡，当负载超过目标利用率$\hat{\rho}(t)+\delta$时触发扩容，低于$\hat{\rho}(t)-\delta$时触发缩容。目标GPU预算计算公式为：</p>
+$$ M_{\mathrm{tar}}(t)=\left\lceil\frac{N_{\mathrm{req}}(t)}{K\hat{\rho}(t)}\right\rceil $$
+
+<h3>1.3 无缝的扩缩容协同</h3>
+<p><img alt="图2：闭环自动扩缩容与会话再平衡示例" src="https://arxiv.org/html/2606.19271v1/x6.png" /></p>
+<p>TurboServe的闭环设计确保了放置与资源供给的完美协同。缩容时，先通过再平衡将会话集中到较少GPU上，再释放空闲GPU；扩容时，先增加GPU资源，再通过再平衡快速利用新加入的容量。这种设计避免了传统独立决策的系统效率损失。</p>
+<h3>1.4 运行时机制：高效的状态管理</h3>
+<p>为了支持上述调度决策的在线执行，TurboServe引入了三项关键运行时机制：</p>
+<ul>
+<li><strong>合并块处理</strong>：在同一GPU上批量处理多个活跃会话的块生成，提高GPU利用率</li>
+<li><strong>GPU-CPU状态卸载</strong>：空闲会话的状态被卸载到主机内存，释放GPU资源用于活跃会话</li>
+<li><strong>NCCL-based GPU-GPU迁移</strong>：利用RDMA/NIXL单侧GPU内存访问，实现会话状态的快速在线迁移</li>
+</ul>
+<p><img alt="图3：状态与无状态生成对比" src="https://arxiv.org/html/2606.19271v1/x1.png" /></p>
+<h2>二、实验验证：性能与成本的全面领先</h2>
+<h3>2.1 端到端性能对比</h3>
+<p>研究者在数势科技的生产集群（16个NVIDIA H20 GPU和64个NVIDIA B300 GPU）上，使用LongLive风格的多尺寸模型（1.3B到7B）和6条真实生产轨迹进行评估。</p>
+<p><img alt="图4：端到端实验结果" src="https://arxiv.org/html/2606.19271v1/x7.png" /></p>
+<p><strong>在匹配成本下的延迟表现</strong>：TurboServe将最差情况单块延迟平均降低37.5%，最高达51.6%。例如，在1.3B模型Trace 1的B300集群上，相比负载感知贪心基线降低20.5%，相比内存感知贪心基线降低26.6%。</p>
+<p><strong>在匹配延迟下的成本表现</strong>：TurboServe将GPU运营成本平均降低37.2%，最高达49.0%。在相同配置下，相比基础运行时降低38.3%，相比负载感知贪心基线降低35.9%。</p>
+<h3>2.2 机制消融研究</h3>
+<p><img alt="图5：机制消融实验结果" src="https://arxiv.org/html/2606.19271v1/x8.png" /></p>
+<p>消融实验揭示了两个关键机制的贡献：<br />
+- <strong>禁用会话迁移</strong>：GPU成本平均增加15.0%，最高达28.0%<br />
+- <strong>禁用GPU自动扩缩容</strong>：GPU成本平均增加42.9%，最高达80.4%</p>
+<p>这表明，会话迁移解决的是GPU间负载不均衡问题，而自动扩缩容解决的是整体资源供给与需求匹配问题，两者缺一不可。</p>
+<h3>2.3 调度效率与离线最优对比</h3>
+<p><strong>放置算法</strong>：在64 GPU集群上，调度决策在15毫秒内完成（不到单块生成时间的2%），与离线最优解的差距仅为3.6%（最高6.5%）。</p>
+<p><strong>自动扩缩容</strong>：与预知全量未来信息的离线最优解相比，TurboServe的平均成本仅高出6.1%（最高8.3%），证明了其在无未来信息情况下的在线决策能力。</p>
+<h2>展望</h2>
+<p>TurboServe为流式视频生成服务的系统基础设施设立了新标杆。其闭环调度框架、迁移感知放置与负载驱动自动扩缩容的协同设计，不仅适用于当前的自回归流式模型，更为未来交互式、长时视频生成应用（如虚拟世界构建、实时视频编辑）奠定了服务层基础。ChatGPT将文本生成服务化，而TurboServe则正在将视频生成推向实时、交互的新时代。</p>
+<p><strong>论文标题</strong>：TurboServe: Serving Streaming Video Generation Efficiently and Economically</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.19271.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-02_TurboServe-Serving-Streaming-Video-Generation-Efficiently-and-Economically.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-02_TurboServe-Serving-Streaming-Video-Generation-Efficiently-and-Economically.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
