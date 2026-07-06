@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Program-as-Weights: A Programming Paradigm for Fuzzy Functions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Program-as-Weights: A Programming Paradigm for Fuzzy Functions</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-06</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>12.9B参数量屠龙刀！PAW架构让0.6B小模型性能超越32B大模型，推理内存仅需1/50</h2>
+<h3>一、引言</h3>
+<p>在日常开发中，开发者常常面临一类棘手问题：编写规则去实现“给重要的日志行报警”、“修复畸形的JSON数据”或“按意图排序搜索结果”等任务。这类任务难以用精确的符号逻辑编码，却对人类直觉而言十分自然。传统做法是将这类“模糊函数”外包给大语言模型（LLM）的API，但这种做法带来了高昂的成本、脆弱的依赖性和难以复现的问题。</p>
+<p>针对这一痛点，来自滑铁卢大学、康奈尔大学和哈佛大学的研究者提出了一种颠覆性的新范式——<strong>Program-as-Weights (PAW，程序即权重)</strong>。该方法将模糊函数编译为可本地执行的小型神经程序，在FuzzyBench测试集上，仅用0.6B参数的模型执行PAW程序，性能竟超越了直接提示Qwen3-32B模型，且推理内存仅为后者的五十分之一。</p>
+<h3>二、核心方法：从“每输入调用大模型”到“每函数编译一次小模型”</h3>
+<p>PAW范式的核心思想是颠覆传统的“大模型即服务”模式，将一个庞大且昂贵的模型从一个“每次输入都要解决问题的求解器”，转变为一个“仅需每函数编译一次的工具构建器”。</p>
+<h4>1. 编译器-解释器架构</h4>
+<p>PAW系统由两个核心部分组成：一个大型的<strong>神经编译器</strong>和一个轻量级的、冻结的<strong>神经解释器</strong>。</p>
+<p><img alt="图1：PAW范式概述。云端一次编译，本地多次运行。" src="https://arxiv.org/html/2607.02512v1/x1.png" /></p>
+<p>该系统的运作流程分为两步：<br />
+1.  <strong>编译</strong>：在云端，开发者将函数规范（自然语言描述和输入输出示例）输入到神经编译器。编译器输出一个紧凑的<strong>神经程序</strong>。<br />
+2.  <strong>执行</strong>：在本地，一个冻结的轻量级神经解释器加载该程序，像执行普通函数一样处理用户输入。</p>
+<p>数学上可以表述为：</p>
+$$p\;=\;\texttt{Compiler}(s),\qquad\hat{y}\;=\;\texttt{Interpreter}(p,x)\;\approx\;f(x)$$
+
+<ul>
+<li><code>s</code> 是用户提供的函数规范</li>
+<li><code>p</code> 是编译生成的神经程序</li>
+<li><code>x</code> 是用户输入</li>
+<li><code>ŷ</code> 是系统输出</li>
+<li><code>f(x)</code> 是目标函数的理想输出</li>
+</ul>
+<p>这个划分完美地镜像了经典编程世界：编译器将源代码翻译成可执行文件，而解释器（运行时）则执行这个文件。最大的不同在于，这里的“可执行文件”是一团学习到的参数，而“运行时”是一个神经网络。</p>
+<h4>2. 混合程序：离散伪代码 + 连续权重</h4>
+<p>PAW程序并非单一的黑盒权重，而是一个“离散-连续混合体”：</p>
+$$p\;=\;\bigl(p_{\text{discrete}},\;p_{\text{continuous}}\bigr)$$
+
+<ul>
+<li><strong>离散部分（伪程序）</strong>：由Pseudo Compiler（一个未经训练的Qwen3-4B模型）生成。它通过一个简单的提示模板，将用户粗糙的原始规范“重写”为一份清晰的伪程序，包含任务的简洁描述和少量输入输出示例。</li>
+<li><strong>连续部分（PEFT权重）</strong>：由PEFT Compiler（一个经过训练的Qwen3-4B模型）生成。它读取原始规范和伪程序，并从其隐藏状态中直接“发射”出一个轻量级的LoRA（低秩适配）模块。</li>
+</ul>
+<p>这种设计非常精妙：离散的伪程序保护了小解释器免受原始规范中拼写错误和歧义的干扰；连续的LoRA则提供了仅有文本无法实现的精细行为控制。</p>
+<h4>3. Text-to-LoRA：核心编译器细节</h4>
+<p><img alt="图2：Text-to-LoRA编译器架构。" src="https://arxiv.org/html/2607.02512v1/figures/architecture_lora.png" /></p>
+<p>研究者将PAW实例化为<strong>Text-to-LoRA</strong>系统。LoRA编译器在接收到规范和伪程序后，会执行一次前向传播。随后，一个<strong>LoRA映射器</strong>（LoRA Mapper）将编译器特定层的隐藏状态转换为LoRA权重，并“热插拔”到冻结的解释器中。</p>
+<p>LoRA权重的生成并非从零开始，而是通过线性组合一组共享的、可学习的基向量来实现：</p>
+$$A^{\text{ex}}_{l,m}\;=\;\sum_{n=1}^{N}\alpha^{A}_{l,m,n}\,A^{(m)}_{n},\qquad B^{\text{ex}}_{l,m}\;=\;\sum_{n=1}^{N}\alpha^{B}_{l,m,n}\,B^{(m)}_{n}$$
+<p>这个公式意味着，对于解释器的每一层和每个模块，LoRA映射器会动态地计算一组混合系数，然后用这些系数去加权组合一组预先训练好的基LoRA模块，从而生成针对当前任务的特定LoRA。</p>
+<h3>三、实验：小模型“逆袭”大模型</h3>
+<p>PAW的有效性在多个基准测试中得到了验证。研究者构建了FuzzyBench数据集，包含1000万个训练例子，覆盖超过800类模糊文本任务。</p>
+<p>在10M规模的数据集上，主要实验结果如下：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">方法</th>
+<th style="text-align: left;">模型大小</th>
+<th style="text-align: left;">推理内存</th>
+<th style="text-align: left;">FuzzyBench准确率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Qwen3-32B（直接提示）</td>
+<td style="text-align: left;">32B</td>
+<td style="text-align: left;">~60 GB</td>
+<td style="text-align: left;">68.70%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>PAW（Qwen3 0.6B解释器）</strong></td>
+<td style="text-align: left;"><strong>0.6B</strong></td>
+<td style="text-align: left;"><strong>~1.2 GB</strong></td>
+<td style="text-align: left;"><strong>73.78%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Qwen3-14B（直接提示）</td>
+<td style="text-align: left;">14B</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: left;">63.96%</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>结果令人震惊</strong>：一个仅0.6B参数的模型，通过执行PAW编译出的程序，其表现不仅超越了同系列的14B模型，甚至超越了32B的庞然大物，同时推理内存仅为后者的1/50。</p>
+<p>研究者还测试了PAW在图像条件任务上的泛化能力，仅将文本编译器替换为多模态编译器VLM，即可处理图像输入。</p>
+<p><img alt="表3：多模态实验结果。PAW在多图理解任务上击败了所有VLM基线。" src="https://arxiv.org/html/2607.02512v1/x2.png" /></p>
+<p>在CoSyn-400K等图表理解任务上，搭载0.6B解释器的PAW系统，其性能超越了包括4B参数在内的所有视觉语言模型（VLM）基线。这证明了编译器-解释器抽象在多模态领域的巨大潜力。</p>
+<h3>四、展望</h3>
+<p>PAW论文提出了一种极具颠覆性的软件构建哲学：<strong>让大模型承担“编译”的重活，让小模型轻装执行</strong>。一个函数只需在第一次定义时调用一次大模型进行编译，之后就像调用一个库函数一样，可以在任何设备（哪怕是笔记本或浏览器）上离线、快速、零成本地反复运行。</p>
+<p>这不仅解决了高昂的API调用成本和隐私问题，更重要的是，它真正将AI能力内化为了软件的基础构建模块。PAW程序是单一文件，支持版本控制，可以像Python模块一样分发。</p>
+<p>想象一下，未来的软件开发可能不再是“我用大模型API来实现模糊功能”，而是“我用PAW将模糊需求编译成一个确定性的、可重用的代码库”。这也许是通往Agents大规模落地和真正“小而美”模型时代的关键一步。</p>
+<p><strong>论文标题</strong>：Program-as-Weights: A Programming Paradigm for Fuzzy Functions</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.02512.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-03_Program-as-Weights-A-Programming-Paradigm-for-Fuzzy-Functions.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-03_Program-as-Weights-A-Programming-Paradigm-for-Fuzzy-Functions.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
