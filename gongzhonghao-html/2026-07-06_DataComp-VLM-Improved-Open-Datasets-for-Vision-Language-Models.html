@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataComp-VLM: Improved Open Datasets for Vision-Language Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">DataComp-VLM: Improved Open Datasets for Vision-Language Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-07</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>震惊学界：DCVLM用数据混合代替过滤，8B模型超越FineVision 5.4%，开创VLM训练新范式</h1>
+<h2>引言</h2>
+<p>视觉语言模型（VLM）的性能，究竟取决于什么？架构创新？训练技巧？还是<strong>数据本身</strong>？</p>
+<p>当各大实验室竞相发布更大参数、更强性能的VLM时，一个令人尴尬的事实浮出水面：<strong>数据管理策略被严重忽视</strong>。哪些数据集该用？数据间如何配比？如何过滤？这些决定模型命运的核心问题，答案却“黑箱化”——<strong>几乎无法再现</strong>。</p>
+<p>为填补这一空白，由Tübingen AI Center、Google DeepMind、斯坦福大学、LAION等机构联合团队（Matteo Farina、Vishaal Udandarao、Thao Nguyen等）推出了<strong>DataComp for VLMs（DCVLM）</strong>——首个系统性研究VLM数据管理的基准测试。</p>
+<p>论文的核心发现令人震惊：<strong>数据过滤几乎无效，而数据混合才是关键杠杆</strong>。在33项核心基准测试上，基于最优混合策略的<strong>DCVLM-Baseline</strong> 实现了8B模型200B token训练下的<strong>63.6%平均准确率</strong>，比此前最佳开源数据集FineVision高出<strong>5.4个百分点</strong>。更令人惊叹的是，<strong>4B模型+100B token训练就能击败FineVision的8B模型+200B token</strong>——算力效率提升4倍！</p>
+<h2>一、核心方法</h2>
+<h3>1.1 数据池构建：160个数据集的“万花筒”</h3>
+<p>研究者构建了一个包含<strong>160个公开数据集</strong>、<strong>6万亿多模态Token</strong>的数据池，涵盖四种数据类型：</p>
+<ul>
+<li><strong>图像-标题对</strong>：从大规模爬虫数据（如DataComp-1B）到高质量合成数据（ShareGPT-4o）</li>
+<li><strong>多模态交错文档</strong>：网页抓取、PDF、学术论文等，<strong>最原始</strong>的数据来源</li>
+<li><strong>纯文本数据</strong>：保留语言能力，如FLAN、SlimOrca</li>
+<li><strong>多模态指令调优数据</strong>：按八种能力分类（知识、图表、数学、OCR等）</li>
+</ul>
+<p>这种高度异构性设计是刻意的——它让研究者能够在<strong>真实、复杂</strong>的环境中测试各种数据管理策略。</p>
+<p><img alt="图1：DCVLM-Baseline混合策略与性能对比" src="https://arxiv.org/html/2606.28551v2/x1.png" /></p>
+<h3>1.2 数据过滤的“无用功”：为什么过时了？</h3>
+<p>论文测试了超过<strong>60种过滤配置</strong>，涵盖三大类过滤器：</p>
+<ul>
+<li><strong>CLIP评分过滤器</strong>（OpenAI CLIP、DFN-CLIP、SigLIP-2）</li>
+<li><strong>文本质量分类器</strong>（DCLM fasttext、Nemotron教育质量分类器）</li>
+<li><strong>多模态过滤器</strong>（UniFilter、基于困惑度的过滤）</li>
+</ul>
+<p>结果令人意外：<strong>所有过滤器的性能提升几乎可以忽略不计</strong>。最佳效果是SigLIP-2的<strong>+0.8个百分点</strong>，远低于预期。</p>
+<p>研究者指出，核心原因在于：“这些VLM数据集已由原始创建者进行了一定程度的预处理过滤。我们的分析表明，随着预处理比例从25%增加到100%，下游过滤的增益从+2.4 pp<strong>急剧下降到+0.6 pp</strong>，呈现<strong>边际效益递减</strong>趋势。”</p>
+<p><img alt="图2：预处理过滤导致下游过滤边际效益递减" src="https://arxiv.org/html/2606.28551v2/x4.png" /></p>
+<h3>1.3 数据混合：真正的“胜负手”</h3>
+<p>既然过滤无效，那什么有效？答案是<strong>数据混合比率</strong>。</p>
+<p>研究者沿“图像-标题对 vs 指令调优数据”轴探索了三种混合策略：</p>
+<ul>
+<li><strong>标题密集型（65%图像标题 + 15%指令）</strong></li>
+<li><strong>平衡型（40%图像标题 + 40%指令）</strong></li>
+<li><strong>指令密集型（10%图像标题 + 70%指令）</strong></li>
+</ul>
+<p>核心发现如“缩放定律”般清晰：<strong>指令密集型混合随着计算量和模型规模的增加，性能提升曲线急剧上升</strong>。</p>
+$$ \text{性能差距}(N,D) = \alpha \cdot \log(N) \cdot \log(D) + \beta $$
+
+<p>其中 $N$ 是模型参数，$D$ 是训练token数，$\alpha$ 和 $\beta$ 是拟合参数。这个公式揭示了一个关键结论：<strong>混合策略的优劣并非静态，而是随规模动态变化的</strong>。</p>
+<p><img alt="图3：指令密集型混合随计算量增大性能提升更显著" src="https://arxiv.org/html/2606.28551v2/x5.png" /></p>
+<p>上图清晰地展示了“交叉现象”：<br />
+- <strong>1B模型+6.25B token</strong>：指令密集型混合<strong>最差</strong><br />
+- <strong>2B模型+25B token</strong>：指令密集型混合<strong>变成最佳</strong><br />
+- <strong>4B模型+25B token</strong>：优势进一步扩大</p>
+<p>这意味着，如果你只在<strong>小规模下测试</strong>，会得出完全错误的结论——<strong>数据管理必须考虑规模</strong>。</p>
+<h3>1.4 控制实验：发现具有普遍性</h3>
+<p>研究者还验证了两个重要结论：</p>
+<ul>
+<li><strong>预训练性能完美预测SFT（监督微调）后性能</strong>：54次SFT实验的Pearson相关系数为$r=0.99$，Spearman $\rho=0.99$</li>
+<li><strong>骨干网络选择不影响排名</strong>：从Qwen2.5-Base切换到Qwen2.5-Instruct，结果高度一致（$r=0.97$）</li>
+</ul>
+<p><img alt="图4：控制实验证实预训练结果可完美转移至SFT阶段" src="https://arxiv.org/html/2606.28551v2/x6.png" /></p>
+<h2>二、实验：DCVLM-Baseline全面碾压</h2>
+<p>基于上述发现，研究者提出了<strong>DCVLM-Baseline</strong>——放弃过滤，专注混合。</p>
+<p><strong>最优混合配比</strong>：10%图像标题 + 5%多模态文档 + 15%纯文本 + 70%指令调优数据。</p>
+<h3>关键结果</h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>规模</th>
+<th>模型</th>
+<th>Token</th>
+<th>核心平均</th>
+<th>提升</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small</td>
+<td>DCVLM-Baseline vs FineVision</td>
+<td>1B/6.25B</td>
+<td>36.5 vs 36.2</td>
+<td>+0.3 pp</td>
+</tr>
+<tr>
+<td>Medium</td>
+<td>DCVLM-Baseline vs FineVision</td>
+<td>2B/25B</td>
+<td><strong>51.7 vs 50.6</strong></td>
+<td>+1.1 pp</td>
+</tr>
+<tr>
+<td>Large</td>
+<td>DCVLM-Baseline vs FineVision</td>
+<td>4B/100B</td>
+<td><strong>58.9 vs 54.2</strong></td>
+<td><strong>+4.7 pp</strong></td>
+</tr>
+<tr>
+<td><strong>X-Large</strong></td>
+<td><strong>DCVLM-Baseline vs FineVision</strong></td>
+<td><strong>8B/200B</strong></td>
+<td><strong>63.6 vs 58.2</strong></td>
+<td><strong>+5.4 pp</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>更惊人的是，在<strong>52项扩展基准</strong>上，DCVLM-Baseline（X-Large）以<strong>60.5%</strong> 击败FineVision的<strong>56.6%</strong>（+3.9 pp）。</p>
+<h3>效率突破：4×算力节省</h3>
+<p><strong>4B模型+100B token训练的DCVLM-Baseline（58.9%）</strong>，<strong>直接媲美</strong>8B模型+200B token训练的FineVision（58.2%）。这意味着，通过优化数据混合，可以<strong>用四分之一的计算资源达到相同性能</strong>。</p>
+<h2>三、展望</h2>
+<p>DCVLM不仅是一个基准，更是一次<strong>数据哲学的转变</strong>：不是“多寡”决定性能，而是“配比”决定成败。</p>
+<p>对于开源社区和研究机构，DCVLM的开源生态（160个数据集、52项基准、完整基础设施）意味着<strong>任何人都能复现、验证、改进</strong>数据管理策略，打破了此前被少数团队垄断的“黑箱”模式。</p>
+<p>未来的挑战在于：如何自动化寻找不同规模下的最优混合？指令调优数据的<strong>重复训练</strong>效应如何精确建模？这些问题的答案，将决定VLM能否以更低的成本、更可控的方式，走向更强的通用智能。</p>
+<p><strong>论文标题</strong>：DataComp-VLM: Improved Open Datasets for Vision-Language Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2606.28551.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-06_DataComp-VLM-Improved-Open-Datasets-for-Vision-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-06_DataComp-VLM-Improved-Open-Datasets-for-Vision-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
