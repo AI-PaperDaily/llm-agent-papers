@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Worlds with Versatile Interactions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Infinite Worlds with Versatile Interactions</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-10</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>开源世界模型新王降临：LingBot-World-Infinity 实现一小时零漂移，720p 60fps 实时交互！</h1>
+<h2>引言</h2>
+<p>生成式世界模型，这个听起来就充满科幻色彩的概念，正逐渐从实验室的“技术玩具”走向实用的关键节点。想象一下，一个能够无限延伸、根据用户指令实时变化、且视觉质量永不衰减的交互式世界——这曾让无数研究者头疼不已。过去的模型要么在几分钟内就出现纹理模糊、几何扭曲的“幻觉”，要么为了实时性不得不牺牲分辨率和交互丰富度，让所谓的“世界”沦为只能进行简单摄像机移动的静态背景。</p>
+<p>现在，一项名为 <strong>LingBot-World-Infinity</strong> 的研究打破了这一僵局。该工作不仅将生成世界的时长从“分钟”级提升至“小时”级，实现了长达一小时的连续生成而毫无质量衰减，更在 720p 分辨率下达成了60fps的实时交互。更令人兴奋的是，它首次将<strong>Agent架构</strong>引入世界建模，让一个“飞行员Agent”和“导演Agent”共同驱动，赋予了这个虚拟世界自主、闭环的生命力。</p>
+<p><img alt="图1：LingBot-World-Infinity 生成无限世界的实时概览" src="https://arxiv.org/html/2607.07534v1/x1.png" /></p>
+<h2>一、核心方法：驱散“漂移”与“延迟”的阴影</h2>
+<p>LingBot-World-Infinity 的突破并非一蹴而就，而是基于一个清晰的因果生成公式和一套精心设计的训练与部署策略。</p>
+<h3>1. 因果世界模型：将“效果”置于“原因”之后</h3>
+<p>论文将世界模拟严格定义为一种<strong>因果生成过程</strong>。核心思想来自休谟的格言：“原因必须在效果之前。”在模型中，每一帧未来的画面只取决于过去的视觉上下文和当前的用户输入。</p>
+$$p_{\theta}(x_{1:T}\mid a_{1:T})=\prod_{t}p_{\theta}\!\left(x_{t}\mid x_{<t},a_{\leq t}\right)$$
+
+<p>这个公式定义了世界状态 $x_t$ 的生成概率，它严格受限于历史帧 $x_{<t}$ 和历史动作 $a_{\leq t}$。这种原生因果关系是整个系统长时稳定的基石。</p>
+<p>为了实现这一点，研究者提出了一种名为<strong>MoBA（Mixture of Bidirectional and Autoregressive）</strong> 的注意力掩码机制。传统的Teacher Forcing掩码使模型在长序列生成时产生过拟合，过度依赖上下文而非预测未来。MoBA掩码则在自回归部分（预测未来）旁边，引入了一个双向注意力块，让模型能同时理解全局上下文，从而有效抑制了误差累积。</p>
+<p><img alt="图2：LingBot-World-Infinity 的狄拉克变换器（DiT）块与MoBA注意力掩码概览" src="https://arxiv.org/html/2607.07534v1/x4.png" /></p>
+<h3>2. 分布式蒸馏：从“慢思考”到“快反应”</h3>
+<p>一个高质量的世界模型（14B参数）进行逐帧生成需要极多的去噪步数，难以满足实时交互需求。为此，研究者采用了<strong>一致性蒸馏（Consistency Distillation）</strong> 和<strong>分布匹配蒸馏（Distribution Matching Distillation, DMD）</strong> 相结合的策略。</p>
+<p>首先，一致性蒸馏将教师模型的“多步去噪轨迹”压缩成一个<strong>一致性模型</strong>，使其能用极少步数直接预测最终结果。</p>
+<p>之后，DMD 针对长时间自回归推演中可能出现的视觉保真度下降和累积漂移进行针对性优化。它将学生模型置于其自身预测的“状态分布”中进行优化，通过最小化学生分布与真实数据分布之间的KL散度，从根源上阻止错误放大。</p>
+$$ \nabla_{\theta}\mathbb{E}\left[D_{\mathrm{KL}}\left(p_{\theta,t}\,\|\,p_{\mathrm{data},t}\right)\right]=-\mathbb{E}\!\left[\left(s_{\mathrm{real}}(\hat{x}_{i}^{t},t\mid c)-s_{\mathrm{fake}}(\hat{x}_{i}^{t},t\mid c)\right)\frac{\partial\hat{x}_{i}}{\partial\theta}\right] $$
+
+<p>借助此方法，研究团队蒸馏出一个1.3B参数的轻量级模型，使其能够在单张GPU上高效部署，并驱动 720p 60fps 的实时视频流，而教师模型（14B）则作为性能上限的锚点。</p>
+<h2>二、Agent驱动：让世界“活”起来</h2>
+<p>即便有了强大的生成核心，模型本身依然是被动的。LingBot-World-Infinity 最大的创新在于首次将<strong>Agentic Harness</strong>无缝整合进世界建模中。</p>
+<p>研究者构建了一个<strong>“导演-飞行员”（Director-Pilot）</strong> 双Agent框架。</p>
+<ul>
+<li><strong>飞行员Agent（Pilot）</strong> ：由一个视觉语言模型（VLM）扮演，负责读取当前场景，理解物理常识，并规划可控角色下一步该做什么（例如行走、攻击、拿起物品）。它将高层的语义动作转化为具体的、符合物理规律的视频滚动。</li>
+<li><strong>导演Agent（Director）</strong> ：同样由VLM驱动，负责更高层次的因果推理和世界干预。当用户提出“下一个场景下雨”或“前方出现一群鸟”等指令时，导演Agent会进行逻辑推演，生成合理的“事件提案”，并交由Pilot执行。</li>
+</ul>
+<p>这种设计将模型从<strong>帧预测器</strong>解放为<strong>世界模拟器</strong>。用户可以像玩第一人称游戏一样，通过WASD进行导航，通过F/G键触发环境变化，甚至通过注册数位键来编写自己的世界剧情。</p>
+<p><img alt="图5：Agent交互双引擎框架。VLM（导演）进行因果推理，视频生成器（飞行员）将其语义决策转化为物理一致的视频滚动。" src="https://arxiv.org/html/2607.07534v1/x5.png" /></p>
+<h2>三、实验：一场对“稳定性”的终极压力测试</h2>
+<p>实验部分是对LingBot-World-Infinity能力最直观的证明。</p>
+<h3>1. 一小时不间断生成：结构性的稳定</h3>
+<p>研究者进行了一次长达<strong>60分钟</strong>的连续不间断生成预览。他们从这60分钟的生成会话中随机采样了涵盖20个不同场景的帧。结果显示，模型从头至尾保持了清晰的纹理、稳定的几何结构和连贯的场景，没有出现任何可视的质量衰退。</p>
+<p><img alt="图10：一小时长程世界推演。从一次60分钟的连续生成会话中采样的帧，展示了模型能够在长程、不间断的生成中维持连贯的场景结构和视觉质量。" src="https://arxiv.org/html/2607.07534v1/x9.png" /></p>
+<h3>2. 全面对比：实时、高质量、开源</h3>
+<p>与当前业界最为领先的闭源系统（如HappyOyster、Genie 3）和开源模型相比，LingBot-World-Infinity在视觉保真度、长时间稳定性、响应速度和交互丰富度上几乎全面领先。它也是唯一一个在通用领域内达到<strong>“小时级”（无限）生成时长</strong>，并同时兼具高动态度、语义交互和实时性能的完全开源模型。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">生成时长</th>
+<th style="text-align: left;">语义交互</th>
+<th style="text-align: left;">领域</th>
+<th style="text-align: left;">动态度</th>
+<th style="text-align: left;">实时</th>
+<th style="text-align: left;">开源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">M-G 3.0</td>
+<td style="text-align: left;">分钟</td>
+<td style="text-align: left;">无</td>
+<td style="text-align: left;">游戏</td>
+<td style="text-align: left;">中</td>
+<td style="text-align: left;">✓</td>
+<td style="text-align: left;">✓</td>
+</tr>
+<tr>
+<td style="text-align: left;">D-W</td>
+<td style="text-align: left;">分钟</td>
+<td style="text-align: left;">无</td>
+<td style="text-align: left;">通用</td>
+<td style="text-align: left;">中</td>
+<td style="text-align: left;">✓</td>
+<td style="text-align: left;">✓</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>LingBot-World-Infinity</strong></td>
+<td style="text-align: left;"><strong>小时(无限)</strong></td>
+<td style="text-align: left;"><strong>无限</strong></td>
+<td style="text-align: left;"><strong>通用</strong></td>
+<td style="text-align: left;"><strong>高</strong></td>
+<td style="text-align: left;"><strong>✓</strong></td>
+<td style="text-align: left;"><strong>✓</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>此外，模型支持攻击、射箭、施法、射击等多种角色动作，并能通过文本指令召唤雨雪等环境变化，其交互丰富度远超简单的导航控制。</p>
+<h2>展望：通往“可居住”的虚拟世界</h2>
+<p>LingBot-World-Infinity无疑为交互式世界模型领域树立了新的标杆。它证明了<strong>稳定的长时生成</strong>和<strong>实时、丰富的交互</strong>并非不可调和的矛盾。其开源的模型和Agent架构将为游戏生成、机器人仿真、数字孪生等下游应用提供强大的引擎。</p>
+<p>然而，作为一项开创性工作，其局限同样值得思考：模型缺乏真正的<strong>长时记忆</strong>，离开视野的场景会被遗忘；角色的身份一致性在超长推演中仍会漂移；物理碰撞的理解依旧不够完美。如何在有限的预算内，为这个世界模型注入真正的「记忆」和「常识」？这或许是下一场技术浪潮的起点。</p>
+<p><strong>论文标题</strong>：Infinite Worlds with Versatile Interactions</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.07534.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-09_Infinite-Worlds-with-Versatile-Interactions.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-09_Infinite-Worlds-with-Versatile-Interactions.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
