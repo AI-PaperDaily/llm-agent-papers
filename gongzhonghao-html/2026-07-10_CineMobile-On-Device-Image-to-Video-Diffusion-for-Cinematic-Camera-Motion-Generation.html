@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMobile: On-Device Image-to-Video Diffusion for Cinematic Camera Motion Generation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">CineMobile: On-Device Image-to-Video Diffusion for Cinematic Camera Motion Generation</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-12</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>上交大&amp;传音CineMobile：手机端实现电影级运镜视频，40倍加速、20秒生成、模型小于1GB！</h1>
+<h2>引言：手机拍出电影级运镜，不再是梦</h2>
+<p>你是否曾幻想用手机就能拍出《黑客帝国》般的“子弹时间”，或是希区柯克式的“滑动变焦”特效？随着短视频创作全民化，用户对手机端图像转视频（I2V）的需求日益增长，尤其是“子弹时间”、“滑动变焦”、“慢动作”等电影级运镜效果。然而，当前顶尖的视频生成模型（如Wan2.1、Kling等）普遍采用参数量巨大的<strong>Diffusion Transformers（DiTs）</strong>架构，其庞大参数量和数十步的迭代去噪过程，导致生成一张49帧的视频需要240秒，且需要顶级GPU支持，移动端部署几乎不可能。</p>
+<p>针对这一痛点，上海交通大学与传音（Transsion）的研究团队联合提出了<strong>CineMobile</strong>，首次将基于DiT的电影运镜视频生成模型成功部署到移动设备上。该模型通过结构化剪枝、步骤蒸馏与混合精度量化三重优化，实现了在MediaTek Dimensity 8400平台上<strong>20秒生成480p视频</strong>，模型体积压缩至<strong>1GB以下</strong>，同时生成质量媲美14B参数的教师模型，推理速度提升<strong>40倍</strong>。</p>
+<hr />
+<h2>核心方法：三步走，让大模型瘦身落手机</h2>
+<p>CineMobile的核心创新在于一套系统性的模型压缩与加速流水线，包含<strong>结构化深度剪枝</strong>、<strong>步骤蒸馏</strong>与<strong>混合精度量化</strong>三大关键技术。</p>
+<h3>1. 结构化深度剪枝：保留时间建模能力</h3>
+<p>DiT模型由多个Transformer块堆叠而成，研究者首先通过残差线性探针检测出冗余的连续块区间。不同于传统宽度剪枝会破坏视频DiT的时间建模能力，CineMobile采用<strong>结构化深度剪枝</strong>方案——仅移除冗余块，保持模型隐藏维度不变。</p>
+<p>具体而言，对于每个被检测为冗余的区间 <code>[u, v]</code>，使用一个可训练的替代块 <code>Du</code> 替换整个区间，并通过隐藏状态对齐损失进行训练：</p>
+<p><img alt="图1：CineMobile生成的子弹时间、滑动变焦和慢动作视频效果" src="https://arxiv.org/html/2607.03803v1/x1.png" /></p>
+<p>通过这种方法，原始的14B教师模型被压缩为1.2B参数、27层的紧凑学生模型，推理速度提升约<strong>1.3倍</strong>。</p>
+<h3>2. 步骤蒸馏：从20步到4步</h3>
+<p>模型压缩后，另一个瓶颈在于DiT的多步迭代采样（通常需20-50步）。研究者结合<strong>扩散蒸馏</strong>与<strong>强化学习（RL）</strong>，将学生模型蒸馏为只需<strong>4步</strong>即可完成生成的轻量级生成器。</p>
+<p>蒸馏过程分为两个阶段：<br />
+- <strong>监督微调热身</strong>：先用教师模型生成的视频数据对学生进行流匹配训练，恢复基础生成能力。<br />
+- <strong>对抗蒸馏</strong>：引入真实评分模型GT和在线伪模型F，提供分布匹配信号。同时，一个轻量级鉴别器提供对抗性监督，其分数作为GRPO（基于群体的策略优化）的奖励，优化4步生成轨迹。</p>
+<p>该方法的核心损失函数由分布匹配损失、对抗损失和GRPO奖励组成：</p>
+$$\mathcal{L}^{G} = \mathcal{L}^{G}_{\mathrm{DMD}} + \lambda_{\mathrm{adv}} \mathcal{L}^{G}_{\mathrm{GAN}} + \lambda_{D} \mathcal{L}^{G}_{\mathrm{GRPO}}$$
+
+<p>这一步带来了最主要的性能提升，将去噪时间从12.28秒骤降至<strong>2.45秒</strong>（H200 GPU），DiT计算量减少<strong>71倍</strong>。</p>
+<p><img alt="图2：CineMobile在不同加速阶段的去噪时间和FLOPs对比" src="https://arxiv.org/html/2607.03803v1/picture/speed.png" /></p>
+<h3>3. 混合精度量化：模型压缩至1GB以下</h3>
+<p>最后一步是进一步减小模型内存占用。研究者采用<strong>混合精度后训练量化</strong>策略：对占模型参数大头的FFN权重使用<strong>4-bit</strong>量化，其余组件（如注意力投影、时间嵌入等）使用<strong>8-bit</strong>量化，激活值保持16-bit精度。</p>
+<p>这使得模型足迹从数GB压缩至<strong>1GB以下</strong>，成功适配手机端的有限内存资源。结合前述优化，整体方案实现了对教师模型<strong>40.11倍</strong>的去噪速度提升和<strong>71.89倍</strong>的FLOPs降低。</p>
+<hr />
+<h2>实验评测：性能与画质兼得</h2>
+<h3>生成质量：逼近14B教师模型</h3>
+<p>研究者在三个电影运镜场景（子弹时间、滑动变焦、慢动作）上，使用VBench指标进行全面评测。结果显示，CineMobile在仅4步推理下，总分与14B教师模型差距极小（最大差距0.92分），且在运动平滑度和I2V一致性上表现优异。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>步数</th>
+<th>参数量</th>
+<th>子弹时间总分</th>
+<th>滑动变焦总分</th>
+<th>慢动作总分</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wan2.1（教师）</td>
+<td>20</td>
+<td>14B</td>
+<td>89.27</td>
+<td>89.96</td>
+<td>88.51</td>
+</tr>
+<tr>
+<td>CineMobile</td>
+<td>4</td>
+<td>1.2B</td>
+<td>88.35</td>
+<td>89.30</td>
+<td>88.05</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="图3：CineMobile与商业模型在电影运镜上的定性对比" src="https://arxiv.org/html/2607.03803v1/x3.png" /></p>
+<h3>端侧部署：20秒生成，1.8GB内存</h3>
+<p>在<strong>MediaTek Dimensity 8400 Ultimate 5G</strong>平台（搭载Mali-G720 MP7 GPU，峰值FP32算力约2.33 TFLOPS）上，CineMobile实现：<br />
+- 每步去噪延迟：<strong>20秒</strong><br />
+- 峰值内存：<strong>1.8GB</strong><br />
+- 模型大小：<strong>&lt;1GB</strong></p>
+<p>这一性能表现意味着普通智能手机也能流畅运行完整的电影运镜视频生成任务，彻底打破了DiT模型只能在云端运行的桎梏。</p>
+<h3>消融实验：GRPO的增效作用</h3>
+<p>研究者还分析了GRPO奖励对4步生成器的提升效果。加入GRPO后，模型在审美质量和成像质量上分别提升<strong>0.52分</strong>和<strong>0.47分</strong>，证实了强化学习对于细化短步采样质量的有效性。</p>
+<hr />
+<h2>展望：手机视频创作的“AI弹药”已就位</h2>
+<p>CineMobile的意义不仅在于技术指标，更在于它证明了<strong>顶级视频生成模型可以脱离云端，真正跑进用户口袋</strong>。当一名普通用户举起手机，不再需要昂贵相机和专业后期，就能一键生成稳定、连贯的电影级运镜视频。这为短视频创作、直播带货、个人Vlog等领域带来了巨大的想象空间。</p>
+<p>未来，该技术框架可进一步扩展至更多视频生成模型和运镜类型，让AI视频创作更加触手可及。你的下一部“好莱坞大片”，或许就诞生于口袋里那台手机。</p>
+<p><strong>论文标题</strong>：CineMobile: On-Device Image-to-Video Diffusion for Cinematic Camera Motion Generation</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.03803.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-10_CineMobile-On-Device-Image-to-Video-Diffusion-for-Cinematic-Camera-Motion-Generation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-10_CineMobile-On-Device-Image-to-Video-Diffusion-for-Cinematic-Camera-Motion-Generation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
