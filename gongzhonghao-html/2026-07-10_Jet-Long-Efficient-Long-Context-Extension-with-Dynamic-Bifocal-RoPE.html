@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jet-Long: Efficient Long-Context Extension with Dynamic Bifocal RoPE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Jet-Long: Efficient Long-Context Extension with Dynamic Bifocal RoPE</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-13</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>NVIDIA Jet-Long：无需微调扩展LLM上下文至128K，RULER性能提升最多4.79%</h1>
+<h2>引言</h2>
+<p>大语言模型正面临着前所未有的长上下文应用压力。无论是检索增强生成（RAG）、仓库级代码理解，还是多步Agent工作流，模型都需要处理动辄10万+ token的输入序列。然而，模型通常只在4K-32K的窗口内训练，直接推理长序列时几乎必然“翻车”——要么对短上下文性能造成损失，要么在长序列上彻底失效。</p>
+<p>现有的Zero-shot上下文扩展方法如YaRN、Self-Extend、DCA等，大多采用固定的缩放因子。这种“一刀切”的策略使得模型陷入两难：激进的缩放破坏短上下文，保守的缩放在长上下文处崩溃。尽管近期出现了长度自适应映射方法，但它们要么需要精心拟合超参数，要么依赖于随距离变化的调度机制，部署起来依然繁琐。</p>
+<p>针对这一困境，NVIDIA研究团队提出<strong>Jet-Long</strong>——一种无需调参的Zero-shot上下文扩展方法。该方法通过动态双焦RoPE机制，在保留模型原始训练窗口内完美行为的同时，实现向更长上下文的干净外推。在Qwen3-1.7B/4B/8B模型上，Jet-Long在RULER基准上分别超越最强基线达4.79、2.18、2.03个百分点，且在推理效率上几乎无损。</p>
+<h2>一、核心方法</h2>
+<h3>1. 动态双焦RoPE映射</h3>
+<p>Jet-Long的核心思想非常简单而优雅：在模型中同时维护两个窗口——一个是保留经典RoPE的局部窗口（宽度为$w_0$），另一个是使用动态位置映射的远程窗口。远程窗口的分组大小随当前序列长度自适应调整，确保所有远程旋转角度始终处于模型的训练分布内。</p>
+<p>更具体地，对于查询位置$q$和键位置$k$，预softmax注意力得分定义为：</p>
+$$
+S(q,k)=\begin{cases}
+\text{RoPE}(\mathbf{x}_{q},q)^{\top}\text{RoPE}(\mathbf{x}_{k},k) & \text{if } q-k \leq w_0, \\
+\text{RoPE}(\mathbf{x}_{q},f(q))^{\top}\text{RoPE}(\mathbf{x}_{k},f(k)) & \text{if } q-k > w_0.
+\end{cases}
+$$
+
+<p>关键在于远程映射函数$f(\cdot)$的选择。Jet-Long并非使用固定分组大小，而是根据当前序列长度$L$和预训练窗口$w_{\text{pretrained}}$推导出最小整数分组大小：</p>
+$$
+G=\max\left(1,\left\lceil\frac{L}{w_{\text{pretrained}}}\right\rceil\right)
+$$
+
+<p>远程位置映射即为简单的整除：$f(x)=\left\lfloor\frac{x}{G}\right\rfloor$。这种设计意味着：在训练窗口内，$G=1$，Jet-Long完全退化为原始模型，不引入任何修改；超出训练窗口后，$G$取能压缩到训练窗口内的最小整数值，最大化位置分辨率。</p>
+<p><img alt="图1：动态双焦映射示意图" src="https://arxiv.org/html/2607.07740v2/x2.png" /></p>
+<h3>2. 包含-排除注意力合并与即时校正旋转</h3>
+<p>如何在不产生额外计算开销的情况下实现上述双窗口注意力？Jet-Long提出了包含-排除（Inclusion-Exclusion）预填充策略和即时（on-the-fly）RoPE校正旋转。</p>
+<p>包含-排除策略通过三次FlashAttention调用来精确实现基于距离的路由，无需构造布尔掩码矩阵。具体而言，模型执行： (A) 局部窗口注意力（本地查询和键）、 (B) 完整因果注意力（远程查询和键）、 (C) 局部窗口注意力（远程查询和键）。通过以下合并公式，从B中减去C得到纯远程贡献，再与A相加：</p>
+$$
+\mathbf{O}_{\text{final}}=\frac{W_A\mathbf{O}_A+W_B\mathbf{O}_B-W_C\mathbf{O}_C}{W_A+W_B-W_C}
+$$
+
+<p>这一减法在线性空间中执行，经过LogSumExp稳定化后，数值稳定性得到保证。</p>
+<p>在生成阶段，KV缓存中只存储未压缩的原始位置键。当需要用远程窗口查看时，Jet-Long在寄存器中即时施加校正旋转：$\Delta q = f(q)-q$和$\Delta k= f(k)-k$，将位置偏移直接应用到活跃查询和缓存的键上。这种操作是常数时间的，完全不需要触碰物理KV缓存。</p>
+<p><img alt="图2：KV缓存校正与包含-排除预填充" src="https://arxiv.org/html/2607.07740v2/x3.png" /></p>
+<h3>3. 融合推理引擎</h3>
+<p>上述计算如果不加优化，理论上是三次注意力调用，会导致明显的速度下降。Jet-Long将整个合并过程融合成一个单一的CuTe内核，在一个H100 GPU上，预填充吞吐量可达FlashAttention-2的1.28-1.39倍，接近H100原生FlashAttention-4的性能；单批生成的开销不到4%。</p>
+<h2>二、实验评估</h2>
+<h3>1. 长上下文基准性能</h3>
+<p>研究者在Qwen3-1.7B/4B/8B三个模型上评估了Jet-Long，上下文长度扩展至128K，无需任何微调。实验涵盖了RULER（13个合成检索任务）、HELMET-RAG（下游长上下文性能最佳预测器）和PG-19（长文本困惑度）三大基准。</p>
+<p><img alt="图3：RULER准确率随上下文长度变化曲线" src="https://arxiv.org/html/2607.07740v2/x5.png" /></p>
+<p>从结果来看，Jet-Long在所有三个模型大小上，无论RULER还是PG-19，均取得最佳表现。在RULER平均准确率上，Jet-Long在1.7B处以73.93分领先DNTK（69.14分）达4.79个百分点，在4B/8B处分别领先Self-Extend 2.18和2.03个百分点。特别值得关注的是，在32K训练窗口内，Jet-Long与原始基座模型完全一致；超出32K后，原始基座模型困惑度急剧恶化至71.00（1.7B）/ 104.66（4B）/ 79.37（8B），而Jet-Long稳定保持在11.41 / 9.62 / 8.51。</p>
+<p><strong>主要性能对比：</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>RULER Avg (1.7B)</th>
+<th>RULER Avg (4B)</th>
+<th>RULER Avg (8B)</th>
+<th>PG-19 Avg (1.7B)</th>
+<th>PG-19 Avg (8B)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td>60.93</td>
+<td>69.94</td>
+<td>73.13</td>
+<td>16.13</td>
+<td>12.80</td>
+</tr>
+<tr>
+<td>DNTK</td>
+<td>69.14</td>
+<td>79.75</td>
+<td>83.54</td>
+<td>12.60</td>
+<td>9.13</td>
+</tr>
+<tr>
+<td>YaRN</td>
+<td>52.99</td>
+<td>70.11</td>
+<td>78.49</td>
+<td>16.39</td>
+<td>9.91</td>
+</tr>
+<tr>
+<td>DCA</td>
+<td>67.80</td>
+<td>80.19</td>
+<td>81.08</td>
+<td>11.77</td>
+<td>8.77</td>
+</tr>
+<tr>
+<td>Self-Extend</td>
+<td>67.86</td>
+<td>80.84</td>
+<td>84.71</td>
+<td>11.85</td>
+<td>8.81</td>
+</tr>
+<tr>
+<td><strong>Jet-Long (ours)</strong></td>
+<td><strong>73.93</strong></td>
+<td><strong>83.02</strong></td>
+<td><strong>86.74</strong></td>
+<td><strong>11.72</strong></td>
+<td><strong>8.73</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3>2. 混合注意力架构泛化</h3>
+<p>Jet-Long的适用性不限于纯softmax注意力变换器。研究者在混合架构Jet-Nemotron（交替使用softmax和线性注意力层）上进行了验证。在2B和4B版本上，Jet-Long在128K处分别将RULER准确率从8.54提升至33.78、从5.65提升至33.14，平均提升超过10个百分点，证明了该方法的架构无关性。</p>
+<h3>3. 推理效率</h3>
+<p>在推理效率方面，融合CuTe内核版本的Jet-Long在32K以内与FlashAttention-2完全一致（因为退化为标准注意力）。超出32K后，预填充吞吐量达到FA2的1.28-1.39倍，生成吞吐量维持在FA2的96%以上。相比之下，未融合的多启动版本在生成时仅能达到FA2的14%-34%，这凸显了融合内核设计的必要性。</p>
+<h2>展望</h2>
+<p>Jet-Long以极为优雅的方式解决了Zero-shot上下文扩展的根本矛盾：在短序列上完全保真，在长序列上干净外推，且不引入任何额外推理开销。从实际部署角度看，该方法只有一个超参数——局部窗口大小$w_0$，而实验表明该参数在512-4096范围内均表现稳定，真正做到了“即插即用”。</p>
+<p>随着Agent系统和RAG应用对上下文长度的需求日益增长，Jet-Long这种无需微调、无需调参的解决方案有望成为开源大模型长上下文部署的标准范式。未来，将该方法扩展到更复杂的注意力变体（如MLA、稀疏注意力）以及更大规模的模型，将是自然的发展方向。</p>
+<p><strong>论文标题</strong>：Jet-Long: Efficient Long-Context Extension with Dynamic Bifocal RoPE</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.07740.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-10_Jet-Long-Efficient-Long-Context-Extension-with-Dynamic-Bifocal-RoPE.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-10_Jet-Long-Efficient-Long-Context-Extension-with-Dynamic-Bifocal-RoPE.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
