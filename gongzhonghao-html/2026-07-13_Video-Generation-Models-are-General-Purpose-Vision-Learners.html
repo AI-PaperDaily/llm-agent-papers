@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Generation Models are General-Purpose Vision Learners</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Video Generation Models are General-Purpose Vision Learners</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-14</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>Google DeepMind 视频生成模型 GenCeption：统一视觉架构，数据效率飙升500倍？</h2>
+<h3>引言：通用视觉模型的“圣杯”之争</h3>
+<p>在自然语言处理（NLP）领域，从BERT到GPT系列，大语言模型（LLM）通过“下一个词预测”这一简单的预训练目标，实现了从专用模型到通用基础模型的范式跃迁。然而，计算机视觉（CV）领域却长期停留在“专用模型”时代：解决定位问题用SAM系列，处理几何问题用Depth Anything系列，每一个任务都需定制专门的架构。</p>
+<p>论文指出，这种现状的根本原因在于缺乏一个类似于“下一个词预测”的通用视觉预训练目标。一个理想的视觉预训练范式应满足三大核心需求：<strong>时空演化</strong>（模型需理解4D时空因果与物理规律）、<strong>视觉-语言对齐</strong>（视觉特征需与语言语义原生对齐）、<strong>可扩展性</strong>（模型和数据能大规模扩展，涌现智能）。通过对上述痛点深度剖析，论文提出了一个颠覆性方案：利用大规模文本到视频的生成模型作为视觉基础模型。</p>
+<h3>一、核心方法：从视频生成到通用视觉感知</h3>
+<p>论文提出的 GenCeption 框架，其核心理念是将一个预训练的文本到视频生成扩散模型作为“基础模型”，通过后训练（Post-training）阶段将其重塑为一个能够处理多种视觉任务的前馈式感知模型。该方法由三大关键原则驱动：</p>
+<ol>
+<li><strong>作为表征学习的多模态生成预训练</strong>：预训练的视频扩散模型，其生成高保真视频的目标迫使其内化强大的时空先验、3D几何和物理定律，并建立深度的视觉-语言对齐。研究者发现，最大化地保留这些原始表征是成功的关键。</li>
+<li><strong>统一架构中的任务无关后训练</strong>：论文摒弃了为不同任务设计不同编码器、解码器和损失函数的做法，而是将所有密集视觉任务的输出统一表示在一个3通道的RGB空间中（例如，单通道的深度图被复制到三个通道）。对于相机姿态这样的高维数据，一种名为“Rothko Raymap”的巧妙布局被发明，将6维射线数据编码进3通道图。稀疏任务（如关键点检测）则通过向扩散Transformer（DiT）添加可学习的查询令牌来实现。</li>
+<li><strong>前馈式重设计</strong>：生成模型通常需要缓慢的迭代采样，而感知任务要求高效准确。论文将多步生成过程转化为单步前馈预测。其核心在于：</li>
+</ol>
+$$ \text{负化输出} = -v = x_0 - \epsilon $$
+
+<p>其中，$v$ 是扩散模型预测的速度（velocity），$x_0$ 是原视频的干净潜变量，$\epsilon$ 是噪声。通过对模型输出进行取反操作，可以更紧密地拟合目标潜变量，从而加速收敛并提升性能。模型仅需一次前向传播，即可根据文本指令动态推理出目标模态。</p>
+<p><img alt="图1：GenCeption方法论与范式转换。左侧展示了将视频生成扩散模型作为预训练基座，通过多任务后训练适配前馈感知模型；右侧揭示了从专用模型到通用模型的范式转变。" src="https://arxiv.org/html/2607.09024v1/x1.png" /></p>
+<p><img alt="图2：GenCeption统一的架构。给定输入视频和指定输出模态的文本提示，统一模型通过单次前向传播完成密集和稀疏感知任务。密集任务在RGB潜空间统一处理，稀疏任务通过可学习令牌实现。" src="https://arxiv.org/html/2607.09024v1/x3.png" /></p>
+<h3>二、实验：全面超越，数据效率惊人</h3>
+<p>研究者在多个极具挑战性的基准上对GenCeption进行了全面评估，涵盖了深度、法线、分割、3D关键点、相机姿态等视觉任务。实验结果表明，GenCeption以统一的架构和简单的损失函数，在性能上匹配甚至超越了专门的顶尖模型。</p>
+<p><strong>主要实验结果（部分对比）</strong>：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">任务</th>
+<th style="text-align: left;">基准</th>
+<th style="text-align: left;">指标</th>
+<th style="text-align: left;">最佳模型（非论文）</th>
+<th style="text-align: left;">GenCeption (Generalist-L)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">表面法线</td>
+<td style="text-align: left;">Hi4D</td>
+<td style="text-align: left;">mAE ↓</td>
+<td style="text-align: left;">12.14 (David-Large)</td>
+<td style="text-align: left;"><strong>11.47</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">深度估计</td>
+<td style="text-align: left;">Sintel</td>
+<td style="text-align: left;">AbsRel ↓</td>
+<td style="text-align: left;">0.148 (D4RT)</td>
+<td style="text-align: left;"><strong>0.130</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">相机姿态</td>
+<td style="text-align: left;">Sintel</td>
+<td style="text-align: left;">ATE ↓</td>
+<td style="text-align: left;">0.065 (D4RT)</td>
+<td style="text-align: left;"><strong>0.050</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">前景分割</td>
+<td style="text-align: left;">V.Mat.</td>
+<td style="text-align: left;">MSE ↓</td>
+<td style="text-align: left;">0.0010 (RVM)</td>
+<td style="text-align: left;"><strong>0.0008</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">3D关键点</td>
+<td style="text-align: left;">EMDB</td>
+<td style="text-align: left;">MPJPE ↓</td>
+<td style="text-align: left;">72.6 (TRAM)</td>
+<td style="text-align: left;"><strong>71.8</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>数据效率与缩放性</strong>：论文展示了极其惊艳的数据效率。在深度估计任务上，GenCeption的14B模型仅使用123万张训练帧（4个数据集），就达到了与D4RT（8600万帧）和VGGT-Ω（6亿帧）相媲美的性能，数据量仅为后者的 <strong>1/7到1/500</strong>。</p>
+<p><img alt="图3：数据效率与缩放性。左侧展示了GenCeption在多种任务上达到SOTA；右侧显示，仅用极少量数据（7x到500x更少），GenCeption就能与D4RT和VGGT-Ω等顶尖模型性能持平。" src="https://arxiv.org/html/2607.09024v1/x2.png" /></p>
+<p>更重要的是，研究者在消融实验中验证了视频生成预训练的巨大优势。在相同微调数据下，基于WAN 2.1（视频生成模型）的骨干网络，其性能显著优于基于V-JEPA或VideoMAE V2的骨干网络，证明了生成式目标本身比对比学习或掩码自编码器包含更优的时空先验。</p>
+<h3>三、涌现行为：合成数据训练，真实世界泛化</h3>
+<p>GenCeption展现出了一系列令人意外的涌现行为，暗示其内部可能构建了一个强大的“世界模型”：</p>
+<ul>
+<li><strong>从合成到真实的无缝迁移</strong>：模型完全在合成视频上训练，却能高精度地处理真实世界视频，甚至在头发丝的软分割、动物胡须等细节上超越了训练数据本身的保真度。</li>
+<li><strong>对未见类别的泛化</strong>：模型仅使用人类视频进行训练，却能零样本泛化到动物、机器人等非人类类别，并能处理训练视频中从未出现的多人场景。</li>
+</ul>
+<p><img alt="图4：泛化能力展示。左侧为模型训练时仅含单个对象的合成数据，却能零样本泛化到含多个对象的真实视频；右侧则展示了模型仅通过人类数据训练，却能准确理解并分割出动物（如猫）的3D姿态。" src="https://arxiv.org/html/2607.09024v1/figure/oodvisualizations_05.png" /></p>
+<h3>展望：通往通用视觉智能的基石</h3>
+<p>论文提出的 GenCeption 成功证明了视频生成模型不再仅仅是内容合成工具，而是通往通用视觉智能的一条可行的基础路径。通过证明文本到视频生成范式能够为计算机视觉提供必要的时空先验、语言对齐和可扩展性，它为实现一个像LLM那样统一且强大的视觉基础模型铺平了道路。未来，这种方法是否能够像“下一个词预测”在NLP领域那样，彻底颠覆整个计算机视觉的研究范式，并最终实现一个统一的物理世界模型？这无疑是令人期待的研究方向。</p>
+<p><strong>论文标题</strong>：Video Generation Models are General-Purpose Vision Learners</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.09024.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-13_Video-Generation-Models-are-General-Purpose-Vision-Learners.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-13_Video-Generation-Models-are-General-Purpose-Vision-Learners.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
