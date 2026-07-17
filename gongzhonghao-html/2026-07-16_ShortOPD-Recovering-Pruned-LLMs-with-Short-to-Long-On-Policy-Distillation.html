@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShortOPD: Recovering Pruned LLMs with Short-to-Long On-Policy Distillation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">ShortOPD: Recovering Pruned LLMs with Short-to-Long On-Policy Distillation</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-17</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>字节跳动联合中科院提出ShortOPD：剪枝后模型生成力恢复9倍，71%训练成本削减</h1>
+<p>大模型部署成本高昂，结构化剪枝作为一种硬件友好的压缩手段，能显著降低参数量。然而，一个令人困扰的“识别-生成鸿沟”始终存在：被剪枝的模型在MMLU、HellaSwag等多项选择题基准上表现尚可，但在实际部署需要的自由生成任务上却近乎崩溃。字节跳动与中国科学院软件研究所、中国科学院大学的研究团队揭示了这一现象背后的机制，并提出了一种全新的恢复方案。论文发现，被剪枝模型生成能力下降的本质是<strong>能力被降级而非擦除</strong>——正确的生成轨迹仍然存在于模型的采样空间中，只是难以被贪婪解码选中。基于这一洞察，研究团队提出了<strong>ShortOPD</strong> ，一种短到长的在线策略蒸馏框架，能够在恢复生成质量的同时大幅削减训练开销。</p>
+<h2>一、核心方法</h2>
+<h3>1. 诊断：能力被降级而非擦除</h3>
+<p>研究团队通过一个关键实验证实了这一观点。在去除Qwen3-4B-Instruct 4/36层后，模型的贪婪生成（pass@1）得分急剧下降，比如GSM8K从88.1%跌至49.0%。但当允许模型多次采样并使用最佳结果（best-of-k）时，正确率随着采样次数k的增加稳步回升。当k=64时，GSM8K准确率甚至达到了91.2%，反超了未剪枝教师的88.1%。</p>
+<p>这一发现说明：压缩后模型依然“知道”正确的答案，只是无法在单次贪婪解码中将其生成出来。正确轨迹并未被擦除，而是被降级到了采样分布中需要搜索的位置。因此，恢复训练的核心在于修复模型在<strong>自身解码路径</strong>上的逐词决策错误。</p>
+<h3>2. 方案：在线策略自蒸馏</h3>
+<p>基于上述诊断，恢复信号必须满足两个条件：<br />
+- <strong>在线策略</strong>（On-policy）：必须在压缩模型自身生成的轨迹上训练，因为修复的是模型自己的解码习惯。<br />
+- <strong>密集词级</strong>（Dense token-level）：每个生成位置都需要得到教师模型的分布指导，而非仅依靠最终答案的稀疏奖励。</p>
+<p>OPD恰好满足这些要求。其核心损失函数如下：</p>
+$$
+\mathcal{L}_{\mathrm{OPD}}(\theta)=\mathbb{E}_{x}\,\mathbb{E}_{y\sim\pi_{\theta}(\cdot\mid x)}\!\left[\frac{1}{|y|}\sum_{t=1}^{|y|}D_{\alpha}\!\big(\pi_{T}(\cdot\mid x,y_{<t}),\,\pi_{\theta}(\cdot\mid x,y_{<t})\big)\right]
+$$
+
+<p>其中，$\pi_{\theta}$是被剪枝的学生模型，$\pi_{T}$是冻结的原始未剪枝教师模型，$D_{\alpha}$是一种广义Jensen-Shannon散度。该损失函数在学生模型自身采样的轨迹上，逐词匹配教师模型的下一词分布。这种设计无需真实答案，无需外部奖励函数，只需利用模型的“旧版本自己”作为教师。</p>
+<h3>3. 痛点：早期重复后缀的浪费</h3>
+<p>尽管OPD框架正确，但研究者在实践中发现了一个严重问题：被剪枝模型在恢复早期生成的内容中，<strong>高达84%的rollout以重复后缀结束</strong>。这些重复后缀携带的监督信号极为微弱——平均教师-学生散度仅为正常token的1/35，平均教师负对数似然更是低至$3\times10^{-5}$（正常为0.68）。</p>
+<p><img alt="图2：重复后缀问题" src="https://arxiv.org/html/2607.13124v1/x2.png" /><br />
+<img alt="图2：(b) 重复后缀伴随低损失" src="https://arxiv.org/html/2607.13124v1/x3.png" /></p>
+<p>这意味着，固定长rollout预算的大部分计算和教师评分开销，都被浪费在了这些低信息密度的后缀上，导致损失下降被严重延迟。如图2(b)所示，在固定$H=2048$的OPD训练中，前80步的损失几乎停滞不前，而此时55%-75%的rollout都陷入了重复循环。</p>
+<h3>4. 解决方案：ShortOPD短到长预算控制</h3>
+<p>针对上述问题，ShortOPD提出了一个重复门控、截断感知的预算控制器。该控制器不依赖全局损失（因为重复期损失最低），而是通过三个统计量动态调整每一步的生成预算：</p>
+<p><img alt="图3：ShortOPD架构图" src="https://arxiv.org/html/2607.13124v1/x4.png" /></p>
+<p>控制器逻辑如下：<br />
+- 高重复率 → 触发收缩门，将预算降至有效长度的EMA值（预留一定余量）<br />
+- 低重复率 + 高干净截断率 → 触发增长门，逐步扩大预算<br />
+- 其他情况 → 维持当前预算</p>
+$$
+H_{s}^{*}=\begin{cases}\min(H_{s},\lambda\bar{L}_{s}),&\bar{r}_{s}>\rho_{\mathrm{high}},\\
+\gamma_{\uparrow}H_{s},&\bar{r}_{s}<\rho_{\mathrm{low}}\ \land\ \bar{q}_{s}>\tau,\\
+H_{s},&\text{otherwise}
+\end{cases}
+$$
+
+<p>在训练早期，当模型生成大量重复内容时，控制器自动缩短预算，将计算资源集中在有效前缀上；随着能力恢复，重复率下降，控制器逐步延长预算，使模型能够生成更长的合理回答。这种机制不需要任何额外的前向计算，所有统计量都来自OPD过程中已有的token和教师评分。</p>
+<h2>二、实验验证</h2>
+<p>研究团队在Qwen3-4B-Instruct上进行了全面评估，压缩比例为25%（去除9层）。恢复语料包含45,447条提示，涵盖数学、代码和开放式指令三类任务。</p>
+<h3>主要生成恢复结果</h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>GSM8K</th>
+<th>MATH</th>
+<th>HumanEval</th>
+<th>MBPP</th>
+<th>Avg (标准化)</th>
+<th>教师占比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>密集教师</td>
+<td>88.10</td>
+<td>89.40</td>
+<td>75.00</td>
+<td>80.54</td>
+<td>75.17</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>剪枝后(未训练)</td>
+<td>1.14</td>
+<td>1.60</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>5.71</td>
+<td>7.6%</td>
+</tr>
+<tr>
+<td>SFT w/o KD</td>
+<td>25.93</td>
+<td>9.40</td>
+<td>26.83</td>
+<td>29.18</td>
+<td>21.19</td>
+<td>28.2%</td>
+</tr>
+<tr>
+<td>SeqKD</td>
+<td>32.83</td>
+<td>12.20</td>
+<td>29.88</td>
+<td>41.25</td>
+<td>28.60</td>
+<td>38.0%</td>
+</tr>
+<tr>
+<td>KD</td>
+<td>29.34</td>
+<td>9.60</td>
+<td>29.27</td>
+<td>39.30</td>
+<td>30.52</td>
+<td>40.6%</td>
+</tr>
+<tr>
+<td><strong>ShortOPD (Ours)</strong></td>
+<td><strong>62.70</strong></td>
+<td><strong>42.00</strong></td>
+<td><strong>43.90</strong></td>
+<td><strong>49.81</strong></td>
+<td><strong>48.46</strong></td>
+<td><strong>64.5%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>结果显示，ShortOPD将恢复后的平均得分提升至未恢复值的约9倍，相较最佳离线基线（KD）高出18个点，恢复了教师模型近三分之二的生成能力。重要的是，这种提升是全面的——数学、代码、开放域任务同时获得显著改善。</p>
+<h3>效率分析</h3>
+<p><img alt="图5：质量与rollout成本对比" src="https://arxiv.org/html/2607.13124v1/x6.png" /><br />
+<img alt="图5：(b) 质量vs成本" src="https://arxiv.org/html/2607.13124v1/x7.png" /></p>
+<p>在效率方面，ShortOPD的优势同样显著。与固定8192 token预算的rollout相比，ShortOPD在仅用29%的训练时间和71%更少的rollout token的情况下，质量差距在2分以内。具体而言，固定8192预算耗时35.9小时，生成8.69亿token，而ShortOPD仅需8.5小时和2.50亿token。</p>
+<h3>信号控制实验：密集vs稀疏</h3>
+<p>研究团队还进行了关键的信号控制实验，对比了在线策略下的密集监督（ShortOPD）与稀疏奖励（RLVR）。在GSM8K-only的实验设置中，PPO和GRPO几乎无法提升压缩模型的准确率（分别仅0.23%和1.59%），而ShortOPD在相同提示集上达到了37.76%。当压缩模型几乎无法采样到正确答案时，稀疏奖励完全失效，而密集的教师分布为每个token的每次生成都提供了修正信号。</p>
+<p><img alt="图6：稀疏vs密集监督对比" src="https://arxiv.org/html/2607.13124v1/x8.png" /></p>
+<h3>语料消融实验</h3>
+<p>研究还表明，恢复语料的领域覆盖至关重要。在留出一个领域后的实验中：<br />
+- 移除数学提示 → GSM8K从62.70%暴跌至8.04%<br />
+- 移除代码提示 → HumanEval从43.90%暴跌至0.61%<br />
+- 移除通用指令 → 数学和开放域任务同时受损</p>
+<p>这说明ShortOPD的密集词级信号虽然能在相关状态间迁移，但最终的恢复能力仍然高度依赖于训练分布对目标能力的覆盖。</p>
+<h2>五、展望</h2>
+<p>ShortOPD为结构化剪枝后的模型恢复提供了一条清晰的路径：无需外部奖励、无需人工标注、无需特定硬件支持，仅利用模型自己的旧版本作为教师，通过短到长的自适应预算控制，就能高效地恢复生成能力。该方法将结构化剪枝从“在困惑度和多项选择基准上追求边际提升”的困境中解放出来，向着<strong>部署就绪的生成质量</strong>迈出了关键一步。未来，将这一恢复框架扩展到更多剪枝方法、更多模型家族和更大规模的压缩率，将是自然而然的研究方向。对于开发者社区而言，ShortOPD提供了一个可复现、开放性强的实践方案，有望推动结构化压缩技术在生产环境中的实际落地。</p>
+<p><strong>论文标题</strong>：ShortOPD: Recovering Pruned LLMs with Short-to-Long On-Policy Distillation</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.13124.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-16_ShortOPD-Recovering-Pruned-LLMs-with-Short-to-Long-On-Policy-Distillation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-16_ShortOPD-Recovering-Pruned-LLMs-with-Short-to-Long-On-Policy-Distillation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
