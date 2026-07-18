@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoboTTT: Context Scaling for Robot Policies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">RoboTTT: Context Scaling for Robot Policies</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-18</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>NVIDIA联合斯坦福大学发布新方法RoboTTT：将机器人策略上下文长度突破8000步，性能提升87%</h1>
+<p><strong>机器人策略正在进入“长上下文”时代。</strong> 长期以来，机器人基础模型只能基于单帧或短历史上下文进行决策，这严重限制了它们执行复杂、长时间任务的能力。现在，NVIDIA、斯坦福大学和德州大学奥斯汀分校的研究者联合提出了 <strong>RoboTTT（Test-Time-Training Robot Policies）</strong>，成功将视觉运动上下文扩展至 <strong>8000个时间步</strong>，比现有最先进策略高出三个数量级，且推理延迟不变。</p>
+<p><img alt="图1：RoboTTT 长上下文视觉运动策略" src="https://arxiv.org/html/2607.15275v1/x1.png" /></p>
+<p>在5分钟的复杂组装任务中，RoboTTT实现了100%完整的任务执行，而现有基线方法无一成功。这项研究首次证明了<strong>上下文长度可以作为机器人基础模型新的缩放维度</strong>。</p>
+<h2>一、长上下文的三大挑战与TTT解法</h2>
+<p>现有的机器人策略（如Vision-Language-Action模型）通常只关注当前观测或少数历史帧。研究者认为，要真正解锁机器人的长时推理能力，必须解决三个核心挑战：</p>
+<ol>
+<li><strong>编码容量不足</strong>：简单RNN状态的向量维度难以压缩数千步的密集观测序列。</li>
+<li><strong>上下文利用效率低</strong>：机器人数据（图像、动作）高度重复，需区分关键信息与冗余。</li>
+<li><strong>推理成本可控</strong>：Transformer解码成本随上下文线性增长，难以部署。</li>
+</ol>
+<p>RoboTTT的核心解法是引入 <strong>Test-Time Training（TTT）机制</strong>，将“快速权重”作为递归状态的载体。与传统RNN不同，TTT将历史信息编码到神经网络参数空间中，而非固定大小的向量中。</p>
+<p><img alt="图2：RoboTTT模型架构" src="https://arxiv.org/html/2607.15275v1/x2.png" /></p>
+<p>具体而言，TTT在每步进行“更新-应用”操作。给定查询、键、值序列，快速权重 $W$ 通过下式更新：</p>
+$$W_t \leftarrow W_{t-1} - \eta \nabla_W \mathcal{L}_{\text{FW}} \left( f_{W_{t-1}}(K_t), V_t \right)$$
+
+<p>其中 $\mathcal{L}_{\text{FW}}$ 是均方误差损失，$\eta$是可学习的学习率。更新后的快速权重随后处理当前查询：</p>
+$$O_t = f_{W_t}(Q_t)$$
+
+<p>这种“更新先于应用”的机制，使得模型在训练和推理过程中持续编码上下文信息，而推理成本与上下文长度无关。</p>
+<h2>二、序列训练与长上下文缩放</h2>
+<p>RoboTTT在GR00T N1.7行动头（基于Diffusion Transformer）之后插入TTT层。每个时间步内，注意力处理单步信息；时间维度上，TTT层跨步处理。</p>
+<p><img alt="图3：TBPTT梯度截断策略" src="https://arxiv.org/html/2607.15275v1/x4.png" /></p>
+<p>为支持超长序列训练，研究采用 <strong>截断反向传播时间（TBPTT）</strong>：将序列分为段，梯度只在段内流动，快速权重跨越段边界传递。这使得8000步的训练上下文在固定GPU内存下成为可能。</p>
+<p>针对扩散策略的序列训练，论文提出 <strong>序列动作强制（Sequence Action Forcing）</strong>：为每个动作块独立采样噪声水平。模型通过流匹配损失进行训练：</p>
+$$\mathcal{L}_{\text{fm}}\left(\xi;W_0\right)=\frac{1}{T}\sum_{t=1}^{T}\mathbb{E}_{\tau_t,\epsilon}\left[\left\|v_{\theta}\left(\Phi_t, A_t^{\tau_t}, q_t;W_{t-1}\right)-\left(A_t-\epsilon\right)\right\|^2\right]$$
+
+<p>其中每个 $\tau_t$ 独立服从 $s(1-u)$，$u\sim\text{Beta}(1.5,1)$。</p>
+<h2>三、从训练到交互的长上下文能力</h2>
+<p>RoboTTT的关键创新在于<strong>将上下文学习与策略改进无缝结合</strong>。论文提出了两种新的上下文利用方式：</p>
+<p><strong>1. 一次性视频演示模仿</strong>：通过将人类视频与机器人轨迹配对，模型仅通过人类视频更新快速权重，实现从一段从未见过的视频中学会新任务配置。</p>
+<p><strong>2. DAgger蒸馏</strong>：在收集的DAgger轨迹中，机器人的错误动作作为上下文更新快速权重，而人类修正作为目标计算损失。这种“错误作为上下文，修正作为目标”的机制，使模型学会从自身失败中恢复。</p>
+<p><img alt="图4：DAgger蒸馏流程" src="https://arxiv.org/html/2607.15275v1/x6.png" /></p>
+<h2>四、实验：长上下文策略的全面优势</h2>
+<p>研究者在三个长时程组装任务上进行评估：Pup Go Car（2分钟）、Circuit（1分钟）和Gear Bot（5分钟，十阶段）。所有任务均使用YAM双臂机器人平台。</p>
+<p><img alt="图5：评估任务展示" src="https://arxiv.org/html/2607.15275v1/x5.png" /></p>
+<p><strong>主要结果</strong>：RoboTTT在三个任务上平均完成度达到<strong>79%</strong>，比单步基线GR00T N1.7（42%）高出87%，比最佳基线GDN（56%）高出41%。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Pup Go Car</th>
+<th>Circuit</th>
+<th>Gear Bot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RoboTTT</strong></td>
+<td><strong>9/20</strong></td>
+<td><strong>13/20</strong></td>
+<td><strong>2/10</strong></td>
+</tr>
+<tr>
+<td>GR00T N1.7</td>
+<td>3/20</td>
+<td>3/20</td>
+<td>0/10</td>
+</tr>
+<tr>
+<td>GR00T N1.7 Hist.</td>
+<td>0/20</td>
+<td>8/20</td>
+<td>0/10</td>
+</tr>
+<tr>
+<td>GDN</td>
+<td>3/20</td>
+<td>8/20</td>
+<td>0/10</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>缩放趋势</strong>：随着预训练上下文长度从128步增加到8000步，RoboTTT的闭锁性能持续提升，8000步版本比1000步版本高62%，且未见饱和迹象。</p>
+<p><img alt="图6：上下文缩放与性能关系" src="https://arxiv.org/html/2607.15275v1/x8.png" /></p>
+<p><strong>鲁棒性测试</strong>：在人为移除已安装零件的扰动实验中，RoboTTT恢复成功率（83%）显著优于单步基线（53%）。</p>
+<p><strong>一次性模仿</strong>：仅通过观看一段人类视频演示，RoboTTT在10次试验中成功6次完成未见过配置的电路组装，而GDN全部失败。</p>
+<h2>五、技术启发</h2>
+<p>RoboTTT传达了一个重要启示：<strong>机器人策略的上下文长度或许是一个未被充分发掘的缩放维度</strong>。研究团队使用的TPUT训练方式（TBPTT+序列动作强制）使这一缩放成为可能。尽管训练成本随上下文增长而增加，但推理成本恒定——这对于真实机器人部署至关重要。</p>
+<p>未来，这项工作可能向两个方向延伸：一是将强化学习与快速权重更新结合，直接优化任务成功率；二是设计更高效的TTT训练技术，降低预训练成本。</p>
+<p>长上下文策略的到来，或许预示着机器人将从“反应式执行”走向“积累式学习”——在这个过程中，错误本身不再是需要丢弃的噪音，而是通向更鲁棒性能的上下文。</p>
+<p><strong>论文标题</strong>：RoboTTT: Context Scaling for Robot Policies</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.15275.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-17_RoboTTT-Context-Scaling-for-Robot-Policies.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-17_RoboTTT-Context-Scaling-for-Robot-Policies.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
