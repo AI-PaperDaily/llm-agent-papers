@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spectral Rewiring for Exploration, Purification, and Model Merging</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Spectral Rewiring for Exploration, Purification, and Model Merging</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-19</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>清华AIR联合字节跳动Seed提出SAR：仅用0.58%参数即可保留99%推理性能，释放被抑制的跨域能力</h1>
+<h2>引言</h2>
+<p>强化学习（RL）已成为大语言模型后训练的核心范式，但全参数更新的“黑箱”特性带来了两大部署瓶颈：一是推理性能出现抑制，常表现为测试时扩展的过早饱和；二是多领域训练或模型合并时，不同领域能力相互干扰。如何从密集的参数更新中隔离出真正的推理有效成分？来自清华大学智能产业研究院（AIR）和字节跳动Seed实验室的研究团队提出了一种几何视角的解决方案——<strong>子空间对齐重连（Subspace-Aligned Rewiring，SAR）</strong>。该方法将RL更新投影到预训练模型的光谱子空间，仅用不到0.58%的参数就保留了超过99%的后训练推理性能，同时大幅改善探索能力和跨领域泛化。</p>
+<h2>一、核心方法</h2>
+<h3>1.1 光谱子空间：推理功能的基础坐标系</h3>
+<p>论文首先从线性层的奇异值分解（SVD）入手，构建了推理功能的几何框架。对于一个预训练模型的权重矩阵 $W_0 \in \mathbb{R}^{d_{out} \times d_{in}}$，其前向传播可分解为：</p>
+$$y_{base}=W_0x=U\Sigma V^{\top}x=\sum_{i=1}^{r}\sigma_{i}u_{i}(v_{i}^{\top}x)$$
+
+<p>研究者指出，奇异向量构成了预训练模型的“潜在技能”坐标系：右奇异向量 $v_i$ 作为特征检测器读取输入信息，左奇异向量 $u_i$ 定义输出方向，而奇异值 $\sigma_i$ 则决定了这些技能的连接强度。这一坐标系构成了预训练光谱流形：</p>
+$$\mathcal{S}_{r}(W_{0})=\text{span}(U\otimes V)$$
+
+<p><img alt="图1：SAR方法概述" src="https://arxiv.org/html/2607.03065v1/figures/illustration0518.png" /></p>
+<h3>1.2 推理的核心机制：重连矩阵</h3>
+<p>论文提出一个核心假设：由RL诱导的推理有效更新应能被恢复到预训练的光谱子空间内。令 $\Delta W = W_{RL} - W_0$ 为完整的RL更新，研究者将其分解为对齐分量和残余分量：</p>
+$$\Delta W^{*}=P_{U}\Delta WP_{V}=U(U^{\top}\Delta WV)V^{\top}=UMV^{\top}$$
+
+<p>其中 $M = U^{\top}\Delta WV \in \mathbb{R}^{r \times r}$ 被称为<strong>重连矩阵</strong>。与对角矩阵 $\Sigma$ 不同，$M$ 通常是密集的，捕捉了预训练奇异向量之间的交叉维度交互。</p>
+<h3>1.3 推理即重连：从关联映射到逻辑综合</h3>
+<p>论文进一步分析了重连后的前向传播机制：</p>
+$$y_{rewired}=U(\Sigma+M)V^{\top}x=\sum_{i=1}^{r}\left[(\sigma_{i}+M_{ii})(v_{i}^{\top}x)+\sum_{j\neq i}M_{ij}(v_{j}^{\top}x)\right]u_{i}$$
+
+<p>这一公式揭示了RL更新的双重本质：<br />
+- <strong>对角元素 $M_{ii}$</strong>：代表对已有能力的重新缩放，类似于放大某个特定技能<br />
+- <strong>非对角元素 $M_{ij}$</strong>：提供了推理的几何机制，使一个输出方向 $u_i$ 可以由多个不同的输入特征 $v_j$ 合成，实现从“一对一”关联映射到“多对一”逻辑综合的转变</p>
+<h2>二、实验验证</h2>
+<h3>2.1 单领域提取：紧凑光谱重连保留推理增益</h3>
+<p>论文在多个模型家族和规模上验证了SAR的有效性。如下表所示，从1.5B到32B规模的模型，SAR仅需保留1%-30%的光谱秩就能完整恢复全RL推理性能。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>规模</th>
+<th>方法</th>
+<th>AIME 24 AVG@32</th>
+<th>AIME 25 Pass@32</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepScaleR</td>
+<td>1.5B</td>
+<td>RL</td>
+<td>40.31%</td>
+<td>76.67%</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>SAR (1%)</td>
+<td>40.21%</td>
+<td>76.67%</td>
+</tr>
+<tr>
+<td>OLMo-3.1-32B-Think</td>
+<td>32B</td>
+<td>RL</td>
+<td>79.56%</td>
+<td>93.33%</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>SAR (1%)</td>
+<td>78.88%</td>
+<td>93.33%</td>
+</tr>
+</tbody>
+</table></div>
+<p>值得注意的是，SAR的重连矩阵压缩比极高：对于1.5B模型仅占总参数的0.58%，对于32B模型仅占0.64%。</p>
+<h3>2.2 探索能力改善：Pass@k曲线交叉</h3>
+<p><img alt="图2：Pass@k扩展曲线对比" src="https://arxiv.org/html/2607.03065v1/x1.png" /><br />
+<img alt="图3：32B模型Pass@k曲线" src="https://arxiv.org/html/2607.03065v1/x2.png" /></p>
+<p>实验结果显示，全RL基线在较小采样预算时表现良好，但在更大k值时出现饱和。相反，SAR模型持续从更多样本中受益，并在k=2（DeepScaleR）和k=4（OLMo-3.1-32B-Think）时超越全RL基线。在AIME 2024上，SAR用256次采样覆盖了26/30个问题，而全RL模型仅覆盖25/30。</p>
+<h3>2.3 混合RL净化：释放被抑制的跨领域能力</h3>
+<p><img alt="图4：跨领域性能评估" src="https://arxiv.org/html/2607.03065v1/x3.png" /></p>
+<p>在OLMo-3.1-32B-Think的混合RL设置中，SAR展现出强大的净化能力：<br />
+- <strong>编码</strong>：LiveCodeBench v5从67.61%提升至69.09%，v6从64.30%提升至65.25%<br />
+- <strong>数学</strong>：AIME 25 Pass@16从88.33%提升至91.71%<br />
+- <strong>指令遵循</strong>：IFEval仅从92.42%微调至92.05%，基本保持不变</p>
+<h3>2.4 专家合并：超越领域专家</h3>
+<p>在1.5B和14B规模上，SAR产生的合并模型同时超越了数学和编码领域的专家模型：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>设置</th>
+<th>模型</th>
+<th>AIME 24 AVG@32</th>
+<th>LCB AVG@8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.5B</td>
+<td>数学专家</td>
+<td>40.31%</td>
+<td>27.20%</td>
+</tr>
+<tr>
+<td></td>
+<td>编码专家</td>
+<td>39.48%</td>
+<td>31.80%</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>SAR合并</strong></td>
+<td><strong>43.44%</strong></td>
+<td><strong>32.25%</strong></td>
+</tr>
+<tr>
+<td>14B</td>
+<td>数学专家</td>
+<td>74.27%</td>
+<td>56.70%</td>
+</tr>
+<tr>
+<td></td>
+<td>编码专家</td>
+<td>71.04%</td>
+<td>61.00%</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>SAR合并</strong></td>
+<td><strong>74.38%</strong></td>
+<td><strong>63.40%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h2>三、展望</h2>
+<p>SAR的核心洞察在于：RL诱导的推理有效更新并非随意的参数漂移，而是对预训练模型已有能力的紧凑重连。这一几何视角不仅为理解后训练更新机制提供了全新框架，更开辟了一条无需重新训练的实用路径——通过光谱投影来提升推理性能、减少领域干扰并增强模型合并效果。当预训练模型已蕴含相关知识时，SAR有望成为RL后处理的标准工具。未来，直接在推理有效的光谱几何中进行优化的训练方法或许能带来更高效的模型更新范式。</p>
+<p><strong>论文标题</strong>：Spectral Rewiring for Exploration, Purification, and Model Merging</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.03065.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-17_Spectral-Rewiring-for-Exploration-Purification-and-Model-Merging.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-17_Spectral-Rewiring-for-Exploration-Purification-and-Model-Merging.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
