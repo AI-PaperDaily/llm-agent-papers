@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecGPT-V3 Technical Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">RecGPT-V3 Technical Report</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-21</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>淘宝技术团队推出RecGPT-V3：三招攻克大模型推荐系统成本与精度难题，线上GMV提升3.97%！</h1>
+<h2>引言</h2>
+<p>推荐系统正经历一场深刻的范式变革。传统方法（如矩阵分解、深度序列网络）依赖历史行为中的共现模式，本质上是预测“用户过去喜欢什么”，而非理解“用户此刻需要什么”。这种仅捕捉表面关联的机制，导致推荐结果不断固化用户的已知偏好，形成信息茧房。</p>
+<p>大语言模型（LLM）的崛起带来了新思路：利用其世界知识和推理能力，理解行为背后的意图。淘宝的RecGPT系列正是这一方向的先驱者。RecGPT-V1和V2已分别验证了LLM驱动推荐在商业上的可行性，并在日活数亿的场景中部署。然而，当研究者试图进一步放大LLM带来的增益时，三个根本性挑战浮出水面：<strong>无状态行为建模</strong>（每次请求重算全部历史）、<strong>标签-商品信息瓶颈</strong>（自然语言标签丢失细粒度语义）、以及<strong>低效显式推理</strong>（长思维链导致推理延迟不可接受）。</p>
+<p>最新发布的<strong>RecGPT-V3</strong>提供了一套优雅的解决方案，将大模型推荐系统的<strong>推理成本降低52.4%</strong>，同时将<strong>GMV提升3.97%</strong>，实现了精度与效率的双赢。</p>
+<h2>一、核心方法：三大创新攻克系统瓶颈</h2>
+<p>RecGPT-V3的架构设计围绕三项核心技术展开，协同解决了上述三大挑战。</p>
+<h3>创新一：Memory Hub——从无状态到有状态的用户建模</h3>
+<p><img alt="图1：Memory Hub架构图" src="https://arxiv.org/html/2607.15591v1/x3.png" /></p>
+<p>在RecGPT-V2中，Global Planner每次推理都需要处理用户完整的、可能长达5.5万token的行为序列，这是计算开销的绝对大头（占总量的95%）。RecGPT-V3引入了<strong>Memory Hub</strong>，将用户理解从“一次性重算”转变为“持续累积”。</p>
+<p>Memory Hub将用户长周期历史行为压缩为结构化的记忆单元，每个单元包含行为模式标识、偏好总结及支持元数据。该机制实现了三大特性：<br />
+- <strong>压缩性</strong>：token使用量降低94.5%<br />
+- <strong>可溯源</strong>：每个记忆单元都保留指向原始行为的索引<br />
+- <strong>可演化</strong>：通过增量更新，系统能捕捉用户兴趣的演变</p>
+<p>这种增量维护的关键在于一个精心设计的<strong>Evolving Memory Curation</strong>机制。对于现有的记忆单元，系统根据新行为是否与之相关决定是否更新；对于那些无法被现有模式覆盖的新行为，系统则从中提取出新的模式，形成新的记忆单元。</p>
+$$ \mathcal{G}:\left(\mathcal{M}^{(t)},\;\Delta\mathcal{B}^{(t,t+\delta)}\right)\longrightarrow\left(\mathcal{M}^{\mathrm{update}},\;\mathcal{M}^{\mathrm{new}}\right) $$
+
+<p>其中，$\mathcal{M}^{(t)}$是t时刻的记忆状态，$\Delta\mathcal{B}^{(t,t+\delta)}$是新累积的行为增量，更新后的记忆由保留或更新后的单元$\mathcal{M}^{\mathrm{update}}$与新提取的单元$\mathcal{M}^{\mathrm{new}}$共同构成。</p>
+<p>在线上，Memory Hub将Global Planner的计算开销降低了<strong>55.8%</strong>，同时通过人类评估验证，其行为模式分类准确率达到<strong>82.89%</strong>，行为索引准确率高达<strong>95.27%</strong>，证明了高质量的用户建模能力。</p>
+<h3>创新二：Hybrid-modal Foundation Model——弥合标签到商品的鸿沟</h3>
+<p><img alt="图2：混合模态基础模型架构" src="https://arxiv.org/html/2607.15591v1/x4.png" /></p>
+<p>此前，LLM输出的自然语言标签（如“适合马拉松训练的轻量跑鞋”）作为推理结果，需由下游检索模型映射到具体商品。这一过程形成了一个“损失信道”：标签过于粗糙，无法携带商品ID级别的细粒度信息。</p>
+<p>RecGPT-V3的突破在于引入<strong>Semantic IDs（SIDs）</strong>作为第二模态。SID是对商品多模态特征（文本、图像、属性）进行残差量化（RQ-VAE）后得到的离散编码。论文采用了双层码本结构，每层码本大小为32,768，融合后得到一个包含65,536个新token的扩展词表。</p>
+<p>两种模态各司其职：<br />
+- <strong>自然语言</strong>：通过开放式的世界知识表达意图<br />
+- <strong>SIDs</strong>：通过协作信号将意图精准锚定到具体商品</p>
+<p>模型的预训练分为两个阶段：首先是<strong>持续预训练</strong>，通过混合SID-文本映射数据和通用领域数据（占比约10%），教会模型理解这些新token的语义；随后是<strong>指令微调</strong>，通过SID-to-title、tag-to-SID等六类对齐任务，让模型能够在不同模态间流畅切换。这种设计使得推理出的意图表示能够与下游检索模型原生兼容，彻底突破了标签瓶颈。</p>
+<h3>创新三：Latent Intent Reasoning——将千token思维链压缩为10个隐向量</h3>
+<p><img alt="图3：隐意图推理概览" src="https://arxiv.org/html/2607.15591v1/assets/reasoning2.png" /></p>
+<p>显式思维链（Chain-of-Thought）虽能提升推理质量，但约3000 token的推理长度在十亿级用户规模和高QPS下几乎不可接受。RecGPT-V3提出了<strong>Latent Intent Reasoning</strong>，将冗长的推理过程“内化”为紧凑的可学习隐token。</p>
+<p>该机制的核心思想是：将一个完整推理链R分割为K个连续的段，每个段由一个可学习的潜变量token $z_j$ 编码。这样一来，模型推理的联合概率分布从显式形式：</p>
+$$ p_{\theta}({\bm{R}},y\mid x)=p_{\theta}({\bm{R}}\mid x)\;p_{\theta}(y\mid x,{\bm{R}}) $$
+
+<p>转变为隐式形式：</p>
+$$ p_{\theta}({\bm{z}},y\mid x)=p_{\theta}({\bm{z}}\mid x)\;p_{\theta}(y\mid x,{\bm{z}}) $$
+
+<p>论文通过一个三阶段多粒度重建任务来训练这些隐token：单段重建（每个token学习编码其对应段）、多段重建（训练token在相互制约下保持信息量）、以及全链重建（迫使整个隐序列足以恢复完整推理链）。</p>
+<p>线上推理时，显式推理的约2,840个token被压缩为仅<strong>10个隐token</strong>，推理成本降低了<strong>200倍</strong>，同时端到端速度提升了<strong>3.46倍</strong>。更关键的是，这些隐token解码后仍可还原为可读的解释文本，保证了系统的可解释性。</p>
+<h2>二、实验：在淘宝“猜你喜欢”的实战检验</h2>
+<p>RecGPT-V3在淘宝首页“猜你喜欢”场景进行了大规模在线A/B测试（实验组与对照组各占1%流量），与已大规模部署的RecGPT-V2系统直接对比。</p>
+<h3>整体效果</h3>
+<p><img alt="图4：RecGPT系列性能对比" src="https://arxiv.org/html/2607.15591v1/x1.png" /></p>
+<p>在线结果全面且显著地优于基线：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>IPV</th>
+<th>CTR</th>
+<th>PV</th>
+<th>DAU</th>
+<th>TC</th>
+<th>GMV</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>商品网格</td>
+<td>+3.08%</td>
+<td>+0.98%</td>
+<td>+2.02%</td>
+<td>–</td>
+<td>+3.10%</td>
+<td>+7.51%</td>
+</tr>
+<tr>
+<td>混合信息流</td>
+<td>+1.28%</td>
+<td>+1.00%</td>
+<td>+0.83%</td>
+<td>+0.56%</td>
+<td>+1.97%</td>
+<td>+3.97%</td>
+</tr>
+</tbody>
+</table></div>
+<p>值得注意的是，GMV在商品场景提升高达7.51%，表明模型不仅吸引了更多点击，更精准地捕捉了用户的购买意图，提升了交易转化效率。</p>
+<h3>推理效率与子模块评估</h3>
+<p>论文对每个创新点进行了细致的消融实验：</p>
+<p><strong>Memory Hub</strong>为用户建模计算节约了55.8%：在线推理阶段从100%降至33.43%，加上每两个月执行一次的增量记忆维护（10.77%），总计仅需基线成本的<strong>44.2%</strong>。</p>
+<p><strong>混合模态基础模型</strong>在与通用能力的平衡上表现卓越。通过混合10%的通用领域数据，MMLU仅下降2.65%，GSM8K仅降1.66%；而移除这些数据则导致模型“灾难性遗忘”，MMLU从0分降至0.12%。</p>
+<p><strong>隐推理</strong>带来的效率增益极为显著：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>输出长度</th>
+<th>总推理时间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>显式CoT</td>
+<td>2,840 tokens</td>
+<td>1,020秒</td>
+</tr>
+<tr>
+<td>隐推理</td>
+<td>122 tokens</td>
+<td>295秒 (↓71.1%)</td>
+</tr>
+</tbody>
+</table></div>
+<p>同时，隐推理的HR@30达到0.3462，几乎与显式CoT的0.3508持平。加上强化学习（RL）微调后，HR@30进一步提升至0.3693，超越了显式CoT的水平。</p>
+<h2>展望</h2>
+<p>RecGPT-V3证明了，大语言模型可以在工业级推荐系统中扮演“推理大脑”的角色，同时兼顾精度与效率。从无状态到有状态、从纯文本到多模态、从冗长显式推理到紧凑隐推理，这三重技术进化标志着LLM推荐系统正从“实验室可行”迈向“工业级实用”。</p>
+<p>未来，这种“记忆+混合推理”的范式或将不仅限于电商推荐，而是向信息流推荐、广告投放、甚至更广泛的Agent系统中扩展，为大模型在真实商业场景的落地提供新的可能性。</p>
+<p><strong>论文标题</strong>：RecGPT-V3 Technical Report</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.15591.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-20_RecGPT-V3-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-20_RecGPT-V3-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
