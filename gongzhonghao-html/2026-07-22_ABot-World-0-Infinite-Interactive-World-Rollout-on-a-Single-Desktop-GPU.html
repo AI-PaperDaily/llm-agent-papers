@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABot-World-0: Infinite Interactive World Rollout on a Single Desktop GPU</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">ABot-World-0: Infinite Interactive World Rollout on a Single Desktop GPU</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-23</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>本地部署秒变“游戏世界引擎”！ABot-World-0单卡RTX 5090跑出16FPS实时720P交互，如何做到的？</h1>
+<h2>引言</h2>
+<p>想象这样一个场景：你按下键盘上的“W”键，屏幕中的角色便向前奔跑，周围的街道、建筑、甚至路旁的树木都随之平滑移动——这不是在玩一款3A大作，而是由一个AI世界模型实时生成的交互世界。长期以来，世界模型要么受限于生成速度慢、延迟高，要么需要庞大的云端算力支持，难以在消费级硬件上实现实时、持久的交互体验。</p>
+<p>目标不是生成一系列视觉上合理的剪辑，而是一个持久的生成环境，其中动作改变状态，产生的观察结果指导后续动作，并且世界在交互持续时保持连贯。然而，<strong>视觉保真度、可控性、状态持久性、长期稳定性、延迟、吞吐量和内存占用</strong>这些系统级的挑战必须联合优化。</p>
+<p>最近，<strong>ABot-World团队</strong>提出了<strong>ABot-World-0</strong>，一个端到端、动作条件化的视频世界模型。该模型成功将这一切整合在一张NVIDIA RTX 5090桌面GPU上，实现了<strong>720P分辨率、最高16 FPS的实时流式生成</strong>，动作到首帧延迟仅<strong>1.2秒</strong>，峰值显存约为<strong>19 GiB</strong>。这标志着世界模型从“云端演示”向“本地可部署工具”迈出了关键一步。</p>
+<h2>一、核心方法：从数据到部署的三大创新</h2>
+<p>ABot-World-0的成功并非依赖单一技术突破，而是构建了一个全栈式解决方案，核心在于“数据”、“训练”和“部署”三方面的协同创新。</p>
+<h3>1. 数据闭环：WorldExplorer系统</h3>
+<p>数据是交互世界模型的基础。被动收集的视频很难提供精确对齐的用户动作；游戏数据又过于风格化。ABot-World的解决方案是构建一个名为<strong>WorldExplorer</strong>的智能数据采集系统。它利用强化学习驱动的智能体在3A游戏环境和仿真引擎中自主探索，并根据模型训练的反馈<strong>动态调整数据收集策略</strong>。如果模型在特定场景（如夜间、雨天）表现不佳，系统会自动增加该条件下的数据量，形成“训练反馈→弱点诊断→策略调整→智能体生成”的闭环。</p>
+<p>所有采集到的数据（包括来自互联网视频的伪标签）都经过一个<strong>包含14项确定性检查</strong>和VLM语义评估的多阶段过滤管道，确保高质量。最终，这些数据被统一标注为8维键盘动作向量（对应WASD移动和IJKL视角旋转），作为统一的控制接口。</p>
+<p><img alt="图1：数据管道概览。端到端管道耦合了智能体驱动和互联网规模的数据收集、多阶段质量过滤和结构化多模态标注。" src="https://arxiv.org/html/2607.19191v1/x1.png" /></p>
+<h3>2. 渐进式蒸馏：从双向教师到因果学生</h3>
+<p>训练一个支持长期交互的模型必须解决因果性的问题：未来的生成必须依赖于过去的历史，而不是看到未来。论文提出了一套<strong>渐进式的双向到因果蒸馏管道</strong>。</p>
+<p><strong>阶段一：训练双向教师模型。</strong> 首先，在一个预训练视频生成骨干（如Wan2.2）上，注入动作控制信号和角色记忆信息，训练一个高质量的<strong>双向Transformer教师模型</strong>。该模型在生成整个视频片段时，可以同时看到过去和未来的帧，从而学习到最准确的视觉动态：</p>
+$$p_{\phi}^{\mathrm{bi}}\!\left(\mathbf{v}_{1:T}\mid v_{0},\mathbf{a}_{1:T},\mathbf{c}\right)$$
+
+<p>其中 $\mathbf{v}_{1:T}$ 是未来视频帧，$v_{0}$ 是初始帧，$\mathbf{a}_{1:T}$ 是动作序列，$\mathbf{c}$ 是文本或参考图条件。</p>
+<p><strong>阶段二：蒸馏为因果学生模型。</strong> 为了支持实时交互，需要将双向教师转化为<strong>因果学生模型</strong>，它只能根据历史帧预测未来片段：</p>
+$$p_{\theta}^{\mathrm{causal}}\!\left(\mathbf{v}_{t:t+L-1}\mid\mathbf{v}_{0:t-1},\mathbf{a}_{t:t+L-1},\mathbf{c}\right)$$
+
+<p>这个过程通过<strong>教师强迫</strong>（用真实历史帧训练）和<strong>ODE蒸馏</strong>（将多步扩散简化为几步预测）逐步实现。</p>
+<p><strong>阶段三：LongForcing——对抗长程自回归漂移。</strong> 即便有了因果学生，模型在长距离自回归生成中仍会因误差累积而逐渐退化。为此，论文提出了<strong>LongForcing</strong>，一种最终阶段的分布匹配方案。它让学生模型在<strong>自己的长轨迹上自回归生成</strong>，然后用一个<strong>长视野的教师模型</strong>来提供分布级别的监督信号。此举有效纠正了训练中罕见的长历史上下文中的误差，显著提升了长期稳定性。</p>
+<p><img alt="图3：ABot-World-0的完整训练流程。首先将一个预训练的视频生成器适配为高质量的双向动作条件教师，然后通过教师强迫、因果ODE蒸馏和LongForcing逐步转换为因果自回归学生模型。" src="https://arxiv.org/html/2607.19191v1/x2.png" /></p>
+<h3>3. 全栈部署优化：让单卡7系GPU跑起实时交互</h3>
+<p>将复杂的扩散模型“塞”进消费级GPU并跑出实时效果，归功于一系列系统层面的激进优化。研究者将其视为一个全栈协同设计问题，而非单个算子的加速。</p>
+<ul>
+<li><strong>轻量级VAE解码器（LightVAE）</strong>：简化和剪枝了原始的VAE解码器，大幅降低了首帧延迟和峰值显存。</li>
+<li><strong>低比特混合精度推理</strong>：将DiT主干的密集线性层量化为FP8甚至更低的MXFP4/MXFP6。而VAE和文本编码器等敏感模块保持高精度，在质量和效率之间取得平衡。</li>
+<li><strong>高效Attention与位置编码</strong>：采用<strong>SageAttention2</strong>替代传统注意力计算，并设计了<strong>Fast-RoPE</strong>来加速流式生成中的位置编码，避免了重复计算。</li>
+<li><strong>内存感知调度</strong>：借鉴FramePack的理念，根据执行顺序和内存需求分阶段加载模型模块，而非一次性将整个管线常驻GPU，从而降低显存峰值。</li>
+<li><strong>有界KV缓存</strong>：避免无限制的上下文增长，采用<strong>滑动窗口式局部上下文KV缓存</strong>，使缓存占用与总生成时长无关。</li>
+</ul>
+<p><img alt="图4：ABot-World-0模型架构。将动作控制和参考角色记忆整合到一个预训练的视频DiT中。键盘动作指导动态，参考图像帮助保持角色身份。" src="https://arxiv.org/html/2607.19191v1/x3.png" /></p>
+<h2>二、实验结果：从基准测试到小时级验证</h2>
+<p>ABot-World-0在<strong>WorldRoamBench</strong>基准上进行了严格评测，该测试评估了动作可控性、视觉质量、物理规则和长程记忆。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">模型</th>
+<th style="text-align: left;">模型大小</th>
+<th style="text-align: left;">严格动作准确率↑</th>
+<th style="text-align: left;">部分动作准确率↑</th>
+<th style="text-align: left;">轨迹分数↑</th>
+<th style="text-align: left;">美学评分↑</th>
+<th style="text-align: left;">物理规则↑</th>
+<th style="text-align: left;">记忆↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ABot-World-0</strong></td>
+<td style="text-align: left;"><strong>5B</strong></td>
+<td style="text-align: left;"><strong>0.5266</strong></td>
+<td style="text-align: left;"><strong>0.7290</strong></td>
+<td style="text-align: left;">0.6752</td>
+<td style="text-align: left;"><strong>0.5039</strong></td>
+<td style="text-align: left;">0.4651</td>
+<td style="text-align: left;">0.5223</td>
+</tr>
+<tr>
+<td style="text-align: left;">Genie 3</td>
+<td style="text-align: left;">–</td>
+<td style="text-align: left;">0.4700</td>
+<td style="text-align: left;">0.6608</td>
+<td style="text-align: left;">0.6719</td>
+<td style="text-align: left;">0.4711</td>
+<td style="text-align: left;">0.4757</td>
+<td style="text-align: left;"><strong>0.5454</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">HappyOyster</td>
+<td style="text-align: left;">–</td>
+<td style="text-align: left;">0.5317</td>
+<td style="text-align: left;">0.7631</td>
+<td style="text-align: left;"><strong>0.7737</strong></td>
+<td style="text-align: left;">0.5235</td>
+<td style="text-align: left;">0.4377</td>
+<td style="text-align: left;">0.6309</td>
+</tr>
+</tbody>
+</table></div>
+<p>数据显示，ABot-World-0在关键指标上达到了<strong>最佳或第二</strong>水平，尤其是在严格的动作跟随和物理规则上表现突出。</p>
+<p><strong>LongForcing效果消融实验</strong>：在60秒的长程滚动评测中，与Causal-Forcing基线相比，LongForcing显著推迟了视觉退化。后者在生成的后半段，HPSv3分数迅速下降，并出现饱和度过高、模糊和重复纹理；而LongForcing生成的视频在后30秒内保持了更高的美学质量和更少的伪影。</p>
+<p><img alt="图10：在60秒滚动生成中，LongForcing（红色曲线）与Causal-Forcing基线（蓝色曲线）的逐帧对比。LongForcing在后半段保持了更高的HPSv3分数和更低的伪影率。" src="https://arxiv.org/html/2607.19191v1/x9.png" /></p>
+<p><strong>定性分析</strong>更是展示了令人惊叹的潜力。系统不仅能在<strong>小时级甚至天级</strong>的连续生成中保持场景和角色的一致性，还能展现出<strong>物理交互</strong>（如角色撞墙、踏雪留痕）和<strong>零样本域外泛化</strong>（在从未见过的场景中控制从未见过的角色）。</p>
+<h2>三、展望</h2>
+<p>ABot-World-0的发布证明了用消费级硬件实现实时、长程、可控的世界模拟是完全可行的。它不再是一个“点击生成视频”的工具，而是一个可以持续探索、交互和演化的<strong>本地虚拟环境</strong>。这种能力将极大降低游戏开发、具身AI训练和虚拟内容创作的门槛。</p>
+<p>未来的工作可能会探索更丰富的动作表征、多尺度的时间监督，以及如何将这种能力扩展到更广泛的消费级硬件上。当你的电脑能实时生成一个无限广阔、且物理规则自洽的开放世界时，你对“游戏”和“模拟”的定义是否会彻底改变？</p>
+<p><strong>论文标题</strong>：ABot-World-0: Infinite Interactive World Rollout on a Single Desktop GPU</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.19191.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-22_ABot-World-0-Infinite-Interactive-World-Rollout-on-a-Single-Desktop-GPU.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-22_ABot-World-0-Infinite-Interactive-World-Rollout-on-a-Single-Desktop-GPU.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
