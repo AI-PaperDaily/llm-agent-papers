@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA-labs OO Agents: Native Python Object-Oriented Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">NVIDIA-labs OO Agents: Native Python Object-Oriented Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-25</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>NVIDIA发布OO Agents：把Agent当Python对象写，性能飙升82.2%，代码即Agent？</h2>
+<p>在寻找构建可靠AI Agent的最佳实践时，开发者们往往被割裂在不同技术栈中：一边是手写提示词模板，一边是配置工具Schema，另一边又要处理各种回调函数与复杂的工作流图。这种碎片化的开发体验使得Agent开发的门槛居高不下。针对这一痛点，NVIDIA研究团队提出了一种颠覆性的新范式：将Agent直接定义为Python对象。该框架在SWE-bench Verified和Terminal-Bench 2.0等多个权威基准测试中取得了领先成绩，最高性能提升达82.2%，打破了通用开源Agent框架与专用系统之间的性能壁垒。</p>
+<h3>一、核心方法：Python即Agent</h3>
+<p>NVIDIA Object-Oriented Agents（NOOA）框架的设计哲学非常直接：“复用Python，放弃DSL”。它提出，一个AI Agent本质上就应该是一个标准的Python对象。这一思想彻底改变了Agent的开发方式。</p>
+<h4>创新点一：类即Agent，方法即能力</h4>
+<p>在NOOA中，开发者通过定义一个继承自<code>Agent</code>的Python类来创建Agent。这个类的字段就是Agent的状态，方法就是Agent可执行的动作，而文档字符串（docstring）则直接充当提示词。最巧妙的地方在于，方法体如果是<code>...</code>（省略号），就表示这是一个由LLM驱动的智能方法；如果是正常的代码体，则作为确定性逻辑执行。</p>
+<p><img alt="图1：NOOA中一个简单Agent的实现 | https://arxiv.org/html/2607.20709v1/x3.png" src="https://arxiv.org/html/2607.20709v1/x3.png" /></p>
+<p>这种设计让提示词工程回归软件工程。Agent的行为可以像常规代码一样被测试、追踪、重构和优化。例如，一个去判断“订单是否可退款”的方法，可以用普通Python函数实现；而一个“处理客户投诉”的复杂任务，则可以用<code>...</code>体声明，让LLM自主决定调用哪些工具、如何分析并产生最终输出。</p>
+<h4>创新点二：代码即动作，类型即契约</h4>
+<p>传统Agent框架通常通过LLM生成JSON调用来执行工具，这需要模型理解复杂的结构化格式。NOOA采用了截然不同的方式：<strong>让模型直接写代码</strong>。在CodeAct模式下，Agent的本质是一个Python REPL（读取-求值-打印循环）。LLM可以编写任意Python代码，调用本地库、进行循环、并发处理，甚至调用其他Agent化方法。这个设计利用了LLM在训练数据中对Python语法的深刻理解，极大降低了模型的学习负担。</p>
+<p>同时，类型注解在这里不仅是给开发者看的，更是<strong>模型与运行时之间的契约</strong>。任何Agent化方法都必须返回符合类型注解的结果，否则运行时会拒绝输出并让模型重新尝试。这一机制保证了Agent输出的结构化和可靠性。</p>
+$$ \text{Agent} = \text{Python Object}, \quad \text{Method} = \text{Action}, \quad \text{Docstring} = \text{Prompt}, \quad \text{Type Annotations} = \text{Contract} $$
+
+<h4>创新点三：按引用传递，跨越上下文窗口的鸿沟</h4>
+<p>Agent开发中的一个经典难题是上下文窗口的限制。当需要处理包含数百万行数据的大型表格时，不可能将所有数据都塞进提示词里。NOOA的解决方法是<strong>按引用传递</strong>（Pass-by-Reference）。当Agent化方法接收一个大型对象（如列表或DataFrame）时，提示词中只包含该对象的<strong>有界预览</strong>（bounded preview）。例如，一个包含一百个整数的列表，模型看到的可能只是：</p>
+<pre class="highlight"><code class="language-python">records = list ( len=100, [:5]=[42, 17, 89, 33, 8], [-5:]=[56, 71, 12, 45, 28])
+</code></pre>
+
+<p>模型知道这是一个长度为100的<code>list</code>，并看到头部和尾部的样本。但在实际的执行环境中，<code>records</code>是一个完整的、活生生的Python对象。模型可以通过编写Python代码（<code>for r in records:</code>）来处理整个列表，而无需将所有内容放入上下文窗口。这突破了Agent处理数据规模的物理限制。</p>
+<p><img alt="图2：NOOA中CodeAct策略的Agent循环 | https://arxiv.org/html/2607.20709v1/x4.png" src="https://arxiv.org/html/2607.20709v1/x4.png" /></p>
+<h3>二、实验结果：全栈制霸，效率与性能双赢</h3>
+<p>NOOA在多个关键基准测试中完成了全面验证，展现了其强大的通用性和卓越性能。</p>
+<h4>软件工程与终端交互</h4>
+<p>在SWE-bench Verified（500个真实GitHub Issue）实验中，NOOA取得了与专用AI编码系统相当的优异成绩。实验结果清晰展示了NOOA的领先地位。</p>
+<p><img alt="图3：SWE-bench Verified得分与每任务token消耗对比 | https://arxiv.org/html/2607.20709v1/x5.png" src="https://arxiv.org/html/2607.20709v1/x5.png" /></p>
+<p>在终端操作基准Terminal-Bench 2.0中，NOOA以73.0%的得分大幅领先于OpenCode（60.7%）和PI（68.5%），特别是在模型未使用高推理成本的模式下（<code>Off</code>），NOOA的优势更加明显，展现了对复杂、多步骤环境中Agent能力的高效支持。</p>
+<h4>先进交互推理（ARC-AGI-3）</h4>
+<p>在极具挑战性的ARC-AGI-3交互推理基准上，NOOA展示了其设计哲学所蕴含的巨大潜力。一个结合了“世界模型技能”和内存子系统（Memory）的单一NOOA Agent，在GPT-5.5模型上获得了<strong>50.2%</strong>的得分。而作为对比，没有内存子系统或使用简单的markdown文件替代内存的Agent，得分分别为41.7%和38.4%。这表明NOOA的<strong>对象状态持久化</strong>和<strong>内存机制</strong>是提升Agent推理能力的关键组件。</p>
+<p><img alt="图4：ARC-AGI-3得分与时间/成本的帕累托前沿 | https://arxiv.org/html/2607.20709v1/x6.png" src="https://arxiv.org/html/2607.20709v1/x6.png" /></p>
+<p>从图中可以发现，NOOA不仅性能更强，还在成本控制上表现优异。在实现最高性能的同时，其每场游戏的运行成本远低于其他方法。</p>
+<h3>三、结语</h3>
+<p>NVIDIA OO Agents的提出，不仅仅是又一个Agent开发库的诞生，更是对Agent开发思维模式的深刻重塑。它将智能体拉回到开发者最熟悉的软件工程轨道上，用Python的简洁与强大，统一了人类开发者与LLM的认知接口。当“写Agent”变成“写Python”，所有优秀的软件工程实践都能无缝迁移。这或许正是走向可靠、通用、高智能Agent的一条优雅路径。未来，Agent优化将不只是调优提示词，而是对整个“Agent对象”进行重构和进化。这种“代码即Agent”的范式，你们觉得会是未来AI开发的主流吗？</p>
+<p><strong>论文标题</strong>：NVIDIA-labs OO Agents: Native Python Object-Oriented Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.20709.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-24_NVIDIA-labs-OO-Agents-Native-Python-Object-Oriented-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-24_NVIDIA-labs-OO-Agents-Native-Python-Object-Oriented-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
