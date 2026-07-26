@@ -463,43 +463,51 @@
             </div>
             <h1 class="article-title">NVIDIA-labs OO Agents: Native Python Object-Oriented Agents</h1>
             <div class="article-meta">
-                <span class="meta-item">📅 2026-07-25</span>
+                <span class="meta-item">📅 2026-07-26</span>
             </div>
         </header>
         
         <article class="article-content">
-            <h2>NVIDIA发布OO Agents：把Agent当Python对象写，性能飙升82.2%，代码即Agent？</h2>
-<p>在寻找构建可靠AI Agent的最佳实践时，开发者们往往被割裂在不同技术栈中：一边是手写提示词模板，一边是配置工具Schema，另一边又要处理各种回调函数与复杂的工作流图。这种碎片化的开发体验使得Agent开发的门槛居高不下。针对这一痛点，NVIDIA研究团队提出了一种颠覆性的新范式：将Agent直接定义为Python对象。该框架在SWE-bench Verified和Terminal-Bench 2.0等多个权威基准测试中取得了领先成绩，最高性能提升达82.2%，打破了通用开源Agent框架与专用系统之间的性能壁垒。</p>
-<h3>一、核心方法：Python即Agent</h3>
-<p>NVIDIA Object-Oriented Agents（NOOA）框架的设计哲学非常直接：“复用Python，放弃DSL”。它提出，一个AI Agent本质上就应该是一个标准的Python对象。这一思想彻底改变了Agent的开发方式。</p>
-<h4>创新点一：类即Agent，方法即能力</h4>
-<p>在NOOA中，开发者通过定义一个继承自<code>Agent</code>的Python类来创建Agent。这个类的字段就是Agent的状态，方法就是Agent可执行的动作，而文档字符串（docstring）则直接充当提示词。最巧妙的地方在于，方法体如果是<code>...</code>（省略号），就表示这是一个由LLM驱动的智能方法；如果是正常的代码体，则作为确定性逻辑执行。</p>
-<p><img alt="图1：NOOA中一个简单Agent的实现 | https://arxiv.org/html/2607.20709v1/x3.png" src="https://arxiv.org/html/2607.20709v1/x3.png" /></p>
-<p>这种设计让提示词工程回归软件工程。Agent的行为可以像常规代码一样被测试、追踪、重构和优化。例如，一个去判断“订单是否可退款”的方法，可以用普通Python函数实现；而一个“处理客户投诉”的复杂任务，则可以用<code>...</code>体声明，让LLM自主决定调用哪些工具、如何分析并产生最终输出。</p>
-<h4>创新点二：代码即动作，类型即契约</h4>
-<p>传统Agent框架通常通过LLM生成JSON调用来执行工具，这需要模型理解复杂的结构化格式。NOOA采用了截然不同的方式：<strong>让模型直接写代码</strong>。在CodeAct模式下，Agent的本质是一个Python REPL（读取-求值-打印循环）。LLM可以编写任意Python代码，调用本地库、进行循环、并发处理，甚至调用其他Agent化方法。这个设计利用了LLM在训练数据中对Python语法的深刻理解，极大降低了模型的学习负担。</p>
-<p>同时，类型注解在这里不仅是给开发者看的，更是<strong>模型与运行时之间的契约</strong>。任何Agent化方法都必须返回符合类型注解的结果，否则运行时会拒绝输出并让模型重新尝试。这一机制保证了Agent输出的结构化和可靠性。</p>
-$$ \text{Agent} = \text{Python Object}, \quad \text{Method} = \text{Action}, \quad \text{Docstring} = \text{Prompt}, \quad \text{Type Annotations} = \text{Contract} $$
-
-<h4>创新点三：按引用传递，跨越上下文窗口的鸿沟</h4>
-<p>Agent开发中的一个经典难题是上下文窗口的限制。当需要处理包含数百万行数据的大型表格时，不可能将所有数据都塞进提示词里。NOOA的解决方法是<strong>按引用传递</strong>（Pass-by-Reference）。当Agent化方法接收一个大型对象（如列表或DataFrame）时，提示词中只包含该对象的<strong>有界预览</strong>（bounded preview）。例如，一个包含一百个整数的列表，模型看到的可能只是：</p>
-<pre class="highlight"><code class="language-python">records = list ( len=100, [:5]=[42, 17, 89, 33, 8], [-5:]=[56, 71, 12, 45, 28])
+            <h2>NVIDIA发布OO Agents：Python原生框架突破，Agent编写如普通代码，SWE-bench达82.2%</h2>
+<p>传统Agent开发正陷入一场“语言分裂”的困境：<strong>提示模板</strong>、<strong>工具Schema</strong>、<strong>回调函数</strong>与<strong>工作流图</strong>各成一体，开发者需要学习多种领域专用语言，而大模型面对这些割裂的接口同样水土不服。针对这一痛点，NVIDIA实验室近期提出一种颠覆性方案——<strong>NOOA（NVIDIA Object-Oriented Agents）</strong>，将Agent彻底定义为<strong>Python对象</strong>。其方法即模型可调用的能力，字段即状态，文档字符串即提示，类型注解即契约。这一设计在SWE-bench Verified上达到82.2%的通过率，在Terminal-Bench 2.0上达到73.0%，并以单Agent一页技能的形式刷新ARC-AGI-3互动推理基准的得分-成本帕累托前沿。</p>
+<h2>一、核心方法</h2>
+<h3>1. 回归本质：Agent即Python对象</h3>
+<p>NOOA的核心理念极具颠覆性：<strong>在Python已拥有成熟抽象的地方，直接采纳，而非发明新语言</strong>。在NOOA框架中，Agent是一个Python类，其能力表现为普通方法，类型注解承担边界契约，异步操作遵循asyncio标准，而工具与编排逻辑即为原生Python代码。</p>
+<p><img alt="图1：NOOA中一个简单Agent的实现" src="https://arxiv.org/html/2607.20709v1/x1.png?format=PNG" /></p>
+<p>如图所示，一个完整的支持Agent示例包含四个核心部分：<code>Ticket</code>类型定义了带有验证规则的输出结构；<code>SupportAgent</code>类以文档字符串承载系统提示；普通方法<code>is_refund_eligible()</code>为确定性逻辑；而主体为<code>...</code>的方法则由LLM驱动循环运行。这意味着<strong>源码、提示、工具接口、类型契约与状态边界被统一在一个对象之中</strong>，彻底消弭了开发视角与模型视角之间的鸿沟。</p>
+<h3>2. 代码即行动：用Python编程替代工具调用</h3>
+<p>传统Agent框架中，模型通过生成JSON格式的工具调用来驱动外部函数，这一过程不仅导致大量序列化开销，更迫使模型学习一套新的“工具语言”。NOOA提出了<strong>Code as Action（代码即行动）</strong>范式：模型直接编写Python代码进行思考与行动。</p>
+<pre class="highlight"><code class="language-python">@ strategy(CodeActStrategy())
+async def triage(self, message: str, photo: Image | None, order: Order | None) -&gt; Ticket:
+    ...
 </code></pre>
 
-<p>模型知道这是一个长度为100的<code>list</code>，并看到头部和尾部的样本。但在实际的执行环境中，<code>records</code>是一个完整的、活生生的Python对象。模型可以通过编写Python代码（<code>for r in records:</code>）来处理整个列表，而无需将所有内容放入上下文窗口。这突破了Agent处理数据规模的物理限制。</p>
-<p><img alt="图2：NOOA中CodeAct策略的Agent循环 | https://arxiv.org/html/2607.20709v1/x4.png" src="https://arxiv.org/html/2607.20709v1/x4.png" /></p>
-<h3>二、实验结果：全栈制霸，效率与性能双赢</h3>
-<p>NOOA在多个关键基准测试中完成了全面验证，展现了其强大的通用性和卓越性能。</p>
-<h4>软件工程与终端交互</h4>
-<p>在SWE-bench Verified（500个真实GitHub Issue）实验中，NOOA取得了与专用AI编码系统相当的优异成绩。实验结果清晰展示了NOOA的领先地位。</p>
-<p><img alt="图3：SWE-bench Verified得分与每任务token消耗对比 | https://arxiv.org/html/2607.20709v1/x5.png" src="https://arxiv.org/html/2607.20709v1/x5.png" /></p>
-<p>在终端操作基准Terminal-Bench 2.0中，NOOA以73.0%的得分大幅领先于OpenCode（60.7%）和PI（68.5%），特别是在模型未使用高推理成本的模式下（<code>Off</code>），NOOA的优势更加明显，展现了对复杂、多步骤环境中Agent能力的高效支持。</p>
-<h4>先进交互推理（ARC-AGI-3）</h4>
-<p>在极具挑战性的ARC-AGI-3交互推理基准上，NOOA展示了其设计哲学所蕴含的巨大潜力。一个结合了“世界模型技能”和内存子系统（Memory）的单一NOOA Agent，在GPT-5.5模型上获得了<strong>50.2%</strong>的得分。而作为对比，没有内存子系统或使用简单的markdown文件替代内存的Agent，得分分别为41.7%和38.4%。这表明NOOA的<strong>对象状态持久化</strong>和<strong>内存机制</strong>是提升Agent推理能力的关键组件。</p>
-<p><img alt="图4：ARC-AGI-3得分与时间/成本的帕累托前沿 | https://arxiv.org/html/2607.20709v1/x6.png" src="https://arxiv.org/html/2607.20709v1/x6.png" /></p>
-<p>从图中可以发现，NOOA不仅性能更强，还在成本控制上表现优异。在实现最高性能的同时，其每场游戏的运行成本远低于其他方法。</p>
-<h3>三、结语</h3>
-<p>NVIDIA OO Agents的提出，不仅仅是又一个Agent开发库的诞生，更是对Agent开发思维模式的深刻重塑。它将智能体拉回到开发者最熟悉的软件工程轨道上，用Python的简洁与强大，统一了人类开发者与LLM的认知接口。当“写Agent”变成“写Python”，所有优秀的软件工程实践都能无缝迁移。这或许正是走向可靠、通用、高智能Agent的一条优雅路径。未来，Agent优化将不只是调优提示词，而是对整个“Agent对象”进行重构和进化。这种“代码即Agent”的范式，你们觉得会是未来AI开发的主流吗？</p>
+<p>当一个CodeAct方法被调用时，框架启动一个Python REPL（读取-求值-打印循环）。模型可以在REPL中调用<code>execute_python(...)</code>来执行任意Python代码，包括调用其他方法、遍历数据结构、执行异步操作，甚至使用<code>asyncio.gather</code>并行派生子Agent。与通过JSON“远程过程调用”不同，<strong>模型操作的是同一个Python进程中的实时对象</strong>。</p>
+<p><img alt="图2：CodeAct策略的Agent循环" src="https://arxiv.org/html/2607.20709v1/x2.png?format=PNG" /></p>
+<p>上图展示了CodeAct策略的执行流程：从渲染上下文到调用LLM，从执行Python代码到更新事件与状态，最后到验证返回值。这一循环让Agent拥有了<strong>与开发者完全相同的编程能力</strong>，包括循环、分支、库调用与异常处理。</p>
+<h3>3. 引用传递：突破上下文窗口的物理极限</h3>
+<p>传统Agent框架中，工具调用的输入输出均为序列化文本，这意味着<strong>所有数据都必须嵌入提示词窗口</strong>。NOOA的第三个关键创新是<strong>Pass by Reference（引用传递）</strong>：模型接收的是指向内存中对象的引用而非全文序列化。</p>
+<p>例如，当方法接受一个包含100个整数的列表时，提示词中出现的仅为紧凑预览：</p>
+<pre class="highlight"><code>records = list(len=100, [:5]=[42, 17, 89, 33, 8], [-5:]=[56, 71, 12, 45, 28])
+</code></pre>
+
+<p>然而，变量<code>records</code>本身是完整的100个元素的列表对象，模型可以通过<code>for r in records:</code>对其进行全部遍历，但提示词窗口中仅出现10个样本值。这种设计意味着<strong>Agent能处理的数据量由执行环境边界而非提示词长度决定</strong>。一个方法可以接收百万行数据表，Agent通过编写代码整体操作，而提示词仅携带固定大小的预览。</p>
+<h3>4. 长时记忆与场景工程</h3>
+<p>NOOA还建立了模型可见的上下文工程API。静态上下文块（如系统提示）在整个调用周期内保持稳定；动态上下文块（如待办事项状态）每一轮重新计算；事件历史则形成结构化的执行轨迹。这些接口对开发者和模型同样开放，Agent可以主动查询、压缩或编辑自身的事件历史与记忆。</p>
+<p><img alt="图3：NOOA中的上下文渲染机制" src="https://arxiv.org/html/2607.20709v1/x3.png?format=PNG" /></p>
+<p>论文还提出了一种规范化的记忆系统，Agent通过七种工具（<code>remember</code>、<code>recall</code>、<code>search</code>、<code>update_memory</code>、<code>forget</code>、<code>associate</code>、<code>deref</code>）自主管理长期记忆，而一种BeforeTurn钩子则基于最近事件自发检索关联记忆，注入动态上下文。这种<strong>主动式记忆管理</strong>在ARC-AGI-3上带来了+11.8个百分点的收益。</p>
+<h2>二、实验</h2>
+<p>NOOA在四个互补的Agent基准测试中接受了全面评估，覆盖软件工程、命令行交互、网络安全与互动推理。</p>
+<h3>1. SWE-bench Verified与Terminal-Bench 2.0</h3>
+<p>在包含500个真实GitHub仓库问题的SWE-bench Verified上，NOOA搭配GPT-5.5以xhigh推理强度达到<strong>82.2%</strong>，显著超越OpenCode的78.6%和PI的78.2%。在包含89个终端任务（软件安装、配置、调试）的Terminal-Bench 2.0上，NOOA以GPT-5.5+high推理达到<strong>73.0%</strong>，领先OpenCode 12.3个百分点。</p>
+<p><img alt="图4：SWE-bench Verified的得分-成本帕累托前沿" src="https://arxiv.org/html/2607.20709v1/x4.png?format=PNG" /></p>
+<p><strong>更关键的是，更高分数并非源于更长轨迹</strong>：NOOA在SWE-bench上平均使用约28次模型调用、110万token即可达到82.2%，而PI使用66次调用、220万token才达到78.2%。NOOA因此定义了该基准的<strong>准确率-成本帕累托前沿</strong>。</p>
+<h3>2. CyberGym与ARC-AGI-3</h3>
+<p>在针对网络安全漏洞发现的CyberGym L1上，NOOA取得了<strong>86.8%</strong>的识别率，在所有开源Agent中排名第一。在更具挑战性的交互推理基准ARC-AGI-3上，NOOA以单Agent+50行技能+记忆系统的极简配置，取得了<strong>50.2%</strong>的RHAE，相比无记忆的消融版本（38.4%）提升了11.8个百分点，相比基线技能（41.7%）提升了8.5个百分点。</p>
+<h3>3. 能力测试</h3>
+<p>论文构建了包含88个测试实例、覆盖36个功能系列的能力测试套件，在10个模型上每个测试运行5次（共4,400个记录）。结果显示总通过率为<strong>97.9%</strong>，表明<strong>当前模型无需任何针对NOOA接口的训练即可流畅使用</strong>。即使测试中最具压力的6个系列（批量处理、错误恢复、迭代探索等），大/前沿模型仍保持了93.9%的通过率。</p>
+<h2>三、展望</h2>
+<p>NOOA的核心洞察在于：<strong>在Python已提供成熟抽象的地方，不再发明新语言</strong>。这一设计将Agent开发从“学习新框架”带回“编写普通软件”的舒适区，同时让大模型能够利用其训练数据中丰沛的Python知识。当Agent既是代码也是模型的操作对象时，提示工程回归软件工程，Agent行为可以像普通代码一样被测试、跟踪、重构与优化。NOOA不仅是一个框架，更是一种拥抱软件原生力量的Agent哲学。</p>
 <p><strong>论文标题</strong>：NVIDIA-labs OO Agents: Native Python Object-Oriented Agents</p>
 <p>欢迎投稿！欢迎合作！</p>
         </article>
