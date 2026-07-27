@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenForgeRL: Train Harness-native Agents in Any Environment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">OpenForgeRL: Train Harness-native Agents in Any Environment</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-27</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>哥伦比亚大学&amp;微软发布OpenForge RL：破解Agent规模化RL训练难题，多项基准超越强基模型</h1>
+<h2>引言</h2>
+<p>当前最先进的AI Agent很少是孤立的语言模型；它们被包裹在日益复杂的<strong>推理脚手架（inference harnesses）</strong>中——如Claude Code、Codex和OpenClaw——这些框架管理着多轮交互、工具调用和外部系统连接。然而，这些强大的“马具”也使得Agent难以在开放基础设施上进行端到端训练：现有的SFT/RL堆栈无法原生表达有状态、多进程的脚手架推理过程。论文提出<strong>OpenForge RL</strong>，一个开源框架，通过在标准RL代码库与容器化部署环境之间建立轻量级代理和Kubernetes编排器，首次实现了在任何环境下对基于harness的Agent进行规模化端到端训练。该框架在Claw和GUI两大领域的六个基准测试中，以仅几百到几千个任务的训练量，全面超越同尺寸开源模型，并在GUI任务上匹配或超越若干倍于自身规模的模型。</p>
+<h2>一、核心方法：解耦训练与推理的轻量级基础设施</h2>
+<h3>1.1 问题定义与形式化框架</h3>
+<p>论文将复杂任务形式化为一个马尔可夫决策过程（MDP）⟨𝒮, 𝒜, 𝒯, ℛ, γ⟩。在每一步，基于LLM的Agent πθ接收任务指令和观测s_t，生成动作a_t，并转移到下一观测。</p>
+<p>对于复杂任务，Agent被包裹在推理脚手架ℋ(π)中，该脚手架内部提供工具和控制流。论文将这一过程抽象为：每个提示-响应对记为(ℋ(s_t), a_t)，完整轨迹记为：</p>
+$$\tau=\left\langle(\mathcal{H}(s_0),a_0),(\mathcal{H}(s_1),a_1),\ldots,(\mathcal{H}(s_T),a_T)\right\rangle$$
+
+<h3>1.2 两大核心组件</h3>
+<p><img alt="图2：OpenForge RL概述" src="./x2.png" /></p>
+<p><strong>Component 1：轻量级代理（Proxy）</strong><br />
+该代理拦截harness对模型服务的所有生成请求，将其路由到RL框架的推理引擎，并记录所有IO对。当一次rollout完成时，代理收集终端奖励r_T和所有提示-响应对，重建训练样本：</p>
+$$ \tau=(s^{\mathcal{H}}_{0},a_{0},r_{0}),(s^{\mathcal{H}}_{1},a_{1},r_{1}),\ldots,(s^{\mathcal{H}}_{T},a_{T},r_{T});\quad r_{t}=\gamma^{T-t}\cdot r_{T}$$
+
+<p><strong>Component 2：Kubernetes编排器</strong><br />
+每个rollout在独立的远程容器中运行，编排器负责在云服务商（如微软Azure）上创建、管理和删除这些容器。这种设计解决了两个关键问题：<br />
+- <strong>解耦计算</strong>：harness rollouts所需的容器化环境（专用CPU和内存）无需与训练节点共置。<br />
+- <strong>弹性伸缩</strong>：可弹性管理并发rollout数量，不增加训练节点负担。</p>
+<h3>1.3 数据合成管道</h3>
+<p><img alt="图3：数据/任务合成管道" src="./x3.png" /></p>
+<p>针对数据稀缺的非编码领域（如日常工具使用、计算机控制），论文构建了一个SFT和RL任务合成管道。该管道模拟人类策划任务的方式：并行生成候选指令、过滤低质量任务、构建可执行环境和验证脚本、通过另一LLM/VLM测试任务并修补缺陷。每个环境由自定义Dockerfile定义，可预装任意harness（如OpenClaw、Codex）。</p>
+<p><img alt="图4：任务分布统计" src="./x4.png" /></p>
+<h2>二、实验结果：全面碾压同尺寸模型</h2>
+<h3>2.1 Claw Agent：仅需343个任务，性能飙升</h3>
+<p>使用Qwen3-30B-A3B-Thinking作为骨干模型，论文在三种流行的harness（ZeroClaw、OpenClaw、Codex）上训练了<strong>OpenForge-Claw</strong>模型。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>ClawEval (pass@3)</th>
+<th>QwenClawBench</th>
+<th>MCPAtlas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-30B-A3B-Thinking</td>
+<td>39.8</td>
+<td>21.8</td>
+<td>12.4</td>
+</tr>
+<tr>
+<td><strong>OpenForge-Claw (SFT+RL)</strong></td>
+<td><strong>55.9</strong></td>
+<td><strong>33.7</strong></td>
+<td><strong>28.1</strong></td>
+</tr>
+<tr>
+<td>Claude Opus 4.6</td>
+<td>80.8</td>
+<td>59.5</td>
+<td>76.4</td>
+</tr>
+</tbody>
+</table></div>
+<p>在ClawEval上，SFT+RL相比SFT提升显著（pass@3从52.1提高到55.9，pass^3从21.7提高到31.7），证明了在线交互训练的独特价值。</p>
+<h3>2.2 GUI Agent：超越超大模型</h3>
+<p>使用Qwen3-VL-8B作为骨干，论文训练了<strong>OpenForge-GUI</strong>模型，仅用2.5k任务就在三个GUI基准测试上取得惊人成绩：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>OSWorld-Verified</th>
+<th>Online-Mind2Web</th>
+<th>WebVoyager</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-VL-8B</td>
+<td>29.4</td>
+<td>38.7</td>
+<td>49.2</td>
+</tr>
+<tr>
+<td>UI-TARS-1.5-7B</td>
+<td>27.4</td>
+<td>31.3</td>
+<td>66.4</td>
+</tr>
+<tr>
+<td>MolmoWeb-8B</td>
+<td>–</td>
+<td>35.3</td>
+<td>78.2</td>
+</tr>
+<tr>
+<td><strong>OpenForge-GUI (SFT+RL)</strong></td>
+<td><strong>37.7</strong></td>
+<td><strong>63.0</strong></td>
+<td><strong>72.3</strong></td>
+</tr>
+<tr>
+<td>GPT 5.4</td>
+<td>72.7</td>
+<td>92.8</td>
+<td>–</td>
+</tr>
+</tbody>
+</table></div>
+<p>OpenForge-GUI在Online-Mind2Web上超越MolmoWeb近30个百分点，在OSWorld-Verified上超越UI-TARS约10个百分点。</p>
+<h2>三、深层洞察：Harness选择如何影响学习？</h2>
+<h3>3.1 不同Harness的学习难度差异</h3>
+<p>论文评估了模型在四种不同复杂度harness上的表现：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>ReACT*</th>
+<th>ZeroClaw</th>
+<th>OpenClaw</th>
+<th>Codex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td>39.8</td>
+<td>44.7</td>
+<td>19.3</td>
+<td>18.6</td>
+</tr>
+<tr>
+<td>SFT+RL</td>
+<td><strong>55.9</strong></td>
+<td><strong>67.1</strong></td>
+<td><strong>27.8</strong></td>
+<td><strong>51.5</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>关键发现：支持直接添加自定义工具的ReACT和ZeroClaw达到最高性能；SFT+RL在所有harness上带来大幅提升，但OpenClaw仅获得中等增益，其更长提示和上下文可能加大了学习难度。</p>
+<h3>3.2 跨Harness泛化能力</h3>
+<p>论文训练了两个模型：一个仅用ZeroClaw训练，另一个用三种harness联合训练：</p>
+<ul>
+<li>ZeroClaw训练模型在未见的OpenClaw和Codex上分别提升3.3和4.6</li>
+<li>多harness联合训练则在所有harness上达到最佳，Codex上提升达20.3</li>
+</ul>
+<p>这表明多样化训练能显著提升模型对不同工具和场景的鲁棒性。</p>
+<h3>3.3 RL教会了Agent什么？</h3>
+<p>通过对100条SFT和SFT+RL轨迹的对比分析，论文发现RL带来三大关键变化：</p>
+<ol>
+<li><strong>工具选择优化</strong>：通用shell调用从22.6%下降到13.9%，转向专用服务工具</li>
+<li><strong>自验证能力提升</strong>：模型学会在执行后进行自我确认</li>
+<li><strong>工具覆盖更广</strong>：R L模型在每个任务中使用更多必要工具</li>
+</ol>
+<p>然而，错误恢复能力仍是最薄弱的环节，即使经过RL训练也未显著改善，这成为未来研究的重点方向。</p>
+<h2>四、总结与展望</h2>
+<p>OpenForge RL通过创新的解耦架构，首次将复杂推理脚手架与标准RL框架无缝连接，使Agent能够在真实部署环境中进行端到端训练。论文在Claw和GUI两大领域、七个基准测试上验证了该方法的有效性，证明仅需少量数据即可训练出超越同尺寸模型、甚至匹敌大模型的Agent。</p>
+<p>这一工作为AI Agent领域提供了可扩展的研究基础设施，其开源框架将显著降低研究人员训练和分析基于harness的Agent的门槛。展望未来，如何针对性地强化Agent的错误恢复能力，以及如何进一步优化多harness联合训练策略，将是该方向的重要突破点。</p>
+<p><strong>论文标题</strong>：OpenForgeRL: Train Harness-native Agents in Any Environment</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.21557.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-24_OpenForgeRL-Train-Harness-native-Agents-in-Any-Environment.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-24_OpenForgeRL-Train-Harness-native-Agents-in-Any-Environment.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
