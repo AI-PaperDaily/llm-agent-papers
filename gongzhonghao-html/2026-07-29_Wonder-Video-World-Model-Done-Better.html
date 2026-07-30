@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wonder: Video World Model Done Better</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Wonder: Video World Model Done Better</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-30</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>Adobe &amp; JHU 联手打造 Wonder：实时交互式视频世界模型，16FPS 探索分钟级3D场景，相机控制误差暴降44%！</h2>
+<p>交互式内容生成是视频生成领域的下一个前沿。用户不再满足于观看固定时长的短视频，而是渴望能像玩游戏一样，在由一张图片或一段视频生成的虚拟世界中自由探索。然而，现有的视频生成模型在<strong>实时交互、精确的相机控制</strong>和<strong>超长时段的场景记忆</strong>之间存在难以调和的矛盾：要么生成速度快但相机指令跟不上，要么能记住场景但推理速度慢如蜗牛。</p>
+<p>来自 <strong>Adobe Research</strong> 与 <strong>约翰霍普金斯大学</strong>的研究者们提出了一套名为 <strong>Wonder</strong> 的系统性解决方案，它将一个强大的双向视频扩散模型蒸馏成一个轻量级的因果模型，实现了在 <strong>16 FPS</strong> 帧率下的分钟级交互式视频生成。在最新的基准测试中，Wonder 的<strong>相机平移误差（RPE）低至 0.0132，旋转误差仅 0.0784</strong>，大幅超越了此前所有实时流式世界模型。</p>
+<h2>一、核心方法：三大创新攻克交互式世界模型难题</h2>
+<p>Wonder 遵循了经典的“教师-学生”模型蒸馏框架，但其成功的关键在于对控制信号、记忆机制和蒸馏策略的<strong>系统级协同设计</strong>。研究者并未孤立地优化每个模块，而是将它们视为一个耦合的整体。</p>
+<h4>1. 像素空间坐标场：让模型“看懂”相机指令</h4>
+<p>传统方法要么将相机位姿编码为抽象向量，要么依赖外部模型重建点云。前者数据需求大且精度有限，后者则受限于重建视角，无法探索未知区域。</p>
+<p><img alt="图4：相机控制新范式" src="https://arxiv.org/html/2607.26037v1/x3.png" /></p>
+<p>Wonder 引入了一种名为“像素空间坐标场”的创新表示。它构建了一个包含<strong>彩色环境贴图</strong>和<strong>密集3D晶格支架</strong>的合成场景。当用户移动相机时，该合成场景被渲染成像素级对齐的视频帧，并与原始视频的噪声潜变量拼接。这相当于将抽象的相机轨迹直接转换为模型能理解的<strong>视觉证据</strong>，包含了关于平移、旋转和视差的明确线索。</p>
+<p>这个过程可以用以下公式表示，模型输入 $\mathbf{u}_{\tau}$ 由目标潜变量、掩码和相机条件组成：</p>
+$$
+\mathbf{u}_{\tau}=\left[\left[\mathbf{z}^{s},\mathbf{z}^{a},\alpha_{\tau}\mathbf{z}^{p}+\sigma_{\tau}\boldsymbol{\epsilon}\right]_{T},\left[\mathbf{0}^{s}_{m},\mathbf{1}^{a}_{m},\mathbf{1}^{p}_{m}\right]_{T},\left[\mathbf{0}^{s}_{c},\mathbf{z}^{c,a},\mathbf{z}^{c,p}\right]_{T}\right]_{C}
+$$
+
+<p>其中，$\mathbf{z}^{s}$ 是源视频潜变量，$\mathbf{z}^{a}$ 是锚定帧，$\mathbf{z}^{p}$ 是待生成帧，$\mathbf{z}^{c}$ 表示相机条件，下标 T 和 C 分别代表时间维度和通道维度的拼接。</p>
+<h4>2. 稀疏全保真记忆：告别线性增长的延迟</h4>
+<p>长时程推理时，传统方法会保留全部历史 KV 缓存，导致延迟随上下文长度线性增长。而 Wonder 提出了一种轻量级的<strong>池化查询-键摘要</strong>机制。</p>
+<p><img alt="图5：稀疏上下文强制与推理" src="https://arxiv.org/html/2607.26037v1/x4.png" /></p>
+<p>在每一推理步，模型只从完整的 KV 缓存中检索少量最相关的记忆块。检索公式如下，通过计算当前查询摘要 $\bar{\mathbf{Q}}_{t}$ 与历史缓存块摘要 $\bar{\mathbf{K}}_{c}$ 的相似度，选出 Top-K 个最具信息量的块：</p>
+$$
+\displaystyle\mathcal{A}_{t}\displaystyle=\{0\}\cup\mathcal{N}_{r}(t)\cup\operatorname{TopK}_{k}\left\{\operatorname{sim}\!\left(\bar{\mathbf{Q}}_{t},\bar{\mathbf{K}}_{c}\right)\,\middle|\,c\in\mathcal{M}(t)\right\}
+$$
+
+<p>这种设计保证了<strong>注意力计算成本恒定</strong>，使得模型能够进行分钟级的视频生成长度，同时保持稳定的推理延迟。</p>
+<h4>3. 改进的蒸馏策略：稳定控制与丰富细节</h4>
+<p>将庞大的教师模型蒸馏成少步数学生模型会带来<strong>模式坍缩</strong>和<strong>相机漂移</strong>两大问题。</p>
+<p><img alt="图6：多学生与GAN控制正则化" src="https://arxiv.org/html/2607.26037v1/x5.png" /></p>
+<p>研究者提出了两项关键技术：<br />
+- <strong>时间步级多学生模型</strong>：在4步采样器中，为不同的去噪阶段分配不同的学生网络（$G_1$ 负责粗结构，$G_2$ 负责细化，$G_3$ 负责细节），在不增加推理延迟的情况下提升了模型容量。<br />
+- <strong>GAN控制正则化</strong>：引入一个专门判断相机一致性的判别器，它利用冻结的教师模型提取<strong>低频特征差异</strong>，为学生模型提供关于控制精度的直接梯度信号，有效避免了相机漂移。</p>
+<h2>二、实验结果：全方位超越实时世界模型</h2>
+<p>研究者设计了一套严格的评估基准，包含 1000 张图片和 500 段视频，用于评估模型的生成质量和相机跟随精度。在与当前最先进的流式世界模型的对比中，Wonder 展现了显著优势。</p>
+<h4>Image-to-Video 对比</h4>
+<p>在 I2V 任务中，Wonder 相比最强基线模型，在<strong>成像质量</strong>和<strong>美学质量</strong>上均取得最高分，同时实现了最低的平移和旋转误差。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: center;">Visual Quality (Avg.)</th>
+<th style="text-align: center;">Action Accuracy (RPE ↓)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Wonder</strong></td>
+<td style="text-align: center;"><strong>0.8558</strong></td>
+<td style="text-align: center;"><strong>Trans: 0.0132, Rot: 0.0784</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">SANA-WM-Streaming</td>
+<td style="text-align: center;">0.8415</td>
+<td style="text-align: center;">Trans: 0.0240, Rot: 0.1155</td>
+</tr>
+<tr>
+<td style="text-align: left;">LingBot-World-Fast</td>
+<td style="text-align: center;">0.8261</td>
+<td style="text-align: center;">Trans: 0.0174, Rot: 0.2922</td>
+</tr>
+</tbody>
+</table></div>
+<h4>Video-to-Video 对比</h4>
+<p>在更具挑战性的 V2V 任务中，Wonder 的<strong>相机跟随误差</strong>相比唯一的开源基线 Inspatio-World 降低了近 50%，表明其在动态场景重渲染方面具有巨大潜力。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: center;">Visual Quality (Avg.)</th>
+<th style="text-align: center;">Action Accuracy (RPE ↓)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Wonder</strong></td>
+<td style="text-align: center;"><strong>0.8527</strong></td>
+<td style="text-align: center;"><strong>Trans: 0.0187, Rot: 0.1119</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Inspatio-World</td>
+<td style="text-align: center;">0.8374</td>
+<td style="text-align: center;">Trans: 0.0436, Rot: 0.2470</td>
+</tr>
+</tbody>
+</table></div>
+<p>在 “重访” 测试中，Wow 的场景一致性尤为突出。</p>
+<p><img alt="图9：重访轨迹下的记忆保持能力对比" src="https://arxiv.org/html/2607.26037v1/x8.png" /></p>
+<h2>三、应用与展望</h2>
+<p>Wonder 不仅仅是又一个视频生成模型，它代表了一种范式转变——从被动的视频生成器转向主动的、可交互的<strong>世界模拟器</strong>。其应用场景极其广泛，从游戏中的动态环境生成、虚拟制片中的实时场景设计，到具身 AI 的训练模拟器，都具有巨大的潜在价值。这套系统级的设计思路，预示了未来交互式内容生成技术将朝着更注重<strong>控制精度、记忆效率和实时性能</strong>的方向发展。尽管本文的产品是图像和视频，但这项技术是否也能为机器人领域中的“世界模型”提供一种高效的视频生成式架构？这值得进一步的思考与探索。</p>
+<p><strong>论文标题</strong>：Wonder: Video World Model Done Better</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.26037.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-29_Wonder-Video-World-Model-Done-Better.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-29_Wonder-Video-World-Model-Done-Better.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
