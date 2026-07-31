@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT-Red: Automated Red Teaming via Self-Play at Scale</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">GPT-Red: Automated Red Teaming via Self-Play at Scale</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-07-31</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>OpenAI推出GPT-Red：自对弈式自动红队智能体，攻击成功率超人类红队30%</h2>
+<h3>引言</h3>
+<p>随着大语言模型（LLM）被部署到越来越多的Agent场景中，其面对的<strong>安全威胁</strong>也日益复杂。从简单的越狱攻击到复杂的提示注入，模型的安全防线面临前所未有的挑战。传统依赖人类红队进行安全测试的方式，面临成本高、规模有限、攻击模式易过时等瓶颈。</p>
+<p>论文《GPT-Red: Automated Red Teaming via Self-Play at Scale》提出了一种全新的解决方案：通过<strong>自对弈强化学习</strong>，训练出一个足够强大的自动化红队智能体——GPT-Red。该智能体的核心任务是发现前沿模型的漏洞，并利用其发现的攻击数据来训练出迄今为止最鲁棒的模型——GPT-5.6。这项研究标志着AI安全训练迈入规模化、自动化的新阶段。</p>
+<h3>核心方法：三管齐下的自对弈训练</h3>
+<p>GPT-Red的构建并非基于单一技巧，而是通过精心设计的三个维度协同扩展：<strong>推理时计算</strong>、<strong>环境多样性</strong>和<strong>训练规模</strong>。</p>
+<h4>1. 推理时计算扩展：智能体化红队工具</h4>
+<p>传统自动红队通常进行独立攻击尝试（Best-of-N），效率低下。GPT-Red被设计为一个<strong>智能体</strong>，配备了一个强大的<code>defender_model</code>工具。该工具允许GPT-Red在单次任务中，与目标防御模型进行多轮交互，并根据反馈迭代优化其攻击策略。</p>
+<p><img alt="图1：defender_model工具使用更高效。与N次独立尝试相比，智能体化工具允许攻击者在上下文中顺序查询N次，从而提升攻击成功率。" src="https://arxiv.org/html/2607.26115v1/x2.png" /></p>
+<p>例如，攻击者可以先写一个初始攻击，提交给防御者，观察结果，然后直接编辑文件，调整攻击策略，再次提交。这种迭代式“侦察-攻击-调整”的能力，使得GPT-Red相比独立采样，在相同查询预算下能取得显著更高的攻击成功率。</p>
+<h4>2. 自对弈训练：攻击者与防御者的军备竞赛</h4>
+<p>GPT-Red的核心训练算法是<strong>自我对弈</strong>。一个攻击者模型与一个防御者模型同时进行强化学习训练：</p>
+<ul>
+<li><strong>攻击者</strong>：因成功引发模型故障（如提示注入成功）而获得奖励。</li>
+<li><strong>防御者</strong>：因成功抵御攻击并完成原始任务而获得奖励。</li>
+</ul>
+<p>随着防御者变得更强，攻击者必须探索更多样、更复杂的攻击策略。这种动态竞争形成了一个良性循环。</p>
+<p><img alt="图2：自对弈过程。攻击者与防御者动态更新，驱动攻击策略的持续进化。" src="https://arxiv.org/html/2607.26115v1/x3.png" /></p>
+<p>论文进一步引入了<strong>多防御者训练</strong>。仅仅与单一防御者进行对弈，容易导致攻击者“模式坍缩”（Mode Collapse），即只针对特定弱点进行攻击。通过让攻击者同时与多个特性各异的防御者（尤其是那些对特定攻击高度鲁棒的模型）进行对抗，迫使攻击者学会“看人下菜”，为不同模型定制差异化攻击。</p>
+<p><img alt="图3：多防御者训练效果。攻击者为不同防御者（Model A, B, C）找到的独特攻击策略，彼此间难以通用，证明了策略的专有性。" src="https://arxiv.org/html/2607.26115v1/x6.png" /></p>
+<p>论文中，攻击者与防御者的奖励机制可以抽象为：</p>
+$$
+R_{atk} = \mathbb{1}[fails] + \alpha \cdot diversity\_bonus
+$$
+
+$$
+R_{def} = \mathbb{1}[resists] + \beta \cdot task\_completion\_bonus
+$$
+
+<p>其中，$R_{atk}$ 是攻击者奖励，$R_{def}$ 是防御者奖励，$\mathbb{1}$是指示函数。攻击者成功引发故障得1分，并因攻击多样性获得奖励；防御者成功抵抗攻击并完成任务得1分。</p>
+<h4>3. 多样化训练环境：从能力任务到安全场景</h4>
+<p>为了训练出通用性强的红队智能体，论文提出将<strong>现有能力任务的训练数据转化为对抗训练环境</strong>。例如，在防御者执行网页爬取任务时，允许攻击者修改一个特定的工具（函数）返回值，如搜索结果或文件内容。这自然地将大量真实的、复杂的任务变成了测试鲁棒性的“靶场”。</p>
+<p><img alt="图4：多样化安全RL环境示例。攻击者可在不同工具（如邮件、网页、函数调用）的输出中插入恶意内容。" src="https://arxiv.org/html/2607.26115v1/x5.png" /></p>
+<p>训练环境覆盖了直接提示注入、间接提示注入（通过邮件、网页浏览、函数调用等）以及多模态攻击（通过插入恶意图片指令）。通过这一过程，GPT-Red不仅学会了代码层面的攻击，还学会了构建“假思维链”（Fake CoT）等复杂的社会工程学式攻击。</p>
+<h3>实验：接近乃至超越人类红队的表现</h3>
+<p>论文通过一系列实验验证了GPT-Red的有效性。</p>
+<h4>红队能力评估</h4>
+<p>在2025年Q4的间接提示注入挑战赛（IPI Challenge）中，GPT-Red的攻击成功率普遍<strong>超过了人类红队</strong>和基础模型GPT-5.5。</p>
+<p><img alt="图5：主流红队方法对比。GPT-Red在IPI挑战赛的平均攻击成功率（ASR）上显著优于人类红队与GPT-5.5基线。" src="https://arxiv.org/html/2607.26115v1/x1.png" /></p>
+<h4>泛化能力</h4>
+<p>GPT-Red展现出强大的泛化能力，能有效攻击未见过的目标模型（如老版GPT-5系列）、新型红队卡具（Harness）以及全新的攻击场景。例如，在针对一个由AI驱动的自动售货机系统的真实测试中，GPT-Red成功骗过系统，将商品价格改为0.50美元。</p>
+<h4>对防御者（GPT-5.6）鲁棒性的提升</h4>
+<p>最终，GPT-Red被用于生成的对抗性训练数据，用来训练GPT-5.6。实验证明，经过GPT-Red的数据训练后，GPT-5.6的鲁棒性相对于其前辈（如GPT-5.1）有了<strong>质的飞跃</strong>。尤其是在作者新发现的“假思维链”攻击上，鲁棒性从5.2%飙升至95.9%。</p>
+<p><img alt="图6：GPT-5.6鲁棒性提升。在多个直接与间接提示注入基准测试中，经GPT-Red训练的GPT-5.6鲁棒性远超早期版本GPT-5.1。" src="https://arxiv.org/html/2607.26115v1/x12.png" /></p>
+<h3>展望</h3>
+<p>GPT-Red的成功并为AI安全领域描绘了一个令人振奋的新飞轮：更强的防御者为攻击者提供了更强的学习信号，而更强的攻击者则能训练出无坚不摧的防御者。尽管“完全鲁棒”的模型尚未实现，但这项研究已经证明了通过规模化地训练自动红队智能体，我们可以在安全竞赛中始终保持领先，为未来Agent的广泛部署提供最坚实的安全保障。</p>
+<p>这项研究也引发一个有趣的思考：当AI能够自主发现并利用人类未曾想到的漏洞时，未来的安全守则和伦理规范将如何演进？</p>
+<p><strong>论文标题</strong>：GPT-Red: Automated Red Teaming via Self-Play at Scale</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.26115.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-30_GPT-Red-Automated-Red-Teaming-via-Self-Play-at-Scale.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-30_GPT-Red-Automated-Red-Teaming-via-Self-Play-at-Scale.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
