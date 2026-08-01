@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen-UI-Agent Technical Report: Toward Next-Generation Real-World Centric Foundation GUI Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Qwen-UI-Agent Technical Report: Toward Next-Generation Real-World Centric Foundation GUI Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-08-01</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>阿里发布Qwen-UI-Agent：混合GUI+CLI架构登顶手机Agent榜单，92.2%成功率惊艳业界</h1>
+<p>GUI Agent正站在从实验室走向真实世界的拐点上。模拟器里跑得飞快的模型，一上真机就频频翻车：弹出广告、验证码、失灵的滑动条，让无数号称“SOTA”的模型原形毕露。面对这一困境，阿里近日发布的Qwen-UI-Agent给出了自己的答案——高达92.2%的真实设备任务成功率，在MobileWorld-Real基准上以碾压姿态超越所有闭源模型。真机、大模型、混合行动空间、在线强化学习，这波组合拳能否真正打通GUI Agent的“最后一公里”？</p>
+<h2>一、核心方法</h2>
+<h3>1. 真实设备移动运行时：补齐模拟到真实的鸿沟</h3>
+<p>论文指出，现有多数移动Agent在模拟环境中表现优异，但面对真实设备时，应用状态动态变化、权限请求、验证码、网络波动等高频干扰让模型频繁翻车。为此，团队构建了包含<strong>超过100台物理设备和150余个应用的实时移动运行时</strong>。</p>
+<p>该框架引入健康感知调度器，持续追踪每台设备、应用、账户、网络连接和显示器的健康状态，实现动态任务路由。更巧妙的是，采用虚拟屏幕机制让一台物理手机同时承载多个应用会话，将真实设备集群的Rollout吞吐量提升了约20倍。</p>
+<h3>2. 混合GUI+CLI行动空间：用两条腿走路</h3>
+<p>单一GUI操作在结构化任务面前显得冗长低效。Qwen-UI-Agent将行动空间统一为GUI操作、CLI命令、API调用和用户交互的集合，支持在单次模型决策中批量输出多个动作：</p>
+$$(r_t, \mathbf{a}_t) = \pi_\theta(I, o_t, h_t)$$
+
+<p>其中 $o_t = (o_t^{GUI}, o_t^{CLI}, o_t^{API})$ 表示多通道观察，既包含屏幕截图，也包含命令执行结果和结构化API反馈。当 $K_t > 1$ 时，模型可在一个决策步内输出有序动作序列：</p>
+$$\mathbf{a}_t = (a_t^{(1)}, \ldots, a_t^{(K_t)}), \qquad a_t^{(k)} \in \mathcal{A}_t$$
+
+<p>在OSWorld-v2上，CLI动作占比达55.1%，超过40%的动作以批量形式输出，大幅压缩了执行轨迹长度。</p>
+<p><img alt="图1：Qwen-UI-Agent架构与跨平台执行示例" src="https://arxiv.org/html/2607.28227v1/x2.png" /></p>
+<h3>3. Agent驱动数据飞轮：让系统自己变强</h3>
+<p>传统的“人工构造数据-训练-评估-分析失败”流程在跨应用、跨平台扩展时严重拖慢迭代。Qwen-UI-Agent提出了AutoResearch风格的自动化数据飞轮，由Agent自动完成<strong>任务合成、环境构建、验证器生成、失败分析</strong>，人类仅负责全局监督和关键干预。</p>
+<p>训练过程采用分阶段的强化学习框架：先通过SFT获得初始策略，再用Action RL纠正六类常见局部错误，最后用在线RL优化端到端的长程决策。在线RL采用GRPO算法，基于验证器计算的轨迹级优势进行更新：</p>
+$$\hat{A}_i = \frac{r_i - \bar{r}_x}{\operatorname{Std}(r_1, \dots, r_K) + \epsilon}$$
+
+<p>其中验证器评估最终环境状态 $s_{\text{final}}^{(i)}$ 并输出二进制奖励 $r_i$。配合模型自适应任务课程，系统持续将中等成功率任务推入活跃训练池，将已掌握任务移入监控池，动态捕捉模型的学习边界。</p>
+<p><img alt="图2：Qwen-UI-Agent真实设备运行时与调度机制" src="https://arxiv.org/html/2607.28227v1/x4.png" /></p>
+<h3>4. 前摄服务与跨平台执行</h3>
+<p>Qwen-UI-Agent不止被动执行任务，还能主动识别手机通知中的行动信号。以航班取消为例：系统解析通知为结构化事件，关联用户的行程与日程，搜索替代方案，最终生成决策就绪的改签方案等待用户确认。跨平台执行能力则通过层次化规划器-执行器架构实现，支持移动端与桌面端的设备寻址动作和共享执行状态。</p>
+<h2>二、实验结果</h2>
+<p><img alt="图3：Qwen-UI-Agent各项基准性能概览" src="https://arxiv.org/html/2607.28227v1/x1.png" /></p>
+<p><strong>移动端表现</strong>：Qwen-UI-Agent-27B在MobileWorld上取得82.1%的成功率，超越GPT-5.6 Sol（70.1%）12个百分点；在真实设备基准MobileWorld-Real上达92.2%，超越Seed 2.1 Pro（88.7%）；AndroidDaily上更达97.5%。</p>
+<p><strong>桌面端与浏览器</strong>：OSWorld-Verified取得79.5%的得分，仅次于Claude Opus 4.8。在OSWorld-v2上，40.0%的局部进度和13.9%的完整完成率全面压制所有开源模型，且每任务步数减少21.7%至58.4%。WebArena上73.6%的成绩超越Claude Opus 4.8。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>MobileWorld-Real</th>
+<th>AndroidDaily</th>
+<th>OSWorld-Verified</th>
+<th>WebArena</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Opus 4.8</td>
+<td>84.7</td>
+<td>93.0</td>
+<td>83.4</td>
+<td>71.9</td>
+</tr>
+<tr>
+<td>GPT-5.6 Sol</td>
+<td>85.4</td>
+<td>92.6</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Seed 2.1 Pro</td>
+<td>88.7</td>
+<td>95.2</td>
+<td>78.8</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Qwen-UI-Agent</td>
+<td><strong>92.2</strong></td>
+<td><strong>97.5</strong></td>
+<td>79.5</td>
+<td><strong>73.6</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>GUI Grounding</strong>：ScreenSpot-Pro zoom-in设置下81.5%的成绩领跑所有模型；UI-Vision 70.0%同样大幅超越Seed 2.1 Pro（62.0%）。通用推理与Agent能力上，相比Qwen3.5-27B基座，GUI后训练没有牺牲通用能力，Claw-Eval反而从66.9%提升至73.5%，证明GUI能力与通用能力可以兼得。</p>
+<h2>三、展望</h2>
+<p>Qwen-UI-Agent证明了“模型-环境-数据-训练-框架”协同设计的巨大潜力。真机闭环训练让智能体摆脱了模拟器的“温室效应”，混合行动空间开辟了更高效的执行路径。当GUI Agent真正成为连接数字世界的通用执行器，下一场交互革命或许已经拉开序幕。</p>
+<p><strong>论文标题</strong>：Qwen-UI-Agent Technical Report: Toward Next-Generation Real-World Centric Foundation GUI Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2607.28227.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-07-31_Qwen-UI-Agent-Technical-Report-Toward-Next-Generation-Real-World-Centric-Foundation-GUI-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-07-31_Qwen-UI-Agent-Technical-Report-Toward-Next-Generation-Real-World-Centric-Foundation-GUI-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
