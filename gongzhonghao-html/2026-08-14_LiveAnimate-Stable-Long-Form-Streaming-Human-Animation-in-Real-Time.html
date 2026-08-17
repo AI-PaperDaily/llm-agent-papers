@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveAnimate: Stable Long-Form Streaming Human Animation in Real-Time</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">LiveAnimate: Stable Long-Form Streaming Human Animation in Real-Time</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-08-17</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>港中文发布LiveAnimate：14B DiT实现19.63FPS实时流式生成，长视频稳定生成突破</h2>
+<p>实时生成是虚拟主播、远程临场和数字人交互的关键需求，但现有的扩散模型系统生成一段数分钟的舞蹈视频通常需要数小时，根本无法支撑响应式交互。论文提出 <strong>LiveAnimate</strong>，首次在14B参数规模上同时实现实时流式推理与稳定长视频生成，输出速度达到19.63 FPS，在长达三分钟的生成中保持近乎恒定的画质与身份一致性，彻底改变了该领域「离线生成」的固有范式。</p>
+<h2>一、核心方法</h2>
+<p>LiveAnimate的核心突破在于系统性地解决了「千亿参数模型实时生成」的三个棘手问题：将双向视频模型改造为因果生成器、将去噪步数压缩至3步、防止长序列中的外观漂移。论文设计了两阶段训练流水线与创新的缓存管理机制，将三大难题逐个击破。</p>
+<h3>1. 两阶段训练：从双向到因果，从多步到3步</h3>
+<p><strong>Stage 1：Reference-Anchored Teacher-Forcing Adaptation</strong></p>
+<p>标准的视频扩散模型采用双向注意力，无法直接用于流式逐块生成。论文将训练视频切分为多个时域块，每个块在去噪时基于真实历史块进行条件生成，防止模型在训练早期「看到」自己的错误预测。</p>
+<p>在姿态驱动这一条件生成场景中，该过程引入了<strong>Ref Sink</strong>机制——通过一次前向传播将参考图像的KV状态存入全局缓存，供所有后续生成块读取：</p>
+$$\\text{Attn}(Q_b,K,V)=\\text{softmax}\\!\\left(\\frac{Q_b[K_{\\text{ref}};K_{<b}]^{T}}{\\sqrt{d}}\\right)[V_{\\text{ref}};V_{<b}]$$
+
+<p>其中 $Q_b$ 是当前块的查询向量，$[K_{\\text{ref}};K_{<b}]$ 与 $[V_{\\text{ref}};V_{<b}]$ 表示参考帧KV向量与历史块KV向量的拼接。Ref Sink使参考图像成为全局可见的「上下文锚点」，确保生成全程的视觉身份一致性。</p>
+<p>在推理时，完成去噪的块会通过Clean KV Update（公式2）额外执行一次干净时间步的前向传播以更新缓存：</p>
+$$\\text{KV}_{\\text{cache}}\\leftarrow\\text{KV}_{\\text{cache}}\\cup\\text{Forward}(\\hat{z}_{b}^{0},t{=}0,\\mathcal{C})$$
+
+<p>这一步将历史状态统一到因果上下文所使用的干净噪声水平，为后续块提供一致的视觉上下文。</p>
+<p><strong>Stage 2：Block-wise Self-Forcing Distillation</strong></p>
+<p>仅靠教师强制获得的因果模型仍需要50步去噪，难以满足实时性需求。论文基于Self-Forcing思想设计了<strong>BS-DMD</strong>蒸馏方案，采用两遍式的分块重放策略：</p>
+<ul>
+<li><strong>第一遍</strong>：学生模型在无梯度跟踪下执行完整自回归生成，每个块都在「学生自己生成的历史」条件下产生</li>
+<li><strong>第二遍</strong>：每次只选择一个块进行梯度回传，其余块的历史KV状态全部做stop-gradient处理，生成完整的并评估分布匹配目标</li>
+</ul>
+$$z_{T}^{\\theta}=G_{\\theta}\\!\\left(\\epsilon_{T};\\operatorname{sg}\\!\\left(\\operatorname{KV}(\\bar{z}_{<T})\\right),\\mathcal{C}_{T}\\right)$$
+
+<p>其中 $\\operatorname{sg}(\\cdot)$ 表示stop-gradient操作。这种逐块回放策略将学习信号均匀传递到每个块位置，同时避免在内存中保留整个自回归轨迹的激活图，使140亿参数的蒸馏训练在单台8×80GB GPU节点上即可完成。</p>
+<h3>2. PR-Sink：有界缓存下的长序列稳定生成</h3>
+<p>流式生成面临「内存-上下文」的经典困境：保留全部历史KV状态则内存线性增长；有界缓存会无可挽回地丢失已滑出窗口的外观证据。论文提出的<strong>Pose-Retrieval Sink Attention</strong>在缓存与上下文之间找到了优雅的平衡点：</p>
+<ul>
+<li><strong>Static Sink</strong>：永久锚定序列的第一个生成块，提供时间不变的外观锚点</li>
+<li><strong>Dynamic Sink</strong>：通过姿态检索从记忆库中召回与当前姿态最相似的历史块，恢复已脱离滚动窗口的视角与姿态特征</li>
+<li><strong>三个槽位的Rolling Window</strong>：包含最近的干净历史块与当前生成块</li>
+</ul>
+<p>系统从完整的133个全身关键点（20个身体节点+21个左手+21个右手）提取558维的姿态指纹，通过余弦相似度进行检索：</p>
+$$\\bm{\\phi}_{b}=\\operatorname{Norm}\\!\\left(\\operatorname{Concat}_{t=1}^{3}\\{\\mathbf{p}_{b,t,k}\\}_{k\\in\\mathcal{K}}\\right)$$
+
+<p>记忆库采用<strong>多样性优先</strong>的更新策略：当新条目进入时，系统逐一测试替换现有条目的效果，只接受能降低库内平均相似度的替换，确保存储的姿态覆盖范围最大化，显著优于「存储最近」或「存储最重复」等简单策略。</p>
+<p>此外，PR-Sink在缓存KV前去除RoPE位置编码并在读取时重新旋转，使同一记忆条目可在任意后续时刻被复用，不会产生位置失配问题。</p>
+<h3>3. 系统级优化：Ulysses序列并行 + 算子融合</h3>
+<p>在基础设施层面，LiveAnimate采用Ulysses序列并行模式：各GPU在本地计算Q/K/V投影后，通过两次all-to-all通信切换为按注意力头划分的并行布局，注意力计算得以跨GPU均衡分布。所有DiT块经torch.compile预编译，覆盖三种分辨率（480×480、672×384、384×672）以最大化内核效率。这些优化使双卡吞吐达到19.63 FPS，相对单卡的并行效率为79.1%。</p>
+<h2>二、实验</h2>
+<h3>1. 三分钟长视频基准测试</h3>
+<p>论文构建了一个包含24对参考图像与驱动视频的三分钟测试集，将生成质量按时间窗口切分以隔离累积退化效应。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>0-30s IQA</th>
+<th>120-180s IQA</th>
+<th>0-30s DINO-S</th>
+<th>120-180s DINO-S</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LiveAnimate</td>
+<td><strong>4.047</strong></td>
+<td><strong>4.026</strong></td>
+<td><strong>0.833</strong></td>
+<td><strong>0.818</strong></td>
+</tr>
+<tr>
+<td>EverAnimate</td>
+<td>3.849</td>
+<td>3.438</td>
+<td>0.780</td>
+<td>0.679</td>
+</tr>
+<tr>
+<td>One-to-All</td>
+<td>3.402</td>
+<td>1.786</td>
+<td>0.769</td>
+<td>0.328</td>
+</tr>
+<tr>
+<td>Wan2.2-Animate</td>
+<td>-</td>
+<td>-</td>
+<td>0.795</td>
+<td>0.770</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="图3：全身序列三分钟定性对比" src="./https://arxiv.org/html/2608.11745v2/qualitative_full_body.png" /></p>
+<p>LiveAnimate的IQA从第一个30秒区间到最终区间几乎不变（4.047 vs 4.026），DINO-S仅下降0.015。相比之下，One-to-All的IQA在数分钟内骤降了近一半，DINO-S跌至0.328，说明身份信息几乎完全丢失。定性对比显示，SCAIL与UniAnimate-DiT全局结构保持尚可但帧间闪烁明显；Wan-Animate与EverAnimate则在后段出现显著的色彩和背景漂移。</p>
+<h3>2. 消融实验与推理性能</h3>
+<p><img alt="图7：三分钟滚动窗口定量消融结果" src="./https://arxiv.org/html/2608.11745v2/ablation_results.png" /></p>
+<p>消融实验验证了各组件不可替代的作用。移除Dynamic Sink使末端段的DINO-S从0.818降至0.805；移除Static Sink则造成灾难性退化——DINO-S暴跌至0.693，人物和背景在序列中几乎完全改变。这表明姿态匹配检索无法替代时间不变的全局锚点。禁用RoPE跟随同样削弱末端身份保持（DINO-S降至0.801），而将DMD蒸馏替换为传统教师强制则造成持续滑落（IQA从3.849至3.438）。完整的系统稳态推理每个12帧块耗时0.611秒，去噪占比75.07%，Clean KV Update占24.39%，PR-Sink检索开销仅0.542%。</p>
+<h2>三、展望</h2>
+<p>LiveAnimate首次证明千亿参数视频扩散模型可以实时运行并稳定输出长视频，为直播数字人、虚拟试穿和远程临场等交互式应用打开了新的可能性窗口。将实时流式生成扩展至更高分辨率、多人场景与相机动态，将是该方向的下一个挑战目标。当生成不再需要等待，数字人的世界将真正走向实时互动。</p>
+<p><strong>论文标题</strong>：LiveAnimate: Stable Long-Form Streaming Human Animation in Real-Time</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2608.11745.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-08-14_LiveAnimate-Stable-Long-Form-Streaming-Human-Animation-in-Real-Time.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-08-14_LiveAnimate-Stable-Long-Form-Streaming-Human-Animation-in-Real-Time.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
