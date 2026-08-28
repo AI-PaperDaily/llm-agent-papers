@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIT-Agent: Scaling Harness Intelligence via Just-in-Time Harness Evolution</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">JIT-Agent: Scaling Harness Intelligence via Just-in-Time Harness Evolution</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-08-29</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>NUS提出JIT-Agent：实现Agent架构即时进化，DeepSeek-V4-Flash性能超越GPT-5.6</h2>
+<h2>一、Agent的瓶颈不在模型，而在“脚手架”</h2>
+<p>大模型Agent的实际能力由两个紧密耦合的因素决定：产生推理与动作的<strong>基础模型</strong>，以及将其置于闭环执行环境中的<strong>Agent Harness</strong>（代理脚手架）。Harness负责历史留存、局部意图形成、工具/技能暴露、动作执行以及验证与恢复触发。一个强大的模型如果被置于错误的内存、规划器或动作协议之后，也可能失败；反之，一个优秀的Harness只有在模型能理解并遵循时才能解锁能力。因此，Agent智能不是模型权重的固有属性，而是<strong>模型–Harness对</strong>的属性。</p>
+<p>当前主流方法采用<strong>Ahead-of-Time (AOT)</strong> 范式：将Harness视为一个持久化工件，在经验流上优化，期望其泛化到未来任务。然而不同任务对Harness的先验需求截然不同：宽搜索任务需要并行证据探索，终端任务偏好精简串行ReAct循环，深度研究任务需要检索证据的工作记忆，编码任务则依赖文件系统状态。优化单一AOT Harness跨异构任务既繁琐又低效。针对这一难题，论文提出了<strong>Just-in-Time (JIT)</strong> 视角：训练一个元代理，在任务到达时即时合成任务特定的Harness，由任意现成的Agentic LLM执行。</p>
+<h2>二、核心方法：Harness智能的可训练化</h2>
+<h3>2.1 模块化Harness协议</h3>
+<p>论文将Agent Harness形式化为一个可组合的、机器可生成的工件，通过固定四模块协议进行治理。每个Harness $\mathbf{h}$ 可分解为：</p>
+$$\mathbf{h}=(\mathbf{M},\mathbf{P},\mathbf{A},\mathbf{F})$$
+
+<p>其中 $\mathbf{M}$ 表示记忆模块（如何压缩历史）、$\mathbf{P}$ 表示规划模块（如何形成局部指令）、$\mathbf{A}$ 表示动作模块（如何推进控制循环）、$\mathbf{F}$ 表示能力编排模块（如何协调工具与技能）。所有模块遵循统一协议 $\boldsymbol{\Pi}$，其运行时依赖顺序为 $\mathbf{M}\rightarrow\mathbf{P}\rightarrow\mathbf{F}\rightarrow\mathbf{A}$。这一分解将异构程序转化为可比坐标，使Harness生成成为在类型化、可重组设计空间上的组装问题，而非无约束程序合成。</p>
+<p><img alt="图2：JIT-Agent方法概述" src="https://arxiv.org/html/2608.25593v1/jit_method_overview_final.png" /></p>
+<h3>2.2 三阶段训练管线</h3>
+<p>JIT-Agent是一个<strong>27B参数</strong>的元代理，基于Qwen3.6-27B训练，通过三阶段管线获得三种核心能力：<strong>适应性</strong>（匹配Harness到任务与骨干模型）、<strong>可靠性</strong>（确保可执行行为并在合成失败时恢复）、<strong>可进化性</strong>（将执行反馈转化为更强的未来Harness）。</p>
+<p><strong>Stage I：任务条件定制</strong>。使用一个冻结的更强教师模型 $q_{\phi}$ 在四模块协议下合成任务自适应Harness。每个任务采样三个参考脚手架，教师生成候选Harness，仅保留通过协议验证与执行检查的样本，形成监督微调数据集。同时利用偏好学习，当候选Harness在奖励提升且不牺牲延迟或成本的条件下优于基线时，构建偏好对：</p>
+$$\mathbf{h}^{+}\succ_{\tau}\mathbf{h}^{-} \iff r^{+}>r^{-} \land \ell^{+}\leq\ell^{-} \land \kappa^{+}\leq\kappa^{-} \land (\ell^{+}<\ell^{-} \lor \kappa^{+}<\kappa^{-})$$
+
+<p>最终Stage I目标结合生成模仿损失与参考锚定的偏好损失，使模型偏向同时更有效且更高效的Harness。</p>
+<p><strong>Stage II：反馈驱动修复</strong>。Stage I生成的Harness不一定可执行。对于静态或运行时验证失败的样本，教师提出结构化补丁 $\Delta^{(k+1)}$，在最多两轮内修复。保留那些最终变得可执行的修复轨迹，训练JIT-Agent在短视距内根据诊断报告恢复协议有效执行，而非一次性重新合成。这一步将失败样本转化为高杠杆修复监督。</p>
+<p><strong>Stage III：Evo-GDPO在线进化</strong>。该阶段将测试时Harness进化本身作为可训练能力。Evo-GDPO (Evolutionary Group-Decoupled Policy Optimization) 从当前策略采样一组候选Harness，与来自Harness银行的现有前沿设计在相同骨干、预算和评估种子下执行。奖励通道主导，效率通道仅在候选保持奖励不低于现有前沿时激活：</p>
+$$R^{\mathrm{rew}}_{i}=r_{i}+\lambda_{\mathrm{evo}}\,[r_{i}-b_{r}]_{+}$$
+
+$$R^{\mathrm{lat}}_{i}=\mathbb{I}[r_{i}\geq b_{r}]\,[b_{\ell}-\bar{\ell}_{i}]_{+}$$
+
+$$R^{\mathrm{cost}}_{i}=\mathbb{I}[r_{i}\geq b_{r}]\,[b_{\kappa}-\bar{\kappa}_{i}]_{+}$$
+
+<p>三个信号分别归一化后合并，最终PPO风格裁剪目标驱动策略更新。训练后，Harness银行保守更新：仅当候选达到或超过当前奖励前沿并在至少一个前沿维度（奖励、延迟或成本）严格改进时才保留。这使测试时Harness改进成为一种训练得到的能力，而非外部搜索启发式。</p>
+<p><img alt="图3：JIT-Agent训练管线" src="https://arxiv.org/html/2608.25593v1/jit_training_pipeline_frontier.png" /></p>
+<h2>三、实验：大规模基准验证</h2>
+<p>论文在九项异构基准上评估JIT-Agent，覆盖深度研究、日常工作、规划和工作区四类任务。主结果表格（Table 3）显示：<strong>JIT-Agent与GLM-5.2结合，在九个基准中的七个排名第一</strong>，包括DeepSearchQA 93.9、AgentIF 69.9、PinchBench 93.3；配备JIT-Agent的DeepSeek-V4-Flash在所有报告基准上超过更强的DeepSeek-V4-Pro，平均优势8.7分。直接匹配的18对骨干–基准中，JIT生成Harness全部优于默认脚手架，GLM-5.2平均提升7.7分，DeepSeek-V4-Flash平均提升8.8分。</p>
+<p><img alt="图1：四个代表性Agent基准的排行榜" src="https://arxiv.org/html/2608.25593v1/four_benchmark_leaderboard.png" /></p>
+<p>与先进固定Harness（Claude Code、Codex、OpenCode、Hermes、NanoBot）的受控对比中，<strong>JIT-Agent在六个设置中四个取得最高性能，所有六个设置中拥有最低的token消耗和API成本</strong>。以DeepSeek-V4-Flash为骨干，JIT-Agent在DeepSearchQA上得分85.1，成本0.066美元，相比最强固定Harness NanoBot（80.4分，0.131美元）性能提高4.7分，成本降低49.6%。平均成本降低36.0%，证明JIT生成的Harness不是通过更长轨迹购买精度，而是实现了更短、更选择性的执行。</p>
+<p><img alt="图4：DeepSearchQA和AgentIF上的成本–性能前沿" src="https://arxiv.org/html/2608.25593v1/advanced_harness_cost_performance_dsqa_agentif.png" /></p>
+<p>泛化测试覆盖DeepSeek V4、Qwen3.6、Mimo-V2.5三家族各两个变体，共24对比较中JIT生成Harness全部超过ReAct基线，平均提升7.6分。测试时进化实验显示，Streaming JIT（保留并更新Harness银行）在三项规划/工作区任务流上的累积准确率均高于Static JIT，且成本与工具调用轨迹未明显增加。可视化案例表明，同一生成器能够针对不同任务结构生成截然不同的Harness：为跨应用工件生产生成基于DAG的Palimpsest，为多跳研究生成带递归委派的Trapdoor，证明共享协议约束接口而不限制行为。</p>
+<h2>四、Harness智能：超越模型缩放的新维度</h2>
+<p>JIT-Agent首次将Harness工程从人工AOT设计转变为可学习、可迁移、可复利的<strong>Harness智能</strong>。其核心价值在于：不改变模型权重、不增加推理计算，仅通过即时优化操作脚手架，即可让高效骨干超越前沿模型，让强模型获得额外增益。这一工作指向一种更长远的<strong>模型–Harness协同设计</strong>范式：未来基础模型将不仅学习在给定Harness内行动，更学习改进它们赖以行动的Harness本身，为自适应接口、可验证运行时修改以及模型与执行系统联合缩放开辟研究议程。<br />
+```</p>
+<p><strong>论文标题</strong>：JIT-Agent: Scaling Harness Intelligence via Just-in-Time Harness Evolution</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2608.25593.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-08-27_JIT-Agent-Scaling-Harness-Intelligence-via-Just-in-Time-Harness-Evolution.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-08-27_JIT-Agent-Scaling-Harness-Intelligence-via-Just-in-Time-Harness-Evolution.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
