@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beyond Data Scaling: Representation-Centric Continued Pre-training for Vision-Language-Action Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Beyond Data Scaling: Representation-Centric Continued Pre-training for Vision-Language-Action Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-01</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>研究团队推出VLAct：表示为中心继续预训练，LIBERO-Plus达82.6%，16GPU挑战工业VLA</h2>
+<h3>引言</h3>
+<p>机器人数据是构建通用视觉-语言-动作（VLA）模型的核心瓶颈。与可从互联网海量爬取的图文数据不同，机器人轨迹必须通过真实物理交互采集，成本高昂且对物理世界的覆盖天然稀疏。这意味着，在固定的机器人数据预算下，VLA继续预训练的核心任务并非简单地拟合动作标签，而是将有限的轨迹转化为可迁移的视觉-动作表征。现有方法往往将预训练视为大规模动作拟合，导致学习到的表征过度绑定单一动作头或单一实施例，难以泛化到新任务、新场景甚至新机器人形态。论文提出 <strong>VLAct</strong>，一种以表示为中心的VLA继续预训练方法，从预训练视觉语言模型（VLM）出发，在多实施例机器人数据上进行表征塑造，而非单纯优化动作预测精度。该方法在多个基准上展现出与工业级VLA系统相当甚至更优的性能，而训练资源仅为16块GPU和全开源数据。</p>
+<h3>一、核心方法：三条表征设计原则</h3>
+<p>VLAct的继续预训练包含三个关键设计：<strong>保留VLM先验、多动作头协同监督、跨实施例动作空间部分统一</strong>。整体框架如图1所示。</p>
+<p><img alt="图1：VLAct总体框架" src="https://arxiv.org/html/2026.08.01.001v1/figures/overview.png" /></p>
+<p>图1展示了VLAct的继续预训练与下游微调流程。继续预训练阶段，VLAct冻结视觉编码器和浅层LLM层，混合机器人轨迹与图像描述数据；多个连续动作头（OFT、PI、GR00T）共享骨干特征并联合监督；动作空间仅在对物理语义一致的维度（如夹爪开合）上进行统一。微调阶段则丢弃预训练动作头，重新初始化任务特定动作头。</p>
+<h4>1. 保留VLM先验：浅层冻结与描述数据混合</h4>
+<p>VLM的视觉-语言表示来自大规模互联网数据，具有广泛的物体、属性和空间关系覆盖。若在窄分布机器人数据上端到端更新全部参数，会侵蚀这种泛化能力。因此，VLAct冻结整个视觉编码器和LLM的下半部分，只更新上层LLM层和动作头。同时，在机器人轨迹中混合图像描述数据，用密集的视觉-语言监督锚定可训练层，避免表示漂移。消融实验显示，该策略在LIBERO-Plus和Agilex上分别带来3.7%和3.4%的性能提升。</p>
+<h4>2. 多动作头协同监督：避免特定头表征坍缩</h4>
+<p>先导实验揭示了一个反直觉现象（图2）：连续动作监督虽然能提升同头微调性能，但跨头迁移时表现急剧下降，说明骨干特征几何结构被单一动作头重塑，产生“特定头表征坍缩”。离散FAST头虽然可跨头迁移，但因离散化丢失细粒度动作信息。</p>
+<p><img alt="图2：动作监督对VLA骨干表征的重塑" src="https://arxiv.org/html/2026.08.01.001v1/figures/pilot_study.png" /></p>
+<p>为同时保留细粒度动作信息并支持多种下游动作头，VLAct在继续预训练期间同时附加三个连续动作头：OFT（回归）、PI（流匹配）和GR00T（扩散风格）。三个头共享相同的骨干隐表示z，对相同的地面真值动作块a进行预测。训练目标为：</p>
+$$\mathcal{L}_{\mathrm{action}}=\mathcal{L}_{\mathrm{OFT}}+\mathcal{L}_{\mathrm{PI}}+\mathcal{L}_{\mathrm{GR00T}}$$
+
+<p>该设计利用动作头多样性作为正则化信号，迫使骨干编码的动作信息不再依赖单一解码器几何形状。多动作头协同监督不仅提升跨头迁移能力，还强化了同头微调下的动作特征质量。</p>
+<h4>3. 跨实施例动作空间部分统一</h4>
+<p>不同机器人实施例具有不同的动作空间维度。常见做法是为每个机器人类型配置独立动作头，但这会隔离共享的动作语义。VLAct采用部分统一的动作空间：夹爪维度因开合语义一致而共享，手臂维度因运动学差异保持实施例特定。训练时，每个样本仅在其活动维度上计算损失，非活动维度被掩码。图4对比了三种动作空间设计。</p>
+<p><img alt="图4：统一动作空间设计对比" src="https://arxiv.org/html/2026.08.01.001v1/figures/unified_action_space.png" /></p>
+<p>这种部分统一无需额外的实施例适配器或路由模块，仅通过共享坐标诱导跨实施例共享。此外，对周期关节角度（如179°与-179°）使用环绕感知损失，以角度残差模360°计算，避免绝对角度回归中的错误巨大距离。</p>
+<h3>二、实验：多基准全面验证</h3>
+<h4>1. 单臂Franka操作基准</h4>
+<p>在LIBERO-Plus上，VLAct达到82.6%的总成功率，超过Qwen3VL-OFT基线7.6个百分点，并优于阿里大规模工业系统ABot-M0（80.5%）。特别是在相机视角、机器人状态、噪声和布局等扰动维度上，VLAct相比基线提升最大，表明表示为中心继续预训练带来了更强的视觉-空间鲁棒性。</p>
+<p>表1对比了各方法在LIBERO-Plus各扰动维度上的表现，VLAct在多数维度上取得最优或次优。</p>
+<h4>2. 双臂AgileX操作基准</h4>
+<p>RoboTwin 2.0的Clean和Random评估场景下，VLAct-OFT分别达到92.5%和90.8%，超过InternVLA-A1（89.4% / 89.6%）、Being-H0.7（90.2% / 89.6%）等工业前沿VLA系统。在仅使用50条干净轨迹的Base设置下，VLAct仍取得80.5%的Clean成功率，而基线Qwen3VL-OFT仅为61.7%，显示出强大的数据效率。图5（a-c）展示了真实机器人实验中的一致性提升。</p>
+<p><img alt="图5：真实机器人评估与跨实施例迁移" src="https://arxiv.org/html/2026.08.01.001v1/figures/real_robot_results.png" /></p>
+<p>真实机器人实验中，VLAct在单臂短程、长程、双臂协调任务上均优于非预训练基线。尤其在双臂协调任务上，平均成功率从44.0%提升至72.0%，在折叠衣物等变形物体操作任务上增益最为显著。</p>
+<h4>3. 未见实施例迁移</h4>
+<p>RoboCasa-GR1：GR-1人形机器人在继续预训练期间完全未见。使用20%下游数据，VLAct即达到49.5%，超过全数据GR00T-N1.6基线（47.6%）；使用全数据后提升至54.0%。这证明VLAct学到的动作表征可迁移到全新形态学实施例。</p>
+<p>RoboDojo：在35个策略的官方榜单中，VLAct按成功率排名第六（7.60%），按平均分数排名第八（10.66），超越所有明确指定的世界-动作模型（WAM）条目。表3展示了前20名策略的详细得分，VLAct在精度和长程任务上相比同源StarVLA-α提升显著，但在记忆任务上仍存在局限。</p>
+<h3>三、展望：表示学习成为VLA独立进展轴</h3>
+<p>VLAct的结果表明，在固定机器人数据预算下，继续预训练的表征设计是一个独立于数据规模的关键进展轴。其开源全栈方案仅需16块GPU，为学术团队和中小型实验室提供了与工业系统竞争的路径。未来，如何进一步扩展多实施例数据覆盖、缓解记忆类任务中的表征瓶颈、以及将表示为中心理念推广到更大规模VLM骨干，将是值得探索的方向。当数据无法无限增长时，让每一份轨迹都塑造可复用的通用表征，或许才是通往通用机器人智能的实质路径。</p>
+<p><strong>论文标题</strong>：Beyond Data Scaling: Representation-Centric Continued Pre-training for Vision-Language-Action Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2608.27550.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-08-31_Beyond-Data-Scaling-Representation-Centric-Continued-Pre-training-for-Vision-Language-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-08-31_Beyond-Data-Scaling-Representation-Centric-Continued-Pre-training-for-Vision-Language-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
