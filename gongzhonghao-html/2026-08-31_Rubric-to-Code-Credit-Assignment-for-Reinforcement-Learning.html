@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rubric-to-Code Credit Assignment for Reinforcement Learning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Rubric-to-Code Credit Assignment for Reinforcement Learning</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-02</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>蚂蚁集团RCCA框架登顶ArtifactsBench：41.25分超越Claude Opus 4.5</h2>
+<h2>一、当生成式代码撞上“交互”这道墙</h2>
+<p>大型语言模型正在从“写代码片段”走向“交付可用软件”。在交互式网页应用生成场景中，模型需要根据自然语言需求，产出完整的HTML、CSS和JavaScript应用，并确保按钮点击、状态更新、DOM渲染等用户可感知的行为全部正确。</p>
+<p>但这一任务的训练信号存在一个根本性错配：标准GRPO将多个功能需求折叠成一个序列级奖励，再把优势值均匀施加到所有生成token上。模型知道“这个应用不合格”，却不知道“是哪段代码让它不合格”。蚂蚁集团Inclusion AI与中南大学联合提出的<strong>Rubric-to-Code Credit Assignment（RCCA）</strong>框架，正是要解开这个信号黑箱。</p>
+<p>论文提出的Ling-RCCA-Flash在MiniAppBench上取得41.25分，从Ling-3.0-Flash的9.05分跃升32.20分，以微弱优势超越Claude Opus 4.5；在ArtifactsBench上更以76.19分登顶官方排行榜，超越GPT-5达3.64分。</p>
+<p><img alt="图1：MiniAppBench上各模型平均通过率对比，Ling-RCCA-Flash以41.25分位居前列" src="https://arxiv.org/html/2608.27906v2/img/pass_rate_chart.png" /></p>
+<h2>二、RCCA的三层信号修复机制</h2>
+<h3>1. Rubric驱动的训练数据构造</h3>
+<p>传统RL训练任务往往只有一个模糊的自然语言请求，缺乏可验证的细粒度目标。RCCA为每个训练样本显式绑定一组功能rubric $\mathcal{R}=\{r_{1},\ldots,r_{M}\}$，每条rubric描述一个可独立检查的用户侧需求。</p>
+<p>这些rubric被分为两类：<strong>初始状态rubric</strong>要求页面加载后立即满足某些属性（如特定元素存在、默认值正确）；<strong>动态rubric</strong>要求用户在交互后触发预期行为（如点击打开面板、输入更新内容）。同一组rubric贯穿训练全程，既用于评估采样结果，也用于计算层级奖励，还用于后续的代码定位——这让任务构造、奖励计算和信用分配三条线在同一套语义框架下对齐。</p>
+<h3>2. 分层奖励：把“失败”拆成四种颜色</h3>
+<p>直接聚合rubric通过率有一个盲区：输出格式错误、JavaScript语法错误、运行时崩溃、功能部分缺失，是四种性质完全不同的失败，但标量奖励会把它们混为一谈。RCCA设计了一个四阶段门控奖励：</p>
+$$R(y,\mathcal{R})=\begin{cases}0,&F(y)=0,\\0,&S(y)=0,\\0.1,&E(y)=0,\\R_{\mathrm{rubric}},&\text{otherwise},\end{cases}$$
+
+<p>其中 $F$、$S$、$E$ 分别表示格式校验、源码校验和运行时校验是否通过。只有全部通过门控的应用才进入rubric级评估。这一设计让组内优势比较有了更清晰的层级结构：一个能运行但功能缺失的应用，与一个连页面都渲染不出来的应用，在奖励空间中不再混为一谈。</p>
+<p>通过门控后，rubric级奖励按违规的<strong>重要性等级</strong>（核心功能、行为正确性、渲染质量）和<strong>违规严重程度</strong>计算：</p>
+$$R_{\mathrm{rubric}}=\max\left(0.2,\,1-\sum_{r_{j}\in\mathcal{V}}p(\ell_{j},q_{j})\right)$$
+
+<p>对于核心功能的严重违规，还设置了分数上限，防止被其他次要需求的满足所掩盖。</p>
+<h3>3. Rubric-to-Code定位：让token收到“精准罚单”</h3>
+<p>这是RCCA最核心的创新。评估器不仅给出标量分数，还生成<strong>诊断性文本归因</strong>：每次检测到失败时，同时输出相关的代码片段、事件处理器、状态变量、DOM区域或交互路径。</p>
+<p>这些文本证据经过源码级关系扩展——包围函数、事件绑定、状态读写、函数调用——形成局部化的源码区间。然后将字符级区间通过tokenizer偏移映射对齐到生成token序列上，赋予不同的诊断权重：</p>
+$$w_{i,t}=\begin{cases}\bar{w}_{i,t},&A_{i}<0,\\1,&A_{i}\geq 0\ \text{and}\ t\in\mathcal{T}^{\mathrm{dir}}\cup\mathcal{T}^{\mathrm{ctx}},\\c,&A_{i}\geq 0\ \text{and}\ t\notin\mathcal{T}^{\mathrm{dir}}\cup\mathcal{T}^{\mathrm{ctx}},\end{cases}$$
+
+<p>直接关联的错误token权重为3.0，上下文关联token权重为1.5，其余token权重为1.0。关键在于<strong>非对称性设计</strong>：负优势样本的更新集中在诊断出的错误区域，而正优势样本不对这些区域额外强化，反而让未被诊断的代码区域收到稍强的正向更新（$c=1.2$）。这防止了模型“在正确的地方反复自我奖励”。</p>
+<p><img alt="图2：RCCA与标准GRPO的对比——标准GRPO将rubric级结果折叠为标量奖励并均匀施加优势值，RCCA保留rubric反馈、定位代码区间并转化为定向token权重" src="https://arxiv.org/html/2608.27906v2/img/intro_figure.png" /></p>
+<p><img alt="图3：RCCA总体框架——从rubric级功能反馈到代码区间，再到GRPO目标中的定向优化信号" src="https://arxiv.org/html/2608.27906v2/img/main_draft.png" /></p>
+<p>最终，token权重被整合进GRPO的损失函数，但不改变组相对优势和裁剪机制本身：</p>
+$$\mathcal{L}_{\mathrm{RCCA}}=-\frac{1}{G}\sum_{i=1}^{G}\frac{1}{T_{i}}\sum_{t=1}^{T_{i}}\min\Big(\rho_{i,t}w_{i,t}A_{i},\,\rho^{\mathrm{clip}}_{i,t}w_{i,t}A_{i}\Big)$$
+
+<p>这让RCCA成为一个“外科手术式”的RL框架：层级奖励决定了哪个采样结果更好（样本级信号），诊断权重决定了这个结果中的哪些token应该为它的好或坏负责（token级信号）。</p>
+<h2>三、实验：跨基准的“实现级”能力跃迁</h2>
+<p>RCCA被应用于Ling-3.0-Flash——一个124B参数的混合线性MoE模型，每token激活5.1B参数。训练分为三阶段：基座模型 → SFT → RCCA强化学习。</p>
+<p>在MiniAppBench上的完整训练轨迹清晰展示了两段式增益：Ling-3.0-Flash裸模型仅9.05%，SFT后提升至26.85%，RCCA进一步推高至41.25%。这个成绩略微超越Claude Opus 4.5的41.14%，且在Hard难度子集上达到37.60%，远超Claude Opus 4.5的22.33%。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>平均通过率(%)</th>
+<th>Easy</th>
+<th>Mid</th>
+<th>Hard</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ling-3.0-Flash</td>
+<td>9.05</td>
+<td>12.94</td>
+<td>8.99</td>
+<td>5.49</td>
+</tr>
+<tr>
+<td>Ling-3.0-Flash + SFT</td>
+<td>26.85</td>
+<td>37.41</td>
+<td>22.45</td>
+<td>22.44</td>
+</tr>
+<tr>
+<td><strong>Ling-RCCA-Flash</strong></td>
+<td><strong>41.25</strong></td>
+<td><strong>53.39</strong></td>
+<td><strong>35.03</strong></td>
+<td><strong>37.60</strong></td>
+</tr>
+<tr>
+<td>Claude-Opus-4.5</td>
+<td>41.14</td>
+<td>59.09</td>
+<td>41.18</td>
+<td>22.33</td>
+</tr>
+</tbody>
+</table></div>
+<p>更值得注意的是ArtifactsBench上的跨基准泛化。RCCA模型达到76.19分，相较自身SFT模型提升4.48分，超越GPT-5的72.55分。论文特别强调，这种跨基准的提升来自“实现层面的行为学习”，而非针对特定基准的模式记忆——因为RCCA的优化信号被绑定在事件处理器、状态更新和DOM操作等通用实现模式上，而非特定题目的表面特征。</p>
+<h2>四、从Agent基础设施到模型训练的路径信号</h2>
+<p>RCCA的价值不止于一个模型分数。它展示了一条从<strong>环境反馈到训练信号</strong>的清晰转化链路：AWorld风格的交互执行框架暴露交互轨迹、需求级结果和诊断证据，RCCA将这些结构化信号转化为可优化的token级梯度权重。</p>
+<p>这一思路的延伸空间很明确：当Agent的任务不再限于Web应用生成，而是扩展到更复杂的多步操作时，rubric级归因和代码级定位的方法论能否同样适用，是一个值得观察的开放问题。当前限制也很清楚：RCCA依赖评估器生成的文本归因质量，如果诊断本身错误，信用分配就会被误导。</p>
+<p><strong>论文标题</strong>：Rubric-to-Code Credit Assignment for Reinforcement Learning</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2608.27906.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-08-31_Rubric-to-Code-Credit-Assignment-for-Reinforcement-Learning.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-08-31_Rubric-to-Code-Credit-Assignment-for-Reinforcement-Learning.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
