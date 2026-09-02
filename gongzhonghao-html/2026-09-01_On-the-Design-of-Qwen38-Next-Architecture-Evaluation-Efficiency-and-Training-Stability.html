@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>On the Design of Qwen3.8-Next Architecture: Evaluation, Efficiency, and Training Stability</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">On the Design of Qwen3.8-Next Architecture: Evaluation, Efficiency, and Training Stability</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-03</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>通义千问推出125B稀疏MoE架构：以1/9训练成本超越397B前代，四分支残差门控重塑大模型稳定性</h2>
+<p>大模型训练成本居高不下，参数效率与训练稳定性始终是一对尖锐矛盾。当模型规模从数百亿膨胀至数千亿参数，激活参数、训练FLOPs、长序列推理延迟共同构成了难以逾越的成本壁垒。如何在保持甚至超越前代旗舰模型能力的前提下，将训练成本压缩一个数量级？Qwen团队发布的Qwen3.8-Flash-Next给出了一个系统性的答案：通过四分支Gated Residual、Gated DeltaNet与全局注意力混合、稀疏注意力索引压缩三重架构创新，配合Muon优化器与重新拟合的超参数缩放律，以<strong>125B总参数、6B激活参数</strong>的体量，在14项预训练基准上<strong>8项超越397B-A17B前代</strong>，训练FLOPs仅为其<strong>1/9</strong>。</p>
+<h2>一、核心方法：架构创新的三重奏</h2>
+<h3>1. GDN Hybrid：线性复杂度与全局检索的平衡</h3>
+<p>全注意力机制的二次复杂度是长序列场景的根本瓶颈。滑动窗口注意力虽然将计算和缓存降至线性，但窗口外的信息只能通过深度间接传播，缺乏直接的内容级检索能力。论文提出的<strong>Gated DeltaNet (GDN) Hybrid</strong>采用层级混合策略：每四层中保留一个全局注意力层，其余三层使用GDN循环层。</p>
+<p>GDN将前缀压缩为固定大小的循环状态，通过门控Delta规则进行内容相关的更新。其核心状态更新方程为：</p>
+$$S_t = \alpha_t (I - \beta_t k_t k_t^T) S_{t-1} + \beta_t k_t v_t^T$$
+
+<p><img alt="图2：Gated DeltaNet token mixer原理图" src="https://arxiv.org/html/2608.30320v1/paper_fig2_gdn.png" /></p>
+<p>其中衰减门 $\alpha_t$ 全局控制已有状态的生命周期，Delta项先估计键 $k_t$ 已关联的值，仅写入残差误差。这种“定向擦除-写入”机制使重复或相似键更新已有关联，而非累积无界外积，从根本上区别于纯加性线性注意力。在架构消融中，GDN Hybrid在9个基准上8项超越全注意力基线，7项超越滑动窗口混合模型，平均分从49.87提升至53.81。</p>
+<h3>2. Gated Residual：四分支残差流的元素级门控</h3>
+<p>预归一化残差连接虽然稳定，但每个块读取同一流，早期特征必须与后续所有写入竞争。论文将残差流拓宽为四个并行分支，通过<strong>Gated Residual (GR)</strong>机制读取：</p>
+$$x = \frac{1}{n_r} \sum_{i=1}^{n_r} G_i \odot \widehat{R}_i$$
+
+<p><img alt="图1：Qwen3.8-Flash-Next整体架构图" src="https://arxiv.org/html/2608.30320v1/paper_fig1_arch.png" /></p>
+<p>每个分支独立进行RMSNorm归一化，然后通过低秩瓶颈预测逐元素门控分数 $G \in \mathbb{R}^{n_r \times d}$。块输出写入所有分支，每分支由一个数据相关的标量控制：</p>
+$$R'_i = R_i + s_i y, \quad s = 2\sigma(\frac{1}{n_r} W_w \text{vec}(\widehat{R}))$$
+
+<p>GR的核心设计选择是<strong>放弃分支间混合算子 $H_{res}$</strong>。消融实验表明，一旦读写具有足够表达力，$H_{res}$ 带来的提升微乎其微，却增加了完整读取残差状态的显存流量。GR将表达力集中在读取端：逐元素门控意味着每个通道独立决定从哪个分支获取多少信息。路径分解分析揭示了一个一致模式：四个分支中恰好有一个承载跨层长路径（典型跳距10.9层），其余三个保持局部（跳距3.4-3.9层）。长期信息主要由第一层GDN输出写入长路径分支，并在softmax注意力层被集中读取。</p>
+<p><img alt="图7：GR跨层路径分解图" src="https://arxiv.org/html/2608.30320v1/paper_fig7_gr_paths.png" /></p>
+<h3>3. QSA：压缩索引驱动的稀疏注意力</h3>
+<p>稀疏注意力通过选择性关注重要上下文缓解二次复杂度，但索引器本身的复杂度在高序列长度下不可忽略。Qwen Sparse Attention (QSA)采用<strong>微块粒度压缩</strong>策略：将键序列按块大小 $r$ 平均池化，块级重要性通过轻量MQA索引器计算：</p>
+$$I_{ib} = \sum_{h=1}^{H} \text{ReLU}(\langle q_i^h, \bar{k}_b \rangle)$$
+
+<p>仅当块完全可见时允许评分。每个查询选取TopK块后展开为token索引，与尾部未完成块拼接作为核心注意力的输入。以token预算 $K=2048$、压缩比 $r=4$ 为例，索引器复杂度从 $O(n^2)$ 降至 $O(n^2/r)$。在1M上下文长度下，QSA相比稠密注意力实现<strong>7.6倍prefill加速</strong>和<strong>4.9倍decode加速</strong>。</p>
+<h2>二、实验：性能、效率与稳定性的三重验证</h2>
+<p>在14项预训练基准上，Qwen3.8-Flash-Next-Base以125B参数、6B激活的体量，在<strong>8项超越</strong>397B-A17B前代，包括MMLU-Pro（73.23 vs 70.90）、BBH（90.87 vs 89.41）、GSM8K（93.29 vs 92.95）、MGSM（89.33 vs 85.42）等关键指标。在剩余6项上差距不超过2.6分。</p>
+<p>训练稳定性方面，论文设计了一套<strong>应力测试</strong>：将学习率固定为最优值的2倍和4倍，持续训练以模拟生产规模的长峰值学习率阶段。结果显示，在4倍最优学习率下，AdamW基线每10k步出现183次损失尖峰，而Muon+GR配置记录<strong>零尖峰</strong>，梯度裁剪从未触发。</p>
+<p><img alt="图10：2倍最优学习率下训练损失对比" src="https://arxiv.org/html/2608.30320v1/paper_stress_2x_loss_half.png" /></p>
+<p><img alt="图13：生产配置下前276B token训练对比" src="https://arxiv.org/html/2608.30320v1/paper_early_loss_wide.png" /></p>
+<p>GR的门控机制被证实为稳定性提升的关键贡献者。隔离实验显示，启用GatedNorm后尖峰率从32.0/10k步降至3.2/10k步。门控乘法机制直接提供了高学习率所需的缩放能力，避免了网络通过激活值离群点来实现等效缩放的脆弱路径。生产运行验证中，完整Flash-Next配方相比Qwen3.5+Muon基线在276B token处损失降低0.058，梯度范数标准差降低4.7倍。</p>
+<h2>三、展望</h2>
+<p>Qwen3.8-Flash-Next的架构设计揭示了一个核心洞察：<strong>架构、效率与优化构成一个耦合系统，不能孤立决策</strong>。GR的缩放稳定性边际直接推高了最优学习率和批量大小，进而改善并行吞吐与收敛速度；QSA的索引器压缩选择由分阶段成本核算驱动；n-gram嵌入表以51B参数实现了几乎零FLOPs的容量扩展。这套设计范式为大模型架构搜索提供了可复用的方法论：每一项候选变更同时接受损失、基准、效率和稳定性四个维度的交叉验证，任何单一维度的捷径——无论是稀疏写入、NoPE还是批量warmup——都可能在后期阶段暴露出无法弥补的缺陷。论文指出，未来最紧迫的瓶颈在于评估吞吐：一个能可靠预测后训练排序的廉价中规模探针，将大幅提升设计空间的搜索效率。</p>
+<p><strong>论文标题</strong>：On the Design of Qwen3.8-Next Architecture: Evaluation, Efficiency, and Training Stability</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2608.30320.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-01_On-the-Design-of-Qwen38-Next-Architecture-Evaluation-Efficiency-and-Training-Stability.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-01_On-the-Design-of-Qwen38-Next-Architecture-Evaluation-Efficiency-and-Training-Stability.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
