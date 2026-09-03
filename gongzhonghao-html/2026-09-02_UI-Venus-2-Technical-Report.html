@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI-Venus-2 Technical Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">UI-Venus-2 Technical Report</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-04</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>蚂蚁集团发布UI-Venus-2：27B参数横扫三大GUI基准，桌面/移动/网页任务成功率最高提升26.9%</h2>
+<p>大模型驱动的GUI Agent（图形界面智能体）正从实验室走向真实设备，但<strong>环境覆盖不足、任务构造脆弱、奖励验证不可靠</strong>三大瓶颈始终制约落地。用户让Agent帮忙发一条指定群消息，它可能走入错误页面，或完成了前两步却无法验证“发送成功”这个最终状态。粗粒度的成功/失败标签，既无法区分“部分完成”和“零进度失败”，也容易被策略钻空子。蚂蚁集团Venus团队发布的UI-Venus-2，试图用<strong>联合伸缩环境、任务与验证</strong>的方式，将GUI Agent从“会点按钮的导航器”推向“可验证、能自省的基础智能体”。</p>
+<p><img alt="图1：UI-Venus-2在各类GUI Agent基准上的性能表现" src="https://arxiv.org/html/2609.00028v1/venus2_page1_v9_leaderboard.png" /></p>
+<h2>一、从能力目录到轨迹回流的闭环数据管道</h2>
+<p>传统GUI Agent数据的痛点在于：任务生成与应用真实功能脱节，训出来的模型在静态截图基准上得分高，一进真实应用就暴露感知脆弱和状态误判。UI-Venus-2引入<strong>深调研（Deep Research）驱动的能力目录构建机制</strong>，把应用文档、帮助页、用户讨论、历史任务聚合为结构化注册表，每条记录包含函数签名、前置条件、兼容函数和任务覆盖率。</p>
+<p>关键创新在于<strong>闭环回流</strong>。轨迹收集执行器在真实环境中运行任务时，会把观察到的页面状态、UI控件约束、实体校验结果和失败原因写回能力目录：</p>
+<p><img alt="图2：UI-Venus-2系统总览" src="https://arxiv.org/html/2609.00028v1/figures/main_2.png" /></p>
+<p>这个闭环使得生成器不再依赖静态文档，而是针对<strong>探索不足的能力和此前失败的场景</strong>定向构造新任务。论文在Web领域将网站池扩展至19个类别、4000多个域名，并注入45000个带成功准则的种子任务；桌面端则以TaskSpec序列化环境快照，用<strong>分层切分</strong>处理长达数百步的长程任务，验证通过的前缀可被重放以保持跨会话上下文。</p>
+<h2>二、三阶段训练与结构感知的蒸馏信号</h2>
+<p>UI-Venus-2沿用UI-Venus-1.5的<strong>中训练→离线强化学习→多师在线蒸馏（MOPD）</strong>三阶段管线。中训练阶段将海量合成交互轨迹注入模型，离线RL阶段针对Mobile、Web、Computer、Grounding、CAPTCHA五个域分别优化，最后用多师在线蒸馏将域专用教师模型融合为统一策略。</p>
+<p><img alt="图3：UI-Venus-2三阶段训练管线" src="https://arxiv.org/html/2609.00028v1/venus2_page1_v9_leaderboard.png" /></p>
+<p>原始MOPD的缺陷在于<strong>令牌级均匀监督</strong>：一个GUI响应中，动作令牌只占极小比例，却是唯一能改变环境的部分。推理痕迹再合理，一个错误点击坐标就足以让整条轨迹失效。论文提出<strong>结构感知动作蒸馏</strong>，根据学生动作的正确性进行差异化加权：完整动作正确则抑制蒸馏信号；动作类型正确但参数错误则加强动作区间的监督；动作类型本身错误则强调类型令牌并屏蔽下游参数——因为错误预测为<code>Scroll</code>时的参数在语义上毫无意义。</p>
+<p>更精细的设计是<strong>教师侧动作类型条件化</strong>。训练时向教师提示词追加正确动作类型的提示$h(z^{*})$，但该提示不进入学生提示词，推理时完全不可见。蒸馏优势按令牌级对数概率差计算：</p>
+$$\widehat{A}^{\mathrm{hint}}_{t}=\operatorname{sg}\!\left[\log\pi_{T_{d}}\!\left(y_{t}\mid\mathcal{P}_{T}(x,z^{*}),y_{<t}\right)-\log\pi_{\theta}\!\left(y_{t}\mid\mathcal{P}_{S}(x),y_{<t}\right)\right]$$
+
+<p>这一公式的核心思想是：教师知道正确答案后，对学生的评分更精准；梯度信号则集中于真正影响环境交互的执行段，而非均匀散布在整个响应上。</p>
+<h2>三、双层验证：从视觉关键点提取到先验动作判定</h2>
+<p>传统验证器面对开放任务只能给出粗糙的最终界面整体判断，既看不全过程又不抗偏见。UI-Venus-2的<strong>轨迹级验证</strong>引入了<strong>语义引导验证（SGV）</strong>：先从任务目标中提取可验证的完成关键点，再把完整轨迹切分为固定窗口，在点击动作位置叠加红色标记后由VLM并行判断各窗口满足哪些关键点。例如任务“在目标群发布指定内容”被拆解为三个关键点——进入正确群组、填写标题和正文、确认发布成功。完成前两个但预算耗尽的任务被标记为<code>partial</code>而非<code>failed</code>，这种分级信号的合理性在于它区分了实质进展和零进度失败。</p>
+<p><strong>样本级验证</strong>则在每个交互步骤执行前，仅基于当前截图、声明的动作类型和目标、推理内容与任务目标进行先验判定，将步骤分为正确、探索性、无效、错误四类。两类验证的协同使得强化学习的奖励信号具备了从<strong>单步粒度到完整轨迹</strong>的多分辨率覆盖。</p>
+<h2>四、实验：27B模型在六项移动基准中创下多项最高分</h2>
+<p>论文在移动、桌面、Web、Grounding、CAPTCHA、安全六个维度评估了UI-Venus-2的9B和27B变体。</p>
+<p><strong>移动端</strong>表现尤为突出。在MobileGym上，27B模型以60.5%的成功率超越此前最强基线Seed-2.0-Pro的52.0%，高出8.5个百分点；在VenusBench-Mobile上以48.7%胜出Opus 4.6的36.5%；AndroidWorld上84.0%比UI-Venus-1.5-30B-A3B的77.6%再提升6.4个百分点。<strong>9B模型在MobileGym上达到52.7%，与Seed-2.0-Pro持平，以不到三分之一的参数量实现了同等智能</strong>。</p>
+<p><strong>Web导航</strong>是UI-Venus-2的统治区。WebVoyager上27B达93.4%，超过Fara1.5-27B的89.3%和GPT-5（SoM）的90.6%；在长程跨站点基准Odysseys上，平均评分80.4，比最强基线高出11.5个百分点；REAL上的80.2%比前最佳74.4%提升5.8个点。9B模型同样表现出色，在Online-Mind2Web上以74.0%反超参数量三倍于己的Fara1.5-27B。</p>
+<p><strong>桌面端</strong>呈现分化。OSWorld-Verified上27B达80.5%，略低于Claude-Opus-4.8的83.4%但高于Qwen-UI-Agent-27B的79.5%；DeskCraft上以55.5%大幅领先Kimi-K2.6的41.4%。OSWorld 2.0上27B的Binary Accuracy仅2.8%、Partial Score 13.2%，反映出长程桌面任务仍是所有模型面临的硬骨头。</p>
+<p><strong>CAPTCHA</strong>是差距拉得最大的场景。VenusBench-CAPTCHA上27B达79.9%，比最强通用VLM Qwen3.6-27B的53.0%高出26.9个百分点；MCA-Bench上79.6%对51.7%拉开27.9个点；NextGen-CAPTCHAs上的54.5%对Seed-2.0-Pro的20.4%，<strong>提升幅度超过34个百分点</strong>。在空间变换密集型Spatial-CAPTCHA-Bench上，48.6%仅略胜Seed-2.0-Pro的43.8%，说明涉及参照系变换的视觉推理仍是短板。</p>
+<p><strong>安全维度</strong>上，9B模型在OSHarm上ASR低至11.3%，而基线中最强的是Qwen3.5-27B的18.0%；在更为隐蔽的OSBlind上，UI-Venus-2将ASR从基底的79.4%–89.3%压缩到48.8%–47.9%，几乎砍半——证明安全机制没有让模型变得过度保守，而是在保持能力的同时识别了执行上下文中的潜在风险。</p>
+<p>论文将UI-Venus-2定位为“可复现基线和协作平台”，选择开放全部参数权重与评估基础设施。对研究社区而言，真正的价值或许不止于27B模型跑出的分数，而在于<strong>能力目录驱动任务生成、结构化动作蒸馏、双层验证器</strong>这三项工程实践提供了一个可参照的闭环范式。</p>
+<p>一个值得追问的问题是：在OSWorld 2.0上，最强的GPT-5.5和Claude系列Binary Accuracy也分别只有13.0%和4.6%，<strong>长程桌面任务的Binary Accuracy是否已经接近当前VLM架构的能力上限</strong>？如果答案是肯定的，那么下一步的突破点或许不在更大规模的数据蒸馏，而在环境状态表示的范式转移。</p>
+<p><strong>论文标题</strong>：UI-Venus-2 Technical Report</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.00028.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-02_UI-Venus-2-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-02_UI-Venus-2-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
