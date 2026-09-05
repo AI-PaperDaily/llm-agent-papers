@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-06</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>阿里Qwen团队推出Terminal-Universe：从轨迹逆向重建可执行环境，终端Agent性能跃升11.9分</h2>
+<h3>一、引言</h3>
+<p>在终端Agent的后训练中，一个尖锐的供需矛盾正变得愈发突出：高质量轨迹正在大规模积累，而真正可执行、可验证的<strong>训练环境</strong>却严重匮乏。环境的价值远高于单条轨迹——同一个环境可以被反复查询出多个任务，可以提供执行反馈，也可以由更强模型重新求解；而一条轨迹只是一份被原始策略模型“冻结”的演示，无法验证正确性，更难以泛化。专家手工构建的Benchmark虽然质量高，但成本限制了规模；而现有自动化方法——基于仓库回滚、扰动注入、任务条件合成——要么局限于修复类任务，要么环境过于“小而整洁”，缺乏真实工程的粗粝感。</p>
+<p>面对这一困境，阿里Qwen团队联合清华大学提出了<strong>Terminal-Universe</strong>框架，其核心洞察在于：轨迹中记录的每一次文件读、写、编辑操作，已经天然暴露了运行环境的结构与内容。既然一条轨迹和一个环境是“同一集事件的两个视角”，那么完全可以从轨迹中<strong>逆向重建</strong>出那个可复用的环境。在公开终端Agent轨迹上，该框架产出<strong>37.3k</strong>个任务充分环境；基于此数据对Qwen3.5-27B做有监督微调，在Terminal-Bench 2.1上提升<strong>11.9个百分点</strong>，在EvoCode-Bench v2 MT@4上提升<strong>13.8个百分点</strong>。</p>
+<h3>二、核心方法：从轨迹到环境的逆向工程</h3>
+<h4>2.1 两阶段环境重建</h4>
+<p>Terminal-Universe的环境重建流程如图2所示，核心分为两个阶段——<strong>确定性回放</strong>与<strong>Agent补全</strong>。</p>
+<p><img alt="图2：Terminal-Universe框架总览" src="https://arxiv.org/html/2609.04148v1/framework.png" /></p>
+<p><strong>Stage 1 确定性回放</strong>：按时间顺序处理轨迹τ中的文件操作记录，对每个被访问过的路径，恢复其在Agent首次修改之前的最早可见版本。Agent新建的文件被排除，Agent的修改记录被单独保留用于后续验证。这一过程得到的初始工作区记为 $\widehat{E}_0$。由于轨迹只暴露了被触及的文件，且终端输出常被截断，$\widehat{E}_0$ 通常是<strong>不完整</strong>的。</p>
+<p><strong>Stage 2 Agent补全</strong>：给定部分工作区与恢复出的任务q，一个补全Agent负责创建缺失文件、补全不完整的文件内容、恢复依赖关系，使任务q变得“可解但不已被解出”。补全后的工作区记为 $\widehat{E}$。</p>
+<p><img alt="图4：Agent补全前后工作区平均文件数对比" src="https://arxiv.org/html/2609.04148v1/workspace_size.png" /></p>
+<p>如图4所示，回放得到的终端工作区平均仅有<strong>2.9个文件</strong>，而经过Agent补全后激增至<strong>22.4个</strong>——这一差距直观地揭示了轨迹信息的稀疏性与补全机制的关键价值。最终，通过Agent法官对工作区充分性进行判断，<strong>93.5%</strong>的终端工作区达到“任务充分”标准，总量达到37.3k。</p>
+<h4>2.2 四大再查询机制</h4>
+<p>重建环境只是起点。Terminal-Universe在每条恢复的工作区上实施四种互补的再查询策略，充分挖掘环境的潜在任务空间：</p>
+<ul>
+<li><strong>Intent Recovery（意图恢复）</strong>：从原始轨迹中归一化用户请求流，恢复自包含的原始任务。对于多轮轨迹，提取首条实质性请求作为任务主题，后续请求仅在澄清、约束或扩展同一任务时被纳入。</li>
+<li><strong>Single-WS Synthesis（单工作区合成）</strong>：离线生成器深度检查工作区后，在<strong>接地性、结构多样性、可验证性</strong>三重约束下合成五个候选任务，随机选取一个进行展开与验证。</li>
+<li><strong>Cross-WS Synthesis（跨工作区合成）</strong>：这是“广度”扩展的关键。通过工作区分析、TF-IDF相似检索与LLM法官，识别<strong>有向依赖关系</strong>——即目标工作区缺乏某项参考工作区已实现的能力。任务要求模型在一个可写目标工作区中实现指定行为，而参考工作区仅以<strong>只读挂载</strong>形式提供，模型必须自主导航、理解并适配参考实现。</li>
+<li><strong>Multi-Round Continuation（多轮延续）</strong>：这是“深度”扩展的关键。从一个初始查询出发，用户Agent维护显式的<strong>需求追踪器</strong>，根据每轮验证结果动态演化任务规格。用户Agent的请求分为三种交互风格：<strong>功能扩展</strong>（成功验证后追加新需求）、<strong>功能修正</strong>（测试失败后要求修复）、<strong>需求冲突</strong>（改变或覆盖先前规格以反映用户意图变化）。</li>
+</ul>
+<h4>2.3 验证与数据筛选</h4>
+<p>每个Single-WS或Cross-WS任务都配有一套由专用Agent在目标容器内<strong>迭代编写并本地验证</strong>的pytest测试套件。模型展开完成后，测试套件在最终工作区状态上运行，<strong>仅保留全部测试通过的轨迹</strong>。Multi-Round数据在轮次级上筛选：保留至少包含两轮验证通过的会话，中间的先失败后修复轮次被保留作为错误恢复的监督信号。</p>
+<h3>三、实验：性能的全面跃升与消融洞察</h3>
+<h4>3.1 主结果</h4>
+<p><img alt="图6：Cross-WS数据加入后Terminal-Bench 2.1各类别通过率变化" src="https://arxiv.org/html/2609.04148v1/category_changes.png" /></p>
+<p>在Terminal-Bench 2.1上，经Terminal-Universe全混合数据（32.0k条，含Single-WS、Cross-WS、Multi-Round）训练的Qwen3.5-27B达到<strong>58.1%</strong>的平均通过率，较基座模型提升<strong>11.9个百分点</strong>，在对比的终端任务合成方法中位列第一（表3）。在EvoCode-Bench v2多轮基准上，MT@4从<strong>6.3</strong>跃升至<strong>20.1</strong>，Case Score从<strong>67.8</strong>提升至<strong>76.1</strong>，证明多轮延续数据有效增强了模型在持久化任务中处理累积需求的能力。</p>
+<h4>3.2 关键消融：重新求解vs.直接模仿</h4>
+<p>最核心的消融问题是：<strong>重建环境并重新求解，是否真的比直接模仿原始轨迹更好？</strong>在相同数据规模（35.8k条）下，直接SFT原始轨迹仅得到36.7的平均分，甚至低于基座模型的47.0——这说明原始轨迹中的“脏”行为对模型造成了负面影响。而Intent Recovery（在重建环境中由更强教师模型重新求解）达到<strong>52.1分</strong>，比直接模仿高出<strong>15.4分</strong>。这一发现从根本上验证了“环境优先于轨迹”的核心主张：环境的可重新求解性才是后训练的真正价值来源。</p>
+<h4>3.3 预算分配的洞察</h4>
+<p>在数据扩展轴消融中，研究者固定数据预算约35k条，分别通过<strong>增加环境数</strong>、<strong>每环境增加查询数</strong>、<strong>每查询增加解数</strong>三种方式翻倍数据。结果清晰：环境数翻倍将Terminal-Bench 2.1得分从53.2推升至<strong>56.0</strong>，而增加查询或增加解数仅分别带来<strong>53.8</strong>和<strong>53.9</strong>的几乎不变的结果。结论明确：<strong>新环境贡献的独特可执行上下文远胜于对同一环境的多重采样</strong>。</p>
+<h4>3.4 跨域泛化验证</h4>
+<p>将同一Pipeline应用于SWE软件工程轨迹，仅用Intent Recovery数据（10.3k条）在Terminal-Bench 2.1上即从47.0提升至<strong>50.0</strong>，双 scaffold 一致上升，证明该方法提炼的监督信号<strong>超越其源域分布</strong>，具备一定的通用性。</p>
+<h3>四、展望</h3>
+<p>Terminal-Universe的可贵之处在于其“顺势而为”的思路：不试图从零构建环境，而是从已有轨迹中“唤醒”环境。这为Agent后训练数据的规模化供给提供了一条可持续的路径——随着更强Agent产生更复杂的轨迹，可重建的环境粒度也将随之增长，形成飞轮效应。当前的限制（标准容器降低保真度、单一教师的生成偏差）指向了未来的改进方向：使用多教师体系与独立验证器。当环境不再是瓶颈，终端Agent的规模化训练将迎来真正的分水岭。</p>
+<p><strong>论文标题</strong>：Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.04148.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-04_Terminal-Universe-Turning-Agent-Trajectories-into-Scalable-Terminal-Environments.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-04_Terminal-Universe-Turning-Agent-Trajectories-into-Scalable-Terminal-Environments.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
