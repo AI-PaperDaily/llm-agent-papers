@@ -463,44 +463,36 @@
             </div>
             <h1 class="article-title">Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</h1>
             <div class="article-meta">
-                <span class="meta-item">📅 2026-09-07</span>
+                <span class="meta-item">📅 2026-09-08</span>
             </div>
         </header>
         
         <article class="article-content">
-            <h2>阿里Qwen推出Terminal-Universe：轨迹反转重建37.3k终端环境，Qwen3.5-27B单轮提升11.9点，Agent数据范式被重构？</h2>
-<p>终端型代码Agent的轨迹数据正在以前所未有的速度积累，但真正可用的可执行环境却依然稀缺。轨迹只是一次固定的行为记录，而环境却是一个可以被反复求解、验证、扩展的载体。两者的价值差距，构成了Agent后训练的核心瓶颈。论文提出的<strong>Terminal-Universe</strong>框架，首次将轨迹视为环境的逆向映射，通过确定性回放与智能补全将单条轨迹还原为可复用环境，并在其上进行广度与深度的任务扩展，最终产出37.3k个任务充分环境，使Qwen3.5-27B在Terminal-Bench 2.1上从46.2提升至58.1。</p>
-<p><img alt="图1：Terminal-Universe整体框架，展示从轨迹到环境再到任务扩展的完整流程" src="https://arxiv.org/html/2609.04148v1/overview.png" /></p>
-<h2>一、环境重建：将轨迹逆向还原为可执行工作区</h2>
-<p>传统方法从仓库历史或任务规格构建环境，而Terminal-Universe选择了一条截然不同的路径：<strong>从已有的Agent轨迹中恢复其运行时所处的环境</strong>。一条轨迹中记录的工具调用——文件读取、写入、编辑、命令执行——实际上已经暴露了该环境的结构与内容。关键在于，如何将这些碎片化的证据拼接为完整的可执行工作区。</p>
-<p>论文采用<strong>三阶段重建</strong>策略。</p>
-<p><strong>第一阶段是确定性回放（Deterministic Replay）</strong>。回放引擎按照时间顺序处理轨迹中每个文件操作，恢复每个被访问路径在Agent首次修改之前的版本。Agent自己创建的文件被排除在外，因为那些是“解题过程”而非“题目条件”。回放产出的初始工作区记为$\widehat{E}_{0}$，但它通常只是原环境的<strong>部分投影</strong>——未被访问的文件、隐式系统依赖、外部网络资源都不留下直接痕迹。</p>
-<p><strong>第二阶段是智能补全（Agentic Completion）</strong>。给定部分工作区和恢复的任务描述$q$，一个补全Agent负责创建缺失文件、补全不完整文件内容、恢复依赖关系，但必须<strong>严格避免泄露任务解答</strong>。补全后的工作区记为$\widehat{E}$：</p>
-$$\widehat{E} = \text{Completion}(\text{Replay}(\tau), q)$$
+            <h2>阿里Qwen提出轨迹反向重构环境：零成本打造3.7万个可验证终端环境，性能狂涨11.9分</h2>
+<p><strong>引言</strong></p>
+<p>终端智能体（Terminal Agent）的规模化训练正面临一个尴尬的供需失衡：轨迹数据大量堆积，但真正可执行、可验证的环境却极度稀缺。一条轨迹只是一份被冻结的演示，而一个环境却可以被反复查询、生成成千上万个可验证任务。论文指出，现有的环境构建方法要么依赖人工标注，要么从零开始合成，都难以达到训练所需的规模。Terminal-Universe 的核心洞察是：<strong>轨迹本身就是环境的压缩观测</strong>。每一次文件读取、写入和命令执行，都在无意中暴露了工作区的结构、内容和依赖关系。因此，研究者提出了一整套从轨迹反向重建环境的框架。</p>
+<p><img alt="图1：Terminal-Universe总览" src="https://arxiv.org/html/2609.04148v1/overview.png" /></p>
+<h2>一、核心方法：三段式环境重建</h2>
+<p>Terminal-Universe 的环境重建分为三个确定性阶段。第一阶段是<strong>确定性重放（Deterministic Replay）</strong>：按时间顺序处理轨迹中记录的所有文件操作，恢复每个被访问路径的最早版本，并排除智能体自身的修改。这一步骤的核心公式可以表述为：</p>
+$$\widehat{E}_{0} = \{f_i \mid f_i \in \text{AccessedFiles}(\tau) \wedge \text{PreModification}(f_i)\}$$
 
-<p>补全的效果显著：重放终端工作区初始平均仅含2.9个文件，补全后达到22.4个文件，任务充分率从40.2%跃升至93.5%。</p>
-<p><strong>第三阶段是环境过滤（Environment Filtering）</strong>。一个智能评审Agent以只读方式检查补全后的工作区，判断其源码、配置、数据与结构是否足以支撑恢复出的任务。只有任务充分的工作区才进入下游任务生成环节。</p>
-<p><img alt="图2：Terminal-Universe框架总览，左侧为轨迹回放与补全流程，右侧为四种种查询机制" src="https://arxiv.org/html/2609.04148v1/framework.png" /></p>
-<h2>二、重查询机制：在恢复环境上做广度与深度双重扩展</h2>
-<p>环境恢复只是基础，任务生成才是发挥环境价值的关键。Terminal-Universe设计了四种互补的重查询机制：<strong>意图恢复（Intent Recovery）、单工作区合成（Single-WS）、跨工作区广度扩展（Cross-WS）、多轮深度扩展（Multi-Round）</strong>。</p>
-<p><strong>意图恢复</strong>将源轨迹中的用户请求整理为自包含任务。对于单轮轨迹，直接将实质性请求定义为任务；对于多轮轨迹，以首个请求为主题，吸纳后续的澄清与扩展，排除无关任务切换。</p>
-<p><strong>单工作区合成</strong>在每个恢复的工作区上离线合成五个候选任务，满足可验证性、结构多样性与接地性约束后随机选择一个进行验证。</p>
-<p><strong>跨工作区广度扩展</strong>是Terminal-Universe区别于现有方法的核心创新之一。传统任务合成大多局限于单一仓库内部，而Terminal-Universe通过TF-IDF近邻检索和LLM关系判断，识别出<strong>方向性依赖边</strong>：目标工作区缺乏某项能力，而参考工作区已实现该能力。每个跨工作区任务将参考工作区以只读方式挂载到独立路径，要求求解Agent自主导航、理解并迁移参考实现。查询只提供目标行为和参考挂载路径，不给内部细节，保证参考代码构成真正的依赖挑战。求解轨迹的难度显著更高：中位数助理轮次从14增长到23，工具调用从20增长到38，教师模型pass@1从72.3%降至49.2%。</p>
-<p><strong>多轮深度扩展</strong>则将单轮任务扩展为多轮交互会话。用户Agent维护一个显式需求追踪器，在每轮扩展前更新规范，并协调验证器Agent编写回合级验收测试。交互风格分为三类：<strong>功能扩展</strong>（在验证通过后添加新需求）、<strong>功能修订</strong>（测试失败时要求修复）、<strong>功能冲突</strong>（修改或推翻既有规范以反映意图变化）。保留的多轮记录平均4.51轮，69.6%包含“失败-修复”模式，为模型提供错误诊断与恢复的监督信号。</p>
-<p><img alt="图3：多轮会话中通过/失败模式的分布，展示任务完成与修复的动态过程" src="https://arxiv.org/html/2609.04148v1/multiround_patterns.png" /></p>
-<h2>三、验证与数据筛选：以可执行测试为最终裁判</h2>
-<p>每个Single-WS或Cross-WS任务都配有由专用验证Agent在目标容器内编写的pytest测试套件。验证Agent通过迭代本地执行，严格评估提示词中指定的公共接口与预期行为。</p>
-<p>教师模型（Qwen3.7-Max）在Claude Code脚手架中完成候选求解，解码温度1.0，上下文窗口256k token，单轮响应上限65,536 token，最长500轮Agent交互或4小时超时。求解完成后，测试套件在最终工作区状态上运行，<strong>仅保留全部测试通过的轨迹</strong>。</p>
-<p>多轮数据的筛选采用<strong>回合级</strong>策略：截断终止会话末尾连续失败的回合，仅保留至少包含两个已验证通过回合的会话。中间失败后被成功修复的回合被保留，以提供修复监督。</p>
-<p>验证过滤的效果在消融实验中尤为明显：Cross-WS数据在移除验证器失败轨迹后，性能从53.2提升至55.4，而数据量减少了超过一半。这表明对于高难度任务，<strong>质量远重于数量</strong>。</p>
-<h2>四、实验结果：单轮与多轮能力的同步跃升</h2>
-<p>在Terminal-Bench 2.1基准上，使用Full Mixture数据（32.0k条）微调Qwen3.5-27B后，Terminus2-XML评分从46.2提升至<strong>58.1</strong>，提升<strong>11.9个百分点</strong>；在Claude Code脚手架下达到58.2，提升10.4个百分点。这一表现超越了TMax-27B（44.9）、CalibForge-35B-A3B（47.6）、RST-27B（49.4）等同类任务合成方法。</p>
-<p>在多轮基准EvoCode-Bench v2上，Full Mixture将MT@4从6.3提升至<strong>20.1</strong>，Case Score从67.8提升至<strong>76.1</strong>，提升幅度分别为13.8和8.3个百分点。这表明持续会话中累计需求的管理能力得到了显著增强。</p>
-<p><img alt="图4：重放后与补全后的工作区平均文件数量对比，展示补全阶段的显著丰富化效果" src="https://arxiv.org/html/2609.04148v1/workspace_size.png" /></p>
-<p>消融实验揭示了每一环节的贡献。<strong>任务重解（Re-solving）与源轨迹模仿（SFT on source trajectories）的对比尤为关键</strong>：同样使用35.8k条训练数据，源轨迹SFT平均仅36.7分，而意图恢复数据达到52.1分，提升15.4个百分点。这证明在重建环境中以更强教师策略重新求解，远比直接模仿原始Agent行为更有价值。<strong>智能补全</strong>同样功不可没：仅用回放环境训练得到48.7分，补全后达到52.9分。<strong>环境扩展</strong>在固定预算下远超查询扩展与求解扩展：35.1k环境中每个环境一条查询一条求解达到56.0分，而相同记录数下在17.6k环境上做查询扩展或求解扩展仅分别为53.8和53.9分，说明<strong>环境的多样性才是数据效率的核心来源</strong>。</p>
-<p><img alt="图5：跨工作区数据加入后Terminal-Bench 2.1各任务类别得分变化，软件工程与模型训练类别提升明显" src="https://arxiv.org/html/2609.04148v1/category_changes.png" /></p>
-<h2>五、展望：轨迹即环境，数据飞轮的下一站</h2>
-<p>Terminal-Universe的价值在于它揭示了一个被长期忽视的事实：每一条轨迹不仅是行为的记录，更是其运行环境的“散点采样”。经过系统化的重建与补全，轨迹可以从“一次性消耗品”转变为“可循环利用的生产资料”。更值得关注的是，这一范式具有天然的飞轮效应——随着Agent能力增强，产生的轨迹更复杂，暴露的工作区状态更丰富，重建出的环境也因此更具训练价值。多维度的能力扩展若能应用到多模态与长周期自治Agent领域，有望为更大规模的后训练数据与RL环境构建开辟新路径。</p>
+<p>其中 $\widehat{E}_{0}$ 表示重建的初始工作区，$\text{PreModification}(f_i)$ 表示文件 $f_i$ 在被智能体修改之前的状态。</p>
+<p>第二阶段是<strong>智能体补全（Agentic Completion）</strong>：由于重放只能恢复部分工作区，一个补全智能体负责填充缺失的文件、补全部分文件、恢复依赖，但不实现解决方案。第三阶段是<strong>环境过滤（Environment Filtering）</strong>：一个智能体裁判检查补全后的工作区是否包含足够的上下文来支持任务求解，只有标注为“充分”的环境才进入下游任务生成。</p>
+<p><img alt="图2：Terminal-Universe框架" src="https://arxiv.org/html/2609.04148v1/framework.png" /></p>
+<p>这套三段式流程在论文实验中展现出显著效果：确定性重放单独使用时，终端环境的充分率仅为 40.2%，而经过智能体补全后跃升至 <strong>93.5%</strong>。最终，从公开轨迹中成功重建出 <strong>37,273</strong> 个任务充分的环境。</p>
+<h2>二、重新查询：四个维度的任务扩展</h2>
+<p>拥有可执行环境只是第一步，如何高效挖掘环境的任务潜力才是关键。Terminal-Universe 提出四种互补的重新查询机制。</p>
+<p><strong>意图恢复（Intent Recovery）</strong> 将原始轨迹中的用户请求整合为自包含任务，保留多轮轨迹中对同一任务的澄清和约束。<strong>单工作区合成（Single-WS Synthesis）</strong> 让生成器自主探索工作区，提出五个候选任务，随机选择一个进行验证。</p>
+<p><strong>广度扩展（Breadth Expansion）</strong> 是该框架最具特色的机制之一。研究者通过 TF-IDF 近邻搜索发现工作区之间的依赖关系，并由 LLM 判断是否存在一个工作区实现了另一个工作区所缺失的能力。找到目标工作区后，任务生成器定义可观测的目标行为，并只提供参考工作区的挂载路径而不透露内部细节。求解器必须自主导航、理解和适应参考实现。这种跨工作区的任务在论文实验中显著提升了复杂度：工具调用中位数从 20 次增加到 38 次，教师模型的通过率从 72.3% 降至 49.2%。</p>
+<p><strong>深度扩展（Depth Expansion）</strong> 则将单轮查询延展为多轮交互会话。用户智能体维护一个显式的需求追踪器，在每个轮次根据验证结果发起三类交互：功能扩展、功能修订和功能冲突。每轮都有独立的验收测试，测试失败会被转化为自然语言的用户抱怨。论文数据显示，保留的多轮记录平均包含 <strong>4.51</strong> 个轮次，其中 <strong>69.6%</strong> 包含至少一次失败后的成功修复。</p>
+<h2>三、实验：为什么环境重建优于轨迹模仿</h2>
+<p>论文设置了系统性的消融实验来验证核心假设。最关键的对照是：<strong>在重建环境上重新求解任务，是否优于直接模仿原始轨迹？</strong> 结果堪称决定性——使用相同的数据量（35.8k 条），意图恢复的训练效果在 Terminal-Bench 2.1 上达到 <strong>52.1</strong> 分，而源轨迹 SFT 仅得 <strong>36.7</strong> 分，差距超过 15 分。研究者认为，这是因为源轨迹受限于原始策略模型的能力上限，无法通过测试进行正确性验证，而重新求解则使用更强的教师模型生成更优质的示范。</p>
+<p><img alt="图4：智能体补全前后的工作区规模对比" src="https://arxiv.org/html/2609.04148v1/workspace_size.png" /></p>
+<p>智能体补全的消融也证实了其价值：使用补全后的环境进行意图恢复训练，比仅使用重放环境高出 <strong>4.2</strong> 分，且训练稳定性从 ±3.5 提升至 ±1.4。验证器过滤的效果在跨工作区数据上更为显著：保留通过验证的样本将得分从 53.2 提升至 <strong>55.4</strong>，且只需不到一半的数据。</p>
+<p>在最终评测中，基于 <strong>32,000</strong> 条经过验证器筛选的 SFT 数据，Qwen3.5-27B 在 Terminal-Bench 2.1 上达到 <strong>58.1%</strong>，较基础模型提升 <strong>11.9</strong> 分；在 EvoCode-Bench v2 上，MT@4 从 6.3 跃升至 <strong>20.1</strong>，Case score 从 67.8 提升至 <strong>76.1</strong>。值得注意的是，在数据预算固定的消融中，增加环境数量带来的提升（+2.8 分）远超增加查询数量或解的数量（+0.6 和 +0.7 分），直接验证了论文的核心主张：<strong>环境本身才是真正值得扩展的资源</strong>。</p>
+<p><img alt="图5：重建终端工作区的语言与领域构成" src="https://arxiv.org/html/2609.04148v1/language_domain.png" /></p>
+<h2>展望</h2>
+<p>Terminal-Universe 的生命力在于其可扩展性。论文观察到，源轨迹的复杂度与后续生成任务的多样性呈正相关，且多个会话聚合到同一工作区可以融合各会话暴露的状态。这意味着，随着终端智能体的能力提升、产生更复杂的轨迹，该框架的产出质量也将随之增长，形成良性的数据飞轮。</p>
 <p><strong>论文标题</strong>：Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</p>
 <p>欢迎投稿！欢迎合作！</p>
         </article>
