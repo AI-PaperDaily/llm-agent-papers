@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimpleMemVLA: A Simple but Effective Native-Video Memory for Vision-Language-Action Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">SimpleMemVLA: A Simple but Effective Native-Video Memory for Vision-Language-Action Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-10</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>华中科大提出SimpleMemVLA：不设记忆模块的视觉语言动作模型刷新四项SOTA，RMBench达94%</h2>
+<p>在机器人操控从短程桌面技巧走向长时程任务的过程中，<strong>局部可观测性</strong>成为不可回避的瓶颈：下一动作所需的信息，可能只存在于数分钟前的某一次观测中。一个需要记住红色方块被哪个杯子盖住的机械臂，面对两张完全相同的当前画面，必须做出不同的动作——这对只依赖单帧或亚秒级窗口的传统VLA而言，本质上是一个不可解的问题。</p>
+<p>现有方案——检索库、学习式压缩器、循环状态——本质上都面临同一个困境：<strong>必须在知晓未来决策需求之前，就决定要保留什么</strong>。当未来决策的诉求尚未浮现，历史信息就已经被取舍、压缩或覆盖。研究者将这一现象称为<strong>写时承诺</strong>。华中科技大学联合多家机构提出的 <strong>SimpleMemVLA</strong> 直接绕开了这一悖论：它<strong>不设任何专用记忆模块</strong>，而是将采样后的完整历史以<strong>带时间戳的原生视频格式</strong>直接喂给VLM骨干，让模型在决策时刻用<strong>原生自注意力</strong>自行选择所需证据。</p>
+<p><img alt="图1：VLA记忆机制分类与SimpleMemVLA的令牌预算对比" src="https://arxiv.org/html/2609.05533v1/fig_taxonomy.png" /></p>
+<h2>一、核心方法：三项设计构成原生上下文记忆</h2>
+<p><strong>第一项设计：保留历史供读时选择。</strong> SimpleMemVLA在每个决策步上重建一个覆盖过去 $T_w$ 秒的采样视频窗口。设 $f_c$ 为原始观测帧率，$f_v$ 为采样帧率，$s = f_c/f_v$ 为子采样步长，$K = T_w f_v$ 为窗口最大帧数，则历史窗口表示为：</p>
+$$V_{t} = \big(o^{h}_{t-(K-1)s}, \ldots, o^{h}_{t-s}, o^{h}_{t}\big), \qquad s=f_c/f_v$$
+
+<p>该窗口通过骨干网络的<strong>原生视频通道</strong>输入，相邻帧被自动分组为时间补丁，每个补丁以骨干自带的<strong>纯文本时间戳</strong>为前缀。论文强调：视频的帧序与时间戳承载了时间定位信息，而任何非原生打包方式（如将帧作为独立图像拼接）都要求模型从零重新学习时间结构。在标准部署中，时间戳采用窗口相对偏移量；在探索性的SWA变体中则使用回合绝对时间戳，为无界流上的持续运行保留缓存不可变性。</p>
+<p>采样率的设定在令牌预算与事件覆盖之间取得平衡：以论文使用的主流配置为例，<strong>60秒的历史仅占用约5.6k个令牌</strong>，在骨干网络262k的上下文窗口中仅占约2%，可容纳约45分钟的执行历史。</p>
+<p><strong>第二项设计：窄文本通道作为历史到动作的唯一接口。</strong> 动作专家只能接受短令牌序列，而非历史窗口中的数千个视觉令牌。SimpleMemVLA让骨干生成一个短的子任务描述，并将该描述文本的<strong>上下文隐藏状态和令牌嵌入</strong>作为动作头的条件。骨干参数为 $\theta$，生成子任务为：</p>
+$$g_{t} = (g_{t,1}, \ldots, g_{t,m}) \sim f_{\theta}(\cdot | x_{t})$$
+
+<p>动作专家的条件表示 $C_t$ 由生成标签的令牌嵌入与隐藏状态的融合加上当前本体的单令牌编码构成：</p>
+$$C_{t} = \big[ e(g_{t,1}) \oplus h(g_{t,1}), \ldots, e(g_{t,m}) \oplus h(g_{t,m}), \psi(\bar{q}_{t}) \big]$$
+
+<p>其中 $e(\cdot)$ 为令牌嵌入，$h(\cdot)$ 为最终层隐藏状态，$\oplus$ 表示融合操作，$\psi(\bar{q}_t)$ 为归一化本体状态的单令牌编码。这一设计的优势在于：<strong>信号紧凑、可直接检查、可编辑</strong>。解码长度上限为64个令牌，推导中 $\pi$ 为小规模模型。</p>
+<p>动作头采用标准的<strong>流匹配（flow-matching）</strong>目标。设归一化动作块为 $\bar{A}_t \in \mathbb{R}^{H \times d_a}$，噪声 $\varepsilon \sim \mathcal{N}(0, I)$，流时间 $\tau \in [0,1]$，则线性插值路径为 $A^{\tau} = (1-\tau)\bar{A}_t + \tau \varepsilon$，损失函数为：</p>
+$$\mathcal{L}_{\text{act}} = \mathbb{E}_{\tau, \varepsilon} \big\| v_{\phi}(A^{\tau}, \tau | C_t) - (\varepsilon - \bar{A}_t) \big\|_{2}^{2}$$
+
+<p>训练使用两项监督的联合目标：子任务描述的交叉熵损失与动作的流匹配损失，加权系数分别为 $\lambda_{sub}$ 与 $\lambda_{act}$，构成 $\mathcal{L} = \lambda_{sub}\mathcal{L}_{sub} + \lambda_{act}\mathcal{L}_{act}$。子任务目标由云端LLM离线生成，所有受控变体共享相同的训练数据、骨干、子任务监督与优化器，以确保对照实验的公平性。</p>
+<p><img alt="图2：SimpleMemVLA架构与流式推理" src="https://arxiv.org/html/2609.05533v1/fig_arch_stream.png" /></p>
+<p><strong>第三项设计：共享前缀预填实现精确流式推理。</strong> 连续决策之间共享几乎全部的历史视频前缀。SimpleMemVLA在机器人执行当前动作块期间预填前缀并缓存键值，下一决策时仅需处理新到达的时间补丁。在H100上，60秒历史下全量重算的单次决策延迟为1.02秒，流式推理将其降至<strong>0.68秒</strong>，低于0.96秒的实时预算；在45分钟（约245k令牌）的极限场景下，全量重算高达32.1秒，而流式推理仅为<strong>1.18秒</strong>，且生成的子任务文本与全量重算<strong>逐字节一致</strong>。</p>
+<h2>二、实验：全面刷新记忆基准，隔离实验揭示接口本质</h2>
+<p>论文在四个记忆中心基准与两个通用控制基准上评估SimpleMemVLA。在RMBench九项任务上，SimpleMemVLA以单一多任务模型达到<strong>94.0%</strong>的平均成功率，比最强任务级专家基线高出11.0个百分点，且是唯一在多记忆设置下表现不降反升的方法——从单项记忆的91.6%提升至多项记忆的97.0%。在RoboMME的16项任务上达到<strong>88.3%</strong>，领先最强非预言基线43.7个百分点。在MIKASA-Robo五任务上达到<strong>74.0%</strong>，较最强先验VLA提升29.6个百分点。在RoboMemArena的26项任务上达到<strong>63.6% TSR</strong>，较最强先验模型高17.4个百分点。</p>
+<p><img alt="图5：历史干预实验——移除证据帧、替换帧序列等操作对策略决策的影响" src="https://arxiv.org/html/2609.05533v1/fig_interv_timelines.png" /></p>
+<p>关键的归因实验将三种记忆机制家族在同一骨干和训练协议下重建：检索变体暴露8帧无序无时间戳图像；令牌压缩变体用固定64令牌表示整个历史；循环状态变体持续重写为固定16令牌状态。在RoboMME上，原生上下文达到88.3%，而<strong>检索、令牌压缩与循环状态分别仅达31.5%、22.6%和20.6%</strong>——差距超过40个百分点，证实了瓶颈来自于<strong>信息被提前限制的方式</strong>，而非模型能力。即使在提供真值感知的GroundSG预言设置下，性能也仅为84.1%，仍低于原生上下文。</p>
+<p>历史干预实验进一步证实了<strong>因果上的视觉记忆使用</strong>：在RoboMME的PickXtimes任务中，遮罩一个已完成的抓放事件导致策略从“第四次”降为“第三次”，并相应多执行一次抓取；遮罩不含目标任务事件的匹配段则不会改变输出。更换历史视频段中的事件内容——例如将红色方块被盖住的位置替换为另一个杯子下——策略会转向<strong>跟随替换后的视觉证据</strong>选择动作。这些编辑后的历史在训练中从未出现，表明模型具备<strong>涌现的视觉上下文学习能力</strong>。</p>
+<p>消融实验揭示了每个组件的作用：缩短历史窗口导致任务一旦证据离开窗口即失败；打乱帧序使两个任务全部失败；移除文本时间戳主要损害计数任务；用过期隐藏状态替换当前子任务的隐藏状态会急剧降低成功率，说明<strong>隐藏状态在每次决策时都被重写，充当视觉历史与动作头之间的工作记忆</strong>。</p>
+<p>在LIBERO与LIBERO-Plus通用基准上，SimpleMemVLA达到<strong>97.5%</strong>（追平最强结果）与<strong>78.4%</strong>（零样本迁移，超出最强记忆增强模型5.3个百分点），说明携带长视觉历史在不需要记忆的任务上并未造成性能损失。</p>
+<h2>三、展望</h2>
+<p>SimpleMemVLA的核心论点具有方法论意义：<strong>在增加专用记忆机制之前，应当首先将同一策略暴露于其自身的完整视觉历史之下</strong>。这一结果与流式视频理解领域的独立发现相互呼应。当前的局限在于评估范围限于特定的骨干、基准与记忆接口，但论文提供的确凿证据表明，原生上下文应成为未来VLA记忆研究的<strong>强制基线</strong>。当60秒历史仅需5.6k令牌，而主流VLM上下文窗口已达262k时，重新审视“必须压缩历史”的假设，或许本身就是最有价值的发现。</p>
+<p><strong>论文标题</strong>：SimpleMemVLA: A Simple but Effective Native-Video Memory for Vision-Language-Action Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.05533.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-08_SimpleMemVLA-A-Simple-but-Effective-Native-Video-Memory-for-Vision-Language-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-08_SimpleMemVLA-A-Simple-but-Effective-Native-Video-Memory-for-Vision-Language-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
