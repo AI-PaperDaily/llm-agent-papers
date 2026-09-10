@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omni Interaction Agent Technical Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Omni Interaction Agent Technical Report</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-11</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>腾讯混元推出Gander：全双工全模态交互Agent，TCC=100%超越GPT-Realtime</h2>
+<p>当前大模型Agent在工具调用和长程任务执行上进步显著，但人机交互仍被困在文本回合制的牢笼中——用户说完，模型才能开口。当用户想随时打断、插入新约束，或期待模型主动追问时，传统流水线式的VAD+ASR方案显得力不从心。腾讯混元语音团队联合浙江大学等机构提出的<strong>Gander</strong>，以端到端全双工架构重新定义了智能体交互范式：在全双工基准上实现<strong>100%适时机率</strong>、仅<strong>8.0%抢话率</strong>，超越GPT-Realtime、Gemini Live等六个商用系统。</p>
+<h2>一、核心方法</h2>
+<p>Gander的架构核心是一套 <strong>“小脑-大脑”协同框架</strong>。前端小脑（Cerebellum）是一个实时全双工多模态模型，负责连续感知与交互沟通；后端大脑（Brain）是即插即用的通用任务执行代理，如Codex或Claude Code。两者之间由<strong>代理编排运行时</strong>（Agent Orchestration Runtime）协调。</p>
+<p><img alt="图2：Gander架构图" src="https://arxiv.org/html/2609.08977v2/gender_arc.png" /></p>
+<p>这种解耦设计回应了一个根本矛盾：实时对话要求毫秒级响应，复杂工作流却需要长程推理和持续执行。若用单一模型同时承载二者，必然在响应速度与推理深度之间折衷。Gander的方案是，让小脑自主决定何时将任务委托给大脑——通过三个结构化工具调用实现：</p>
+$$task\_start \oplus task\_send \oplus task\_resolve$$
+
+<p>其中 <code>task_send</code> 支持两种路由模式：<strong>main</strong> 模式将新输入注入主任务执行上下文，<strong>fork</strong> 模式则实例化只读辅助查询而不扰动主任务状态。<code>task_resolve</code> 提供四种确定性生命周期控制：<code>cancel</code>、<code>allow_once</code>、<code>allow_session</code>、<code>deny</code>，使小脑能以结构化形式表达任务级控制决策。</p>
+<p>前端小脑的内部架构同样关键。它采用 <strong>流式Thinker-Talker结构</strong>，将连续的音频和视觉输入划分为一秒钟的固定窗口块，每个块被展平为感知令牌、预测控制令牌与文本输出令牌的串联序列。</p>
+<p><img alt="图4：前端小脑详细架构" src="https://arxiv.org/html/2609.08977v2/interaction-v7.png" /></p>
+<p>每个块的核心决策由控制令牌 $CT$ 表达，取值于三个离散状态：</p>
+$$CT \in \{listen, speak, interrupt\}$$
+
+<p>这一设计的精妙之处在于，<strong>将“是否开口”与“说什么”解耦</strong>。模型在每个时间窗口内先基于最新感知状态决定交互行为，再生成内容令牌。论文实验验证，这种显式解耦比将两个决策纠缠在单步预测中产生更稳定的全双工行为。当用户开始说话或场景变化使当前回复过时，<code>interrupt</code> 令牌允许模型立即中止正在进行的语音输出。</p>
+<p>在感知层，Gander面临实时性带来的严苛限制：帧必须密集到达并在极短窗口内完成消费。为此，视觉通路采用<strong>16倍压缩比</strong>，远高于此前主流模型的4倍压缩，将每帧视觉令牌控制在极低水平以维持连续感知。音频通路同样经过5倍时间下采样，将输入降至约<strong>10 tokens/秒</strong>。</p>
+<h2>二、数据构建</h2>
+<p>仅靠架构创新无法塑造交互行为。Gander构建了<strong>270万样本</strong>的专项语料库，其中全双工交互数据（InteractionSpeech）的构造最为复杂。</p>
+<p>竞争性打断与支持性回传（backchannel）的区分被严格定义：回传必须嵌入说话者持续话语中，且低于八个字符（中文）或六个词（英文），同时不得携带疑问、请求或否定立场线索。渲染阶段仅将用户声道合成为音频，助手文本保留在时间轴上作为时长占位符，使打断起始点和交叠区间构成<strong>显式监督信号</strong>。</p>
+<p><img alt="图5：智能体交互数据构造管线" src="https://arxiv.org/html/2609.08977v2/pipeline.png" /></p>
+<p>鲁棒性与负样本同样不可忽视。无指令环境数据训练模型在无人呼叫时保持沉默，抗干扰数据提升对噪声和重叠干扰的鲁棒性，多方对话数据支持说话人和受话人追踪。这些负样本从根本上减少了虚假响应。</p>
+<h2>三、实验表现</h2>
+<p>在全双工基准Full-Duplex-Bench v3上，Gander以9B参数规模的模型在<strong>适时机率</strong>指标上取得满分100%，匹配级联流水线的水平，同时将抢话率压缩至8.0%，优于GPT-Realtime的13.5%和Ultravox的47.9%。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>ToolSel</th>
+<th>Pass@1</th>
+<th>Take-turn</th>
+<th>Interrupt↓</th>
+<th>Filler↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPT-Realtime</td>
+<td>0.876</td>
+<td>0.600</td>
+<td>96.0</td>
+<td>13.5</td>
+<td>16.9</td>
+</tr>
+<tr>
+<td>Gemini Live 3.1</td>
+<td>0.817</td>
+<td>0.540</td>
+<td>78.0</td>
+<td>19.2</td>
+<td>31.7</td>
+</tr>
+<tr>
+<td>Cascaded</td>
+<td>0.803</td>
+<td>0.450</td>
+<td>100.0</td>
+<td>33.0</td>
+<td>26.9</td>
+</tr>
+<tr>
+<td><strong>Gander</strong></td>
+<td>0.759</td>
+<td>0.400</td>
+<td><strong>100.0</strong></td>
+<td><strong>8.0</strong></td>
+<td>51.6</td>
+</tr>
+<tr>
+<td>Gander-仅大脑</td>
+<td><strong>0.934</strong></td>
+<td>0.520</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>两个时间指标必须联合解读：级联流水线以33%的高抢话率换取了满分适时机率，Gemini Live 3.1则靠延迟发言将抢话压到19.2%，却只回答了78%的场景。Gander是唯一同时避免两种失败模式的系统。</p>
+<p>仅大脑条件下的结果揭示了准确率差距的本质：同一执行层在文本驱动下工具选择F1达0.934，超过表中所有系统，说明端到端复合系统的瓶颈不在执行层，而在语音通路和委托决策的训练优化空间。</p>
+<p>在口语问答基准SpokenQA上，Gander在实时模型组中分别以<strong>75.60</strong>和<strong>59.30</strong>领先，甚至在全场九个系统中位列第二，证明流式训练并未侵蚀语言骨干的知识保留。全模态理解上的融合增益更具说服力：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>条件</th>
+<th>Daily-Omni</th>
+<th>融合增益</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>视频+音频</td>
+<td>78.53</td>
+<td>—</td>
+</tr>
+<tr>
+<td>仅视频</td>
+<td>59.40</td>
+<td>+19.13</td>
+</tr>
+<tr>
+<td>仅音频</td>
+<td>57.81</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>Daily-Omni上19.13分的融合增益说明Gander真正实现了跨模态整合，而非简单依赖主导模态。</p>
+<h2>四、论文提出的技术边界</h2>
+<p>Gander的成功建立在一个关键取舍上：<strong>以WorldSense上6.08分的回归换取交互能力的飞跃</strong>。论文明确承认，视觉塔保持冻结以排除视觉编码退化的可能，回归源于交互语料中大量“无关视觉干扰”数据教会模型主动忽略静态视觉细节。这是当前训练配方固有的权衡，而非架构缺陷。</p>
+<h2>五、展望</h2>
+<p>Gander指向一个更自然的协作交互形态——AI不再等待被召唤，而是像人类协作者一样持续感知环境、主动推进任务、接受即时的修正与打断。随着小脑-大脑通信机制的丰富（当前仅依赖文本信号）、记忆与长上下文管理的完善，这类系统将重塑人对Agent的认知：从工具到协作者的距离，也许正是从回合制到全双工的距离。</p>
+<p><strong>论文标题</strong>：Omni Interaction Agent Technical Report</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.08977.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-09_Omni-Interaction-Agent-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-09_Omni-Interaction-Agent-Technical-Report.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
