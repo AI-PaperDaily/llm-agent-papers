@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T1: Terminal Agent Reinforcement Learning for Long-Horizon Tasks</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">T1: Terminal Agent Reinforcement Learning for Long-Horizon Tasks</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-12</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>腾讯与NUS联合推出T1终端智能体：122B MoE强化学习攻克长程任务，64.0%解决率超越GPT-5.4</h2>
+<h2>一、引言</h2>
+<p>大模型与Agent的融合正将AI推向一个更严苛的战场：Linux终端。传统的代码补全和问答任务，模型只需输出文本即可；而终端任务要求模型发出真实命令、观察环境反馈、从部分失败中恢复，并持续执行数百步操作。一次错误的<code>rm -rf</code>或<code>git reset --hard</code>都可能造成不可逆的后果。正是这种「执行后果不可逆」的残酷特性，使终端成为检验长程Agent能力的终极试炼场。</p>
+<p>然而，当前Agent强化学习在该领域面临两个核心瓶颈：<strong>稀疏MoE模型的训练-推理不一致</strong>（推理引擎与训练后端在token切分和专家路由上的细微差异会导致梯度指向错误的子网络），以及<strong>二元奖励信号的严重稀疏性</strong>（数百小时的沙箱执行仅换来1比特的成败反馈）。腾讯混元基础模型团队与新加坡国立大学等机构联合发布的T1模型，正是针对这两个瓶颈给出的实证回答。该论文提出TITO（Token-In, Token-Out）和R³（Rollout Routing Replay）两项机制，配合密集验证奖励设计，在Terminal-Bench 2.1上实现了<strong>64.0%的解决率</strong>，以10B激活参数超越了GPT-5.4（54.8%）和DeepSeek-V4-Flash（56.9%），逼近Claude Opus 4.7的66.1%。</p>
+<h2>二、核心方法：为Long-Horizon MoE强化学习打造的三大支柱</h2>
+<h3>1. TITO：Token-In, Token-Out——消灭token级失真的根源</h3>
+<p>在异步RL训练中，采样端（推理引擎）和训练端（训练后端）是两个独立的软件栈，各自拥有不同的内核、归约顺序和张量布局。更关键的是，<strong>Agent harness在两个引擎之间只交换解析后的文本，而非token标识符</strong>。当训练端重新渲染整个对话历史时，<code>enc(dec(a_i))</code>这一编码-解码往返过程并非恒等变换：非规范化的token切分被丢失、模板会修剪部分内容、工具调用的空白符被重新序列化。结果就是，训练端条件化的token流与采样端实际生成的token流产生了偏移，重要性比率<code>r_j(θ)</code>所比较的两个分布已经不是在比较同一个策略的两个版本。</p>
+<p>TITO的核心思想极为直接：<strong>「采样端输出什么token，训练端就训练什么token」</strong>。具体实现分为两个方向——<strong>Token-In</strong>将模板渲染和编码操作固定为每轮一次、仅追加式执行，确保前缀逐比特精确；<strong>Token-Out</strong>则将整个trial拼接为单一token流，通过对采样token施加loss mask、对工具输出和胶水token施加mask，保证梯度只流经模型实际采样的位置。在边界处，组装器按照从强到弱的四级前缀关系（精确匹配、有界修复、重token化、回退）修复边界。生产环境审计显示，loss区域内的token漂移率为<strong>0.0000%</strong>。</p>
+<p><img alt="图5：TITO拼接机制图" src="https://arxiv.org/html/2609.11042v1/pipeline.png" /></p>
+<h3>2. R³：Rollout Routing Replay——锁定专家路由的离散选择</h3>
+<p>对于Qwen3.5-122B-A10B这样的MoE模型，116.0B的专家参数占到了总参数的95.5%，而每个token仅激活256个专家中的8个。路由选择<code>I_j^ℓ</code>是一个离散的TopK操作：</p>
+$$\mathbb{I}^{\ell}_{j}=\operatorname{TopK}_{k}(\bm{s}^{\ell}_{j}),\qquad\bm{y}^{\ell}_{j}=\sum_{e\in\mathbb{I}^{\ell}_{j}}[\bm{s}^{\ell}_{j}]_{e}\,f_{e}(\bm{h}^{\ell}_{j})$$
+
+<p>由于TopK在离散边界处不连续，推理端和训练端浮点运算的微小差异就足以交换一个被选中的专家和它的候补者。这意味着policy被写为<code>π_θ(·|T_{&lt;j}, I_j)</code>时，加载的是两个不同的子网络。</p>
+<p>R³的解决方案同样朴素而有力：<strong>采样端在生成过程中记录每一层实际激活的专家路由掩码，训练端的前向传播强制使用这些记录的路由选择</strong>。关键在于，R³只替换路由掩码，保持softmax在实时logits上计算，因此路由器仍然可训练，计算图不受影响：</p>
+$$g^{\ell}_{j,e}=\frac{\exp([\bm{s}^{\ell}_{j}(\theta_{t})]_{e})}{\sum_{e^{\prime}\in\mathbb{I}^{\mathrm{r},\ell}_{j}}\exp([\bm{s}^{\ell}_{j}(\theta_{t})]_{e^{\prime}})}\;\;\text{for }e\in\mathbb{I}^{\mathrm{r},\ell}_{j}$$
+<p>TITO和R³联合作用的结果是，训练-推理对数概率差距从0.021降至0.013，且loss区域内token漂移为零。</p>
+<h3>3. 密集验证奖励：让失败轨迹也携带学习信号</h3>
+<p>当二元奖励「任务解决=1，未解决=0」成为唯一反馈时，那些满足了部分要求但未完全成功的轨迹全部归零。论文提出的密集验证奖励将每个断言（assertion）的通过数量作为奖励信号：</p>
+$$r = \frac{P}{S}, \qquad S=20$$
+
+<p>其中<code>P</code>为通过的断言数，<code>S</code>为固定全局尺度。这里有两个关键设计决策：<strong>使用绝对数量而非通过比例</strong>（通过10/20个断言与通过2/4个断言的工作量截然不同，比例会掩盖这种差异），以及<strong>固定全局尺度</strong>（避免逐batch归一化导致奖励尺度漂移，使critic的回归目标不一致）。奖励被放置在轨迹的最后一个响应token上，通过GAE（γ=λ=1）将时间信用分配回溯到整个交互序列。</p>
+<p><img alt="图8：生产运行中密集奖励的平均值轨迹" src="https://arxiv.org/html/2609.11042v1/category_pie_blue_t1.png" /></p>
+<h2>三、实验：长程终端任务上的突破性表现</h2>
+<h3>主要结果</h3>
+<p>在Terminal-Bench 2.1（89个held-out任务）上，T1的训练轨迹清晰展示了RL的效力。基座模型Qwen3.5-122B-A10B得分为43.8%，经过RST监督微调后达到49.4%，而<strong>三个epoch的PPO训练将分数推至64.0%</strong>。RL单独贡献了14.6个百分点，占总提升（20.2个百分点）的72.3%。换句话说，终点线附近四分之三的距离是由执行反馈驱动的强化学习而非模仿演示赢得的。</p>
+<p><img alt="图9：Terminal-Bench 2.1性能对比" src="https://arxiv.org/html/2609.11042v1/performance_raise_0907.png" /></p>
+<p>在同一测试框架下，T1超越了GPT-5.4（54.8%）、DeepSeek-V4-Flash（56.9%）、Kimi-K2.5（56.4%）和Claude Sonnet 4.6（51.5%），位居第四，紧随Claude Opus 4.7（66.1%）之后。考虑到T1的10B激活参数远小于部分对比模型，这一效率优势在模型规模与性能的散点图中尤为醒目。</p>
+<h3>长程任务泛化</h3>
+<p>在Long-Horizon Terminal Bench（LHTB）上，T1达到27.9%的平均奖励，与Gemini-3.1-Pro持平，超过GPT-5.4（27.2%）和GLM-5.1（26.7%）。在更难的Terminal-Bench Hard上，T1以38.0%的解决率超过DeepSeek-V4-Pro（36.0%）。领域分解显示，T1在debugging上达到100.0%解决率（5个任务全过），系统管理达到88.9%，这两个领域恰恰最依赖多步推理和工具使用。</p>
+<h3>训练动力学</h3>
+<p>训练过程中的行为分析揭示了一个健康的信号：平均tool-call轮次从10.4增长到20.9后趋于平稳，总序列长度从11.5k增长到17.8k后同样进入平台期。这种<strong>有界增长</strong>与长度奖励劫持的无界增长截然不同。Critic预热训练使解释方差从冷启动的-33.6提升至0.71-0.86的稳定区间，从未跌入负值。</p>
+<p><img alt="图12：held-out Terminal-Bench 2.1解决率随训练步数的变化" src="https://arxiv.org/html/2609.11042v1/performance_lhtb_all_0907.png" /></p>
+<h2>四、展望</h2>
+<p>T1的贡献远不止一个性能数字。它证明了一件事：<strong>在真实环境中通过执行反馈进行强化学习，可以稳定地优化一个122B规模的稀疏MoE模型，并将能力迁移到与训练集完全脱节的测试任务上</strong>。论文对失败实验的坦诚记录同样宝贵——Critic校准不会自动带来策略改进、上下文管理决定Agent能学到什么、rollout吞吐量会改变训练分布——这些经验对于任何尝试在长程任务上训练Agent的研究者都是实用指南。而对于产业界，一个以10B激活参数在终端任务上超越更大规模闭源模型的开源方案，则提示了一条通往高效可靠软件Agent的可行路径。留在桌面的问题是：TITO和R³的组合能否迁移到完全异步训练场景？密集验证奖励的设计原则在其他环境（浏览器、代码库级操作）中是否依然成立？这些答案，或许决定了RL驱动的Agent post-training能走多远。</p>
+<p><strong>论文标题</strong>：T1: Terminal Agent Reinforcement Learning for Long-Horizon Tasks</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.11042.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-10_T1-Terminal-Agent-Reinforcement-Learning-for-Long-Horizon-Tasks.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-10_T1-Terminal-Agent-Reinforcement-Learning-for-Long-Horizon-Tasks.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
