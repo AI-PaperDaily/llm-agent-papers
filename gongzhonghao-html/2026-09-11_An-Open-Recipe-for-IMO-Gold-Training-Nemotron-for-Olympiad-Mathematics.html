@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>An Open Recipe for IMO Gold: Training Nemotron for Olympiad Mathematics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">An Open Recipe for IMO Gold: Training Nemotron for Olympiad Mathematics</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-13</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>NVIDIA Nemotron 3 Ultra拿下IMO金牌：全自然语言推理系统斩获30分，开源全部训练管线</h2>
+<p><img alt="图1：RL奖励进展。强化学习在训练奖励和评估集性能上都带来快速提升，由GPT-5.5评判。" src="https://arxiv.org/html/2609.10712v1/imo-run-progress.png" /></p>
+<p>2026年国际数学奥林匹克竞赛（IMO）的聚光灯下，NVIDIA提交的Nemotron 3 Ultra系统以<strong>30分（满分42分）</strong>的成绩跨过了金牌线。与以往依赖形式化证明器的方案不同，这套系统<strong>完全在自然语言中完成证明生成、验证与修正</strong>——没有Lean、没有外部工具、没有互联网接入。更值得关注的是，团队将训练数据、后训练checkpoint、推理代码和竞赛提交的完整证明全部开源，为数学AI的复现研究提供了迄今为止最翔实的技术参照。</p>
+<h2>一、三Checkpoint协同：生成、验证、修正的闭环架构</h2>
+<p>论文构建了一条<strong>迭代式生成-验证-修正</strong>流水线，核心由三个Nemotron-3-Ultra 550B-A55B checkpoint协同驱动：</p>
+<ul>
+<li><strong>Nemotron-3-Ultra-GA</strong>：通用版本，未经额外训练，作为生成多样性的来源</li>
+<li><strong>Nemotron-3-Ultra-SFT</strong>：在41万条证明轨迹上监督微调，擅长首轮高质量构建与精确验证</li>
+<li><strong>Nemotron-3-Ultra-RL</strong>：基于RL训练，在修正式推理上表现最优</li>
+</ul>
+<p>第一轮中，每个checkpoint从<strong>8个互补生成模板</strong>中各采样16次，共产生384个候选证明。模板刻意引导不同的解题策略——引理优先分解、路径比较、反例搜索等——以去相关化首轮输出。论文特别指出，单纯增加单个checkpoint的采样次数收益甚微：将RL的128次尝试翻倍至256次，仅多解决1个问题；而用同样的token预算增加64次SFT尝试，却能覆盖RL完全无法触及的5个问题。</p>
+<p>验证阶段采用<strong>双checkpoint独立判断</strong>机制。RL和SFT各自对每个证明产生8次独立评分，只有<strong>全部16次判断均给出满分1分</strong>时，证明才被接受。这个严格的门槛反映了验证器设计中的一个关键权衡：</p>
+$$P(\text{accept}) = \prod_{i=1}^{16} \mathbb{1}[\text{score}_i = 1]$$
+
+<p>在300个证明的审计集上，单checkpoint的误接受率从4.5%（SFT）到31.6%（GA）不等，而RL+SFT联合面板将误接受率压缩至1.1%。代价是误拒绝率高达81.3%——但论文指出，误拒绝只是延迟，被拒的证明仍保留在候选池中参与后续修正；误接受则直接终止搜索，代价不可逆。</p>
+<p>未能接受的证明进入<strong>修正轮次</strong>：从全局池中选取评分最高的16个证明，每个附带最多8条验证器批评，送入全部三个生成checkpoint各采样4次，产生192个修正候选。修正候选重新验证后汇入同一池中，搜索最多持续8轮。</p>
+<h2>二、后训练策略：SFT的广度与RL的深度</h2>
+<p>SFT阶段的训练语料构建采用了<strong>多阶段合成数据管线</strong>。从15,879道AoPS难题出发，使用DeepSeek-V4-Pro在Max推理模式下生成初始证明，未完全解决的题目经历最多3轮修正。同时，验证器轨迹和元验证器轨迹并行生成，以教会模型判断证明有效性。最终语料包含414,890条质量过滤样本，覆盖证明构建、逻辑缺口诊断、方案修正和效度评估四种能力。</p>
+<p>RL阶段则从Nemotron-3-Ultra-GA直接训练，奖励设计参照DeepSeekMath-V2但做了关键简化：</p>
+$$R = \alpha \cdot R_{\text{correctness}} + \beta \cdot R_{\text{self-analysis}}$$
+
+<p>论文将$\alpha=1$、$\beta=0$的配置固定，完全移除自分析奖励项。RL采用异步框架，保持160个prompt组同时在飞，每个训练batch包含128个prompt×16条轨迹，最大轨迹年龄设为4个优化器步。训练消耗128个训练节点、128个推理节点和16个judge节点，每节点4块GB200 GPU。</p>
+<p>从结果看，两种后训练路线产生了<strong>互补的checkpoint特性</strong>：SFT在首轮表现最突出（开发集首轮得分70），RL则在多轮搜索后实现最佳总体性能（最终得分152）。论文认为，这种互补性正是多模型集成优于单模型扩展的根源。</p>
+<h2>三、实验验证：开发集上的系统化消融</h2>
+<p>研究者构建了<strong>Nemotron-IMO-Bench</strong>——包含200道全新奥数级问题，由Titu Andreescu教授合作设计，确保不出现在任何评测模型的训练数据中。从中选出30道构成开发集，覆盖代数、组合、几何、数论四个方向。</p>
+<p><img alt="图2：竞赛分数随时间变化（对数尺度）。绿线为内部验证器分数，蓝虚线为独立模型评审团的赛后评分，实心圆为官方累计得分。" src="https://arxiv.org/html/2609.10712v1/imo-run-progress.png" /></p>
+<p>表1展示了单checkpoint管线与完整集成在开发集上的独立评审团评分对比：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>轮次</th>
+<th>GA</th>
+<th>RL</th>
+<th>SFT</th>
+<th>集成</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1</td>
+<td>34 (5)</td>
+<td>47 (7)</td>
+<td>70 (10)</td>
+<td>91 (13)</td>
+</tr>
+<tr>
+<td>R8</td>
+<td>145 (23)</td>
+<td>152 (23)</td>
+<td>147 (21)</td>
+<td>167 (25)</td>
+</tr>
+<tr>
+<td>R8+回退</td>
+<td>162 (23)</td>
+<td>180 (23)</td>
+<td>165 (21)</td>
+<td>188 (25)</td>
+</tr>
+</tbody>
+</table></div>
+<p>集成方案在首轮即超越所有单checkpoint的最终成绩，说明<strong>跨checkpoint的多样性比单点纵向扩展更有价值</strong>。验证器审计进一步揭示了RL+SFT联合面板的精妙之处：SFT单独会接受8个错误证明，RL的8次判断能拒掉其中6个，而GA仅能拒掉2个——<strong>两个选择性验证器的互补否决能力</strong>，而非简单叠加，才是精度的来源。</p>
+<p>竞赛实际运行中，四道满分题在76分钟内完成最终选择，另两道在100分钟内确定。提交时内部验证器和赛后独立评审团都给出了约32分的预估，与实际30分的差距完全来自第3题和第6题——两套模型评估都给了过度乐观的评分，指向<strong>模型验证共享的盲区</strong>。</p>
+<pre class="highlight"><code>                训练/推理资源统计
+┌─────────────────────────────────────────────┐
+│ 竞赛总计        2.31B tokens   4,784.6 GPU-h │
+│ 至提交证明      707M tokens     1,464.4 GPU-h │
+│ 后续P6持续搜索  610M tokens       890 GPU-h   │
+└─────────────────────────────────────────────┘
+</code></pre>
+
+<p>在4.5小时截止后，继续搜索的P6问题在8小时25分产生了新解，经独立人类数学家评审获得4/7分——即便不计入官方成绩，也提示了系统在更长计算预算下的潜力。</p>
+<h2>四、开放复现的技术路线图</h2>
+<p>论文最大的贡献或许在于<strong>可复现性</strong>。两个后训练checkpoint、完整训练数据、NeMo-Skills推理代码、NeMo-RL训练配方、竞赛提交证明，以及200道新基准问题全部开源。这让研究者第一次能够系统性地审视：一个达到IMO金牌水平的自然语言数学推理系统，究竟需要怎样的训练数据构成、验证器设计和计算资源配置。</p>
+<p>论文的结论指向一个明确的技术判断：<strong>数学推理能力的提升，关键不在单个模型的纵向强化，而在互补checkpoint的横向协同与验证引导的迭代修正</strong>。那些更复杂的交叉证明上下文、多证明修正和分流路由策略，虽然改变了搜索的早期行为，却未能提升最终覆盖率。简单的轮次式修正加上严格的全票通过验证，反而在计算效率和结果质量之间找到了最佳平衡点。</p>
+<p>对正在构建数学Agent或推理系统的团队而言，这份开放配方提供的不仅是一组可复用的checkpoint，更是一张经过竞赛验证的<strong>系统级设计决策地图</strong>——哪些架构选择真正驱动了性能提升，哪些精心设计的复杂度最终被证明是多余的。当开源模型开始以可复现的方式逼近人类最顶尖的数学推理水平，IMO金牌或许正在从一个象征性里程碑，变成评估推理系统的新基准线。</p>
+<p><strong>论文标题</strong>：An Open Recipe for IMO Gold: Training Nemotron for Olympiad Mathematics</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.10712.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-11_An-Open-Recipe-for-IMO-Gold-Training-Nemotron-for-Olympiad-Mathematics.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-11_An-Open-Recipe-for-IMO-Gold-Training-Nemotron-for-Olympiad-Mathematics.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
