@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SenseNova-U1.5: Towards Native Unified Visual Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">SenseNova-U1.5: Towards Native Unified Visual Intelligence</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-14</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>商汤发布SenseNova-U1.5：8B参数原生多模态统一模型，4K生成与图像编辑性能登顶</h1>
+<h2>一、当“看见”与“创造”共用同一双眼睛</h2>
+<p>多模态大模型在过去两年经历了爆发式增长，但一条隐秘的架构鸿沟始终横亘其中：<strong>理解走视觉编码器，生成走VAE</strong>。绝大多数系统通过预训练视觉编码器（VE）提取语义抽象，又依赖变分自编码器（VAE）进行像素级重建。两条管线各自优化，表征空间互不相通，理解与生成之间的协同始终存在隔阂。</p>
+<p>2025年，SenseNova-U1首次以<strong>无编码器、无VAE</strong>的NEO-unify架构证明了原生统一建模的可行性。但该版本采用的逐块独立重建策略，使得相邻patch之间缺乏信息交换，在高分辨率下容易出现接缝、纹理断裂和几何不一致。</p>
+<p>SenseNova-U1.5的发布正是针对这一核心缺陷的系统性回应。论文提出两项根本性改进：<strong>空间联合重建</strong>取代独立patch预测，<strong>先专业化后统一</strong>的策略取代联合奖励优化。在Qwen-Image-Bench、GenEval、ImgEdit、OpenING等多个基准上，这个8B参数的MoE模型以开源之姿逼近甚至超越诸多闭源巨兽。</p>
+<p><img alt="图1：SenseNova-U1.5在信息图与人物生成方面的展示" src="https://arxiv.org/html/2609.11929v1/teaser_figure_t2i.png" /></p>
+<p><img alt="图2：SenseNova-U1.5在图像编辑与多参考生成方面的展示" src="https://arxiv.org/html/2609.11929v1/teaser_showcase_edit.png" /></p>
+<h2>二、架构革新：从“拼图”到“织网”的视觉接口</h2>
+<h3>2.1 空间联合解码器：打破patch孤岛</h3>
+<p>SenseNova-U1的原始设计将每个视觉token独立映射为RGB patch，本质上是一种<strong>32×32像素区域的孤立预测</strong>。这种因子化方式在低分辨率尚可接受，但在4K分辨率下，局部图像的连续性使得独立预测的边界伪影被急剧放大。</p>
+<p>U1.5的核心替换方案是引入<strong>轻量级空间耦合解码器</strong>。骨干网络输出的隐藏状态先恢复二维拓扑结构，随后通过Pixel Shuffle上采样阶段（倍率分别为2、4、8）逐级重建全分辨率RGB图像。相邻上采样阶段之间的3×3卷积实现了跨token区域的信息交换，使得patch边界的像素值能够被联合决定。论文特别强调，这一设计仅增加极少的额外计算量，却显著减少了边界伪影，增强了高分辨率生成的稳定性。</p>
+<p>同时，U1.5将分辨率感知的噪声尺度归一化范围从2048²扩展至4096²。分辨率依赖的噪声嵌入与扩散时间步表示相加：</p>
+$$\mathbf{s}_{t}=\bm{\tau}_{t}+\mathrm{NSEmb}\!\left(\bar{\sigma}_{R}\right)$$
+
+<p>这一设计使去噪器能够显式感知扩散时间与分辨率相关的噪声统计量，在不同分辨率和宽高比下保持一致的生成行为。</p>
+<p><img alt="图3：SenseNova-U1.5架构总览" src="https://arxiv.org/html/2609.11929v1/assets/u1.5_arch.png" /></p>
+<h3>2.2 原生MoE：异构计算流在同一Transformer中交汇</h3>
+<p>U1.5保留了<strong>Mixture-of-Transformers（MoT）</strong>设计，将理解与生成集成于同一Transformer骨干。干净图像-文本上下文与噪声条件视觉状态在统一序列中交错排列。注意力模式采取非对称设计：文本token仅关注前文，干净图像块内部双向交互，噪声生成token可关注所有前置多模态上下文，而反向路径被显式屏蔽。</p>
+<p>关键在于，理解与生成分支保留了<strong>独立的注意力投影、归一化层和前馈模块</strong>，共享注意力仅作为跨流通信接口。这种“密集交互、参数分离”的组合允许两个能力共享表征空间，同时避免优化目标的相互干扰。</p>
+<h3>2.3 统一目标：三重信号耦合</h3>
+<p>训练目标融合了自回归语言建模、原生像素空间流匹配和感知监督：</p>
+$$\mathcal{L}=\lambda_{\mathrm{AR}}\mathcal{L}_{\mathrm{AR}}+\lambda_{\mathrm{Flow}}\mathcal{L}_{\mathrm{Flow}}+\lambda_{\mathrm{Perc}}\mathcal{L}_{\mathrm{Perc}}$$
+
+<p>其中流匹配损失采用分辨率自适应噪声构建训练轨迹：</p>
+$$\mathbf{z}_{t}=t\mathbf{x}+(1-t)\sigma_{R}(H,W)\bm{\epsilon}$$
+
+<p>感知损失通过LPIPS在特征空间提供与RGB空间互补的监督信号，规范生成端点的全局结构和局部纹理一致性。</p>
+<h2>三、后训练策略：四个专家各有所长，一个模型集大成</h2>
+<h3>3.1 多专家强化学习：精准锻造每一项能力</h3>
+<p>U1.5抛弃了将多目标揉进单一策略的做法，转而训练四个专项RL专家：</p>
+<ul>
+<li><strong>美学专家</strong>：交错训练HPSv3++偏好奖励与PaddleOCR文本保真奖励，避免奖励尺度混淆</li>
+<li><strong>OCR专家</strong>：采用多集IoU评分，对中文按字符、英文按单词匹配，对部分正确和重复错误均能敏感响应</li>
+<li><strong>编辑专家</strong>：五维奖励框架——指令完成度、编辑执行质量、全局视觉质量、文本编辑质量、未编辑区域保留，取最小值聚合</li>
+</ul>
+$$\mathcal{L}_{\mathrm{OPD}}=\mathbb{E}\!\left[\left\|\mathbf{v}_{\theta}\!\left(\operatorname{sg}(\hat{\mathbf{x}}_{\theta,t}),t,\mathbf{c}\right)-\mathbf{v}_{m}\!\left(\operatorname{sg}(\hat{\mathbf{x}}_{\theta,t}),t,\mathbf{c}\right)\right\|_{2}^{2}\right]$$
+
+<p>编辑奖励的瓶颈式聚合确保模型不能以强项掩盖关键失败：</p>
+$$R_{\mathrm{edit}}=\min\!\left(\left\{R_{\mathrm{inst}},R_{\mathrm{exec}},R_{\mathrm{visual}},R_{\mathrm{pres}}\right\}\cup\left\{R_{\mathrm{text}}\ \middle|\ \mathrm{text\ edit\ is\ applicable}\right\}\right)$$
+
+<h3>3.2 多专家在线策略蒸馏：轨迹级知识迁移</h3>
+<p>四个专家训练完成后，U1.5通过<strong>在线策略速度场蒸馏</strong>将其能力整合进统一模型。学生先在自身轨迹上生成状态，冻结的专家在同一状态、时间步和条件下给出监督信号。查询分布随训练从高噪声区（Beta(2,5)，决定全局结构）逐步向低噪声区（Beta(5,2)，决定局部细节）迁移：</p>
+$$t_{e}\sim\operatorname{Beta}\!\left(2+3n/N,\,5-3n/N\right)$$
+
+<p>这一渐进式设计使学生在早期epoch学习全局布局，后期epoch精修文字渲染和纹理细节。文本到图像生成使用CFG尺度4，编辑任务使用尺度1以保持源图一致性。</p>
+<p><img alt="图4：SenseNova-U1.5后训练流程" src="https://arxiv.org/html/2609.11929v1/assets/RL_pipe.png" /></p>
+<h2>四、实验：开源阵营的密集攻防</h2>
+<h3>4.1 图像生成：8B规模的越级挑战</h3>
+<p>在Qwen-Image-Bench英文和中文子集上，U1.5配合提示增强达到<strong>60.22和60.13</strong>，超越所有开源模型。GenEval综合得分<strong>0.92</strong>力压Qwen-Image（20B）、Tuna和ERNIE-Image。在CVTG-2K上以<strong>0.948</strong>的平均得分登顶，五区域词准确率高达0.955。LongText-Bench中英文双轨均超过0.988，与Seedream 4.5等闭源模型处于同一水平。</p>
+<h3>4.2 图像编辑：语义一致性的关键跃升</h3>
+<p>ImgEdit综合<strong>4.59</strong>，在Add、Adjust、Extract、Replace等类别全面领先开源竞品。GEdit-Bench上语义一致性得分<strong>9.15（英文）/9.06（中文）</strong>，显著优势印证了编辑指令理解与执行之间的协同优化取得了实质性进展。OmniRef-Bench目标与MLLM双协议评估中，风格一致性与背景保留的提升尤其突出。</p>
+<h3>4.3 交错生成与统一推理：生成作为推理媒介</h3>
+<p>OpenING上配合CoT达到<strong>9.18</strong>，超越Nano-Banana和GPT-4o+DALL-E3管线。VBVR-Pro-Bench以<strong>68.2</strong>的总分大幅领先Nano-Banana-Pro的56.4和GPT-Image-2的50.7，在抽象推理与知识推理等认知维度展现出生成即推理的能力。RealUnify-GEU上<strong>56.3</strong>的得分较前代提升近9个点，表明生成正从输出模态向中间表征的角色演进。</p>
+<p><img alt="图5：SenseNova-U1.5训练语料分布" src="https://arxiv.org/html/2609.11929v1/assets/data_distributions.png" /></p>
+<h2>五、原生统一：不是简化，而是能力的乘法</h2>
+<p>SenseNova-U1.5的深层启示在于，原生统一的价值并非单纯的架构精简。当理解与生成共享同一视觉基质，结构化知识、规划能力与推理能力得以直接迁移至视觉创作。论文发现，即便训练数据中对结构化格式的依赖极为有限，模型依然能有效泛化至长程、复杂且高度结构化的视觉指令。</p>
+<p>这一现象的深层含义值得持续关注：多模态统一模型的真正机会在于<strong>能力的交叉滋养</strong>——推理改善生成质量，生成本身成为解决问题的方式。感知与创造之间的边界正在模糊，而8B参数的紧凑规模证明了这一路径的工程可行性。下一个问题或许是：当生成真正成为推理的内生环节，传统意义上“先理解后生成”的流水线式架构是否还有存在的必要？</p>
+<p><strong>论文标题</strong>：SenseNova-U1.5: Towards Native Unified Visual Intelligence</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.11929.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-11_SenseNova-U15-Towards-Native-Unified-Visual-Intelligence.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-11_SenseNova-U15-Towards-Native-Unified-Visual-Intelligence.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
