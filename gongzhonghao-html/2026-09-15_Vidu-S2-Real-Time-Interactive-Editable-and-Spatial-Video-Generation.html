@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vidu S2: Real-Time Interactive, Editable, and Spatial Video Generation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Vidu S2: Real-Time Interactive, Editable, and Spatial Video Generation</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-17</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>清华与生数科技联合发布Vidu S2：720p实时生成与可编辑空间视频，交互性能全面跃升</h2>
+<p>实时视频生成正在经历一场从"耐心等待"到"即时交互"的范式转移。当Sora、Veo、Wan等模型将离线生成质量推向新高度的同时，用户依然需要等待数分钟甚至更久才能看到完整结果。面对直播、游戏、虚拟陪伴等强交互场景，毫秒级的响应延迟意味着模型必须具备流式推理能力，而非传统扩散模型的全序列同步去噪。清华大学与生数科技联合推出的Vidu S2，正是对这一技术瓶颈的系统性回应。论文将其拆解为<strong>Vidu S2-Avatar</strong>（实时交互数字人）与<strong>Vidu S2-Editing</strong>（实时视频编辑）两大核心模块，并首次探索了面向VR头显的实时空间视频生成路径。</p>
+<p><img alt="图1：Vidu S2整体架构与能力概览" src="https://arxiv.org/html/2609.11638v1/Vidu_S2_cp.png" /></p>
+<h2>一、核心方法：从因果流式生成到自回放训练</h2>
+<p>如果说Vidu S1证明了实时数字人视频生成的可行性，那么Vidu S2的目标则是在四个维度上完成质变：分辨率从540p跨入720p、参考图像可随时替换、大幅提升指令跟随能力（包括跳舞等大幅身体运动）、以及将能力边界从"数字人"扩展到"视频流编辑"。支撑这些能力跃迁的技术底座，是一套名为<strong>Self-Replay Forcing（SRF）</strong>的训练框架。</p>
+<p>在流式生成场景下，模型逐段输出视频，每个片段的条件历史都是模型自身在前序步骤中生成的结果。Teacher Forcing假设历史是干净的、完美的，这导致训练与推理之间存在严重的分布漂移。Diffusion Forcing通过向干净历史注入噪声来缓解这一问题，但噪声历史的构造过程被<strong>切断了梯度流</strong>，无法将后续片段的损失反向传播到前文表示中。论文提出的SRF机制，在自回归rollout完成后，将整个学生生成轨迹独立地重新加噪，并在同一次前向计算中完成梯度回传。其训练损失函数为：</p>
+$$ \mathcal{L}_{\mathrm{SRF}}=\mathcal{L}_{\mathrm{DMD}}\left(\boldsymbol{f}_{\boldsymbol{\theta}}^{\mathrm{causal}}\left(\boldsymbol{x}_{\boldsymbol{t}}^{1:N},t,\boldsymbol{r},\boldsymbol{c}^{1:N}\right)\right)+\mathcal{L}_{\mathrm{perc}}\left(\boldsymbol{f}_{\boldsymbol{\theta}}^{\mathrm{causal}}\left(\boldsymbol{x}_{\boldsymbol{t}}^{1:N},t,\boldsymbol{r},\boldsymbol{c}^{1:N}\right)\right) $$
+
+<p>其中 $\boldsymbol{x}_{\boldsymbol{t}}^{1:N}$ 表示按Diffusion Forcing重新加噪后的学生生成轨迹，原始rollout的KV缓存被<strong>梯度截断</strong>，而重放阶段的所有片段保持连接在同一计算图中，允许跨块梯度传播。这一设计的关键价值在于：后续片段的生成质量信号可以反过来优化前序片段的表征，从而抑制长序列流式生成中常见的漂移和崩溃问题。</p>
+<p>在模型架构层面，Vidu S2-Avatar采用<strong>音视频联合Diffusion Transformer</strong>，以参考图像 $\boldsymbol{r}$ 和分段条件序列 $\boldsymbol{c}^{1:N}$ 共同驱动首N个片段的去噪预测：</p>
+$$ \hat{\boldsymbol{x}}_{0}^{1:N}=\boldsymbol{f}_{\boldsymbol{\theta}}^{\mathrm{avatar}}\left(\boldsymbol{x}_{t}^{1:N},t,\boldsymbol{r},\boldsymbol{c}^{1:N}\right) $$
+
+<p>与生成模型的流式因果化不同，Vidu S2-Editing的核心挑战在于编辑结果必须与源视频的运动和时序严格对齐。论文提出的<strong>帧对齐注意力（Frame-Aligned Attention）</strong>机制规定：每个目标帧只读取同一时间步位置上的源帧信息，同时所有目标帧均可访问参考图像token。这一设计在保持双向训练容量的同时，让模型的注意力模式天然适配后续的因果流式推理。</p>
+<p><img alt="图2：Vidu S2-Avatar与Vidu S2-Editing的数据准备流程" src="https://arxiv.org/html/2609.11638v1/S2_Data_Pipeline_Polished_v11.png" /></p>
+<h2>二、数据与推理：720p的硬件现实</h2>
+<p>将实时生成从540p提升到720p，训练数据的选择策略必须先于模型架构调整。论文发现，名义分辨率是高度不可靠的质量信号：大量1080p视频因重压缩而纹理模糊、伪影严重。为此，研究者构建了一套<strong>多维混合清晰度评估框架</strong>，综合考量分辨率、帧率、编码格式、位深、码率之间的制约关系，并结合专家模型对纹理细节、边缘锐度和压缩伪影进行评分，加权汇总后作为数据筛选依据。</p>
+<p>背景漂移是无限长度流式生成的宿敌。舞蹈类视频富含下半身运动和大幅姿态变化，对模型的运动多样性至关重要，但这类视频往往伴随运镜。论文的解决路径是<strong>背景稳定化算子</strong>：对平移有限、旋转和变焦主导的相机运动，通过前背景分割、背景区域特征匹配与几何校正，将动态背景转换为近似固定机位画面。这使得训练数据既能保留丰富的舞蹈动作，又不牺牲背景一致性。</p>
+<p>在推理基础设施层面，论文将注意力优化分为两层策略。对于敏感的注意力层，采用SageAttention保精度；对容错率较高的层，则部署SpargeAttention和Sparse-Linear Attention进行更激进的近似。线性层采用per-block W8A8量化GEMM，在细粒度缩放下抑制离群值对量化范围的主导，从而在精度和速度间取得平衡。更进一步，<strong>多GPU上下文并行</strong>采用Ulysses式的序列切分，叠加量化通信来压缩设备间张量交换体积，使VAE编码器、主干网络、Refiner和VAE解码器能够在共享时间线上充分利用GPU资源。Refiner的设计同样值得关注：它从低分辨率潜在表示出发，通过一步去噪完成空间上采样，其历史缓存维持在高噪声水平 $\tau_B$ 以传播粗糙的时序结构，而主干网络的低噪声缓存 $\tau_R$ 则负责保留高频身份细节：</p>
+$$ \boldsymbol{z}_{t_r}^{i}=(1-t_r)\mathcal{U}\left(\hat{\boldsymbol{x}}_{0,\mathrm{LR}}^{i}\right)+t_r\boldsymbol{\epsilon}^{i},\qquad\boldsymbol{\epsilon}^{i}\sim\mathcal{N}(\boldsymbol{0},\boldsymbol{I}) $$
+
+<h2>三、编辑模型与Agentic系统</h2>
+<p>Vidu S2-Editing覆盖四类编辑任务：风格迁移、虚拟试穿、角色替换和背景替换。训练数据的构造采用条件生成模型作为"数据引擎"：以源视频的表面法线视频为条件，以参考图像为外观引导，训练模型重建原视频，继而替换参考图像为风格化版本，合成风格迁移训练对。对于其余任务，则融合多个开源编辑模型的候选输出，通过<strong>后过滤与对比选择</strong>保留最优的源-编辑视频对。</p>
+<p><img alt="图3：Vidu S2-Avatar的Agentic系统管线示意图" src="https://arxiv.org/html/2609.11638v1/a2a-interface.png" /></p>
+<p>在用户侧，Vidu S2-Avatar配备了一个<strong>VLM Agentic系统</strong>，负责将用户的口头指令转化为精细的生成提示。系统会从时序维度解析指令："拿起杯子，然后微笑"需要拆分为两个顺序动作。当视觉反馈确认"拿杯"动作完成后，后续提示词会显式维护"持续握持杯子"这一状态约束。Agent对参考图像的分类——手持物、背景还是衣物——决定了提示词的重写策略。</p>
+<p><img alt="图4：参考图像控制与配饰操作示例" src="https://arxiv.org/html/2609.11638v1/reference-control-cases.png" /></p>
+<h2>四、实验与性能表现</h2>
+<p>在Vidu S2-Editing的模型结构上，论文以DiT为骨干，将源视频和参考图像编码为条件token并与噪声目标token拼接，使用条件特定的RoPE编码区分不同token流的时空位置。流式推理场景下，源帧在被对应的目标帧消费后即从缓存中释放，不产生历史累积。</p>
+<p>从工程落地角度看，Vidu S2最值得关注的不在于单一指标的刷榜，而在于它把一个<strong>完整的实时视频生成-编辑-空间化栈</strong>压缩到了低成本GPU上。720p实时生成（25~42 FPS）、四类编辑任务的流式处理、以及面向VR头显的双目视图转换，这三者叠加构成了一个此前尚不存在的产品形态：用户上传一张照片，即可与一个跳舞、换装、换场景的数字人在空间视频中持续互动。这种从"生成一段视频"到"维持一段持续对话"的转变，或许才是实时视频生成真正的分水岭。当流式生成的延迟被压缩到人类感知阈值以下，视频模型将不再是工具，而是基础设施。</p>
+<p><strong>论文标题</strong>：Vidu S2: Real-Time Interactive, Editable, and Spatial Video Generation</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.11638.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-15_Vidu-S2-Real-Time-Interactive-Editable-and-Spatial-Video-Generation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-15_Vidu-S2-Real-Time-Interactive-Editable-and-Spatial-Video-Generation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
