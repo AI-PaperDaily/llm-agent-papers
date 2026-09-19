@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek-V4.1-Flash: Pushing the Limits of KV Cache Compression</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">DeepSeek-V4.1-Flash: Pushing the Limits of KV Cache Compression</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-20</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>一、核心方法：三项关键设计组合出击</h2>
+<p>DeepSeek-V4.1-Flash 的 KV 缓存压缩并非单一技术突破，而是<strong>架构层、精度层、部署层</strong>的联合优化。论文将总压缩目标分解为两个独立指标：<strong>全局 KV 缓存</strong>（始终驻留 HBM，约束运行时吞吐）与<strong>持久 KV 缓存</strong>（驻留 SSD 或主机内存，约束前缀复用能力）。围绕这两个指标，论文给出了三个层面的对应解法。</p>
+<h3>1.1 Causal Encoder-Decoder：把 Prefill 计算砍掉近一半</h3>
+<p>在长 horizon Agent 场景中，工具调用频繁触发新的 prefill 请求，而传统稠密 Transformer 的 prefill 复杂度为 $\mathcal{O}(NL)$——每一层都要处理每一个 token。CED 架构的出发点很直接：<strong>让上半层网络直接复用下半层网络产生的全局 KV</strong>，从而让大部分 prompt token 只需经过前 20 层编码器。</p>
+<p>对于全局注意力，CED 中解码器第 $l$ 层的 KV 不再来自本层隐藏状态，而是从编码器末层隐藏状态 $H_{L/2}$ 经层相关投影得到：</p>
+$$C_{l}=H_{L/2}W_{l}^{KV},\quad Z_{l}=H_{L/2}W_{l}^{Z},\quad l>\frac{L}{2}$$
+
+<p>这一定义使得 prefill 阶段只需计算前 $L/2$ 层即可获得解码器所需的全部全局 KV。对于序列长度 $N \gg n_{\mathrm{win}}$ 的情形，整体 prefill 复杂度从 $\mathcal{O}(NL)$ 降至 $\mathcal{O}(NL/2 + n_{\mathrm{win}} \times L/2) \approx \mathcal{O}(NL/2)$。配合 <strong>Decoder SWA Bounded Replay</strong>——仅对 prompt 最后 $n_{\mathrm{win}}$ 个 token 做解码器 SWA 前向计算——解码器 prefill 的额外开销被压至最低。</p>
+<p><img alt="图3：DeepSeek-V4.1-Flash整体架构。40层网络分为各20层的因果编码器与解码器，前三层中的前两层仅用SWA，其余层使用CSA2；模型同时集成Single-Pass mHC、Engram、DSpark与Hierarchical Sparse Indexer" src="https://arxiv.org/html/2609.19969v1/figures/teaser_a.png" /></p>
+<p>参数激活的不对称性是 CED 的直接收益：<strong>prefill 阶段仅激活 8B 参数，decode 阶段激活 16B</strong>。对于输入 token 数远大于输出 token 数的 Agent 工作负载，这一非对称设计恰好命中了成本结构的关键。</p>
+<h3>1.2 CSA2：在“层”维度上压缩 KV 缓存</h3>
+<p>KV 缓存占用可以沿三个乘法维度压缩：<strong>条目大小</strong>（GQA/MLA 已解决）、<strong>序列维度</strong>（CSA 的 $m$-token 压缩已在 V4 中引入）、以及<strong>层维度</strong>——此前尚未被系统化利用。CSA2 的核心创新在于同时覆盖全部三个维度，并引入三种静态分配的工作模式：</p>
+<ul>
+<li><strong>Full Mode</strong>：本层计算完整的主 KV、索引器 K 与 Top-K 索引，承担完整 CSA2 计算路径。</li>
+<li><strong>Reindex Mode</strong>：复用前序 Full 层的主 KV 与索引器 K，但使用本层索引器 Q 重新评分并生成新的 Top-K 索引。</li>
+<li><strong>Reuse Mode</strong>：同时复用主 KV 与 Top-K 索引，直接执行稀疏注意力，不计算索引器 Q 或评分。</li>
+</ul>
+<p>三种模式的差异仅在于<strong>主 KV、索引器 K、Top-K 索引</strong>三个量从何处获取，而每层都计算自己的主 Q 与 SWA KV。这一设计将“缓存共享”与“索引复用”解耦，避免了 IndexCache 只省索引计算不省存储、或全网络路由共享损害性能的缺陷。</p>
+<p><img alt="图4：CSA2的三种运行模式。绿色表示当前层计算量，黄色表示从最近Full层复用的主KV与索引器K，红色表示从最近产生索引的层复用的Top-K索引" src="https://arxiv.org/html/2609.19969v1/figures/teaser_b.png" /></p>
+<p>进一步的优化来自 <strong>Hierarchical Sparse Indexer</strong>。在解码器中，后续索引层不必扫描全上下文，而是只在首个 Full 层构建的候选池内搜索。对于每条查询，首个 Full 层在全部因果可见位置中执行 Top-K 选择，并按块级最大分数选出最多 2048 个块（每块 8 个位置，合计 16384 个候选位置）。后续 Reindex 层仅在这 16384 个候选位置内评分，将单条查询的索引计算复杂度从<strong>线性于上下文长度</strong>变为<strong>常数级</strong>。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>主 KV</th>
+<th>索引器 K</th>
+<th>Top-K 索引</th>
+<th>索引器 Q</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Full</strong></td>
+<td>本层计算</td>
+<td>由本层主KV投影</td>
+<td>本层计算</td>
+<td>本层计算</td>
+</tr>
+<tr>
+<td><strong>Reindex</strong></td>
+<td>复用前序Full层</td>
+<td>复用前序Full层</td>
+<td>本层重新评分</td>
+<td>本层计算</td>
+</tr>
+<tr>
+<td><strong>Reuse</strong></td>
+<td>复用前序Full层</td>
+<td>复用前序Full层</td>
+<td>复用最新索引</td>
+<td>不计算</td>
+</tr>
+</tbody>
+</table></div>
+<h3>1.3 FP4 主 KV 缓存：精度换存储的最后一公里</h3>
+<p>在条目大小维度，DeepSeek-V4.1-Flash 将主 KV 缓存从 V4 的 FP8 进一步压缩至 <strong>FP4</strong>，采用 <strong>E2M1 格式</strong>、每 16 通道共享一个 E4M3 缩放因子，直接对齐 NVFP4 格式但省略了二级全局缩放。论文给出了一组边界分析：缓存中最大 RMSNorm 权重约为 1，经归一化后 512 通道 KV 潜变量的 L2 范数上界为 $\sqrt{512} \approx 22.6$，RoPE 旋转保持该范数，因此 FP4 格式的动态范围（最大量级 2688）远高于实际需求，省略全局缩放不会引入可测量的精度损失。</p>
+<p>FP4 主 KV 缓存将 HBM 中的全局 KV 占用<strong>再压缩一半</strong>，与 CSA2 的跨层共享叠加，最终将全局 KV 缓存足迹从 V4-Flash 的水平压缩至约 <strong>1/4</strong>，达到 <strong>890 字节/token</strong>。</p>
+<h2>二、实验：基准表现与缓存压缩的双重验证</h2>
+<p>论文在 Base 模型和 Post-Training 模型两个层面给出了系统评测。Base 模型阶段的核心结论是：DeepSeek-V4.1-Flash-Base 在激活参数仅为 DeepSeek-V4-Pro-Base 约 <strong>1/6</strong>、总参数量约 <strong>1/3</strong> 的前提下，在 MMLU-Pro（74.1 vs 73.5）、BigCodeBench（60.6 vs 59.2）、HumanEval（79.4 vs 76.8）等基准上达到或超越 Pro 水平，同时在内部 held-out 语料上取得最低 BPB（bits-per-byte），表明预训练数据管线的改进对真实研发场景的泛化能力有明确增益。</p>
+<p><img alt="图1：DeepSeek-V4.1-Flash在Agent基准上的表现（a）与跨代模型每token全局KV缓存大小（b），相对V4-Flash减少约4倍，相对V1减少约437倍" src="https://arxiv.org/html/2609.19969v1/figures/decode_flops_curves.png" /></p>
+<p>Post-Training 阶段的结果更直接地体现了“压缩不损性能”的主张。在 <strong>Terminal-Bench 2.1</strong> 上，V4.1-Flash 以 <strong>90.6%</strong> 的 Pass@1 超越 Opus-5（89.1%）与 GPT-5.6 Sol（88.8%）；在 <strong>DeepSWE v1.1</strong> 上以 <strong>74.2%</strong> 的 Resolved 率超过 Opus-5（74.0%）与 GPT-5.6 Sol（73.0%）；在 <strong>AutomationBench</strong> 上取得 <strong>54.8%</strong>，领先第二名 GLM-5.3（48.8%）约 6 个百分点。即使在模型自称存在差距的科学 Agent 任务上（Terminal-Bench 4.0），31.2% 的成绩也显著优于 DeepSeek-V4-Pro（12.4%）与 Kimi-K3（12.6%），仅是落后于 Opus-5 的 51.8% 和 GPT-5.6 Sol 的 39.9%。</p>
+<p>图 2 展示了跨代模型的 <strong>单 token Decode FLOPs 随上下文长度的变化曲线</strong>。从 4K 扩展到 1M tokens（256 倍），V4.1-Flash 的 Decode FLOPs 仅增加约 <strong>25%</strong>，几乎保持常数，而 V4-Flash 在同一范围上增长显著更陡。这是 CSA2 稀疏注意力与 Hierarchical Sparse Indexer 共同作用的结果：解码阶段每 token 的注意力计算量不再随上下文线性增长。配合 15 个 kernel（prefill）和 11 个 kernel（decode）的融合执行流程，长上下文推理的算力成本被结构性重塑。</p>
+<p><img alt="图2：跨代DeepSeek模型的单token Decode FLOPs随上下文长度的变化。V4.1-Flash在4K到1M范围内仅增加约25%的Decode FLOPs，几乎保持常数" src="https://arxiv.org/html/2609.19969v1/figures/pretrain_inhouse_ppl.png" /></p>
+<p>在可控制的推理努力（Reasoning Effort）维度上，论文引入了一个标量条件信号 $b \in \{1,\ldots,100\}$，通过长度惩罚系数的指数衰减来诱导不同预算下的行为分化：</p>
+$$k(b)=k_{0}\exp\left(-\frac{b-b_{\min}}{\tau}\right),\qquad \tau=\lambda\overline{\Delta b}$$
+
+<p>从 effort 25 到 100，八个推理密集基准的平均 Pass@1 从 67.1% 提升至 76.3%，DeepSWE v1.1 从 66.0% 提升至 74.2%，代价是约 2.5 倍的输出 token。实验进一步揭示收益前倾特征：60–80 区间已恢复最大值的大部分准确度，而 effort 100 的最后一步仅带来边际改善。</p>
+<h2>三、展望：压缩边界的再定义</h2>
+<p>DeepSeek-V4.1-Flash 的价值不在于某一项技术的极限，而在于将 KV 缓存压缩从<strong>单点优化</strong>升级为<strong>架构—精度—部署的系统性联合设计</strong>。CED 让计算成本向 decode 倾斜，CSA2 在层维度上消灭冗余存储，FP4 在数值表达上逼近物理极限，SWA Bounded Replay 则重新定义了持久缓存的最小保留集。这套组合拳最终将全局 KV 缓存压至 890 字节/token，持久缓存降至 V4-Flash 的 1/8，同时并未以明显性能损失为代价——这在长上下文模型部署中是一个非平凡的工程贡献。</p>
+<p>论文在 Limitations 部分坦诚指出，CSA2 的稀疏选择误差和 SWA Bounded Replay 的近似状态重建，在未测试的边界条件下可能造成能力退化。这一风险是否会在真实生产环境中被放大，尤其是在多轮会话和极端长文档场景下的错误累积效应，值得持续观察。</p>
+<p>一个更具价值的追问是：当 KV 缓存每 token 占用已经压至 890 字节、decode FLOPs 几乎不随上下文增长时，长 horizon Agent 部署的下一个瓶颈会转移到哪里？模型权重本身的加载与分发、多 Agent 协同的通信开销、还是训练侧的数据合成与 RL 扩展效率？答案或许比这篇论文本身更值得关注。</p>
+<p><strong>论文标题</strong>：DeepSeek-V4.1-Flash: Pushing the Limits of KV Cache Compression</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.19969.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-18_DeepSeek-V41-Flash-Pushing-the-Limits-of-KV-Cache-Compression.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-18_DeepSeek-V41-Flash-Pushing-the-Limits-of-KV-Cache-Compression.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
