@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeMidas: Scaling Agentic Coding RL Environments from Code Itself</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">CodeMidas: Scaling Agentic Coding RL Environments from Code Itself</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-23</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>小米联手北大港大发布CodeMidas：让源代码自动变成RL训练环境，DeepSWE提升11.7%</h2>
+<p>大模型编码智能体在真实软件工程任务中的能力，正越来越依赖强化学习。但强化学习需要两样东西：足够多样化的任务，以及可靠的奖励信号。现有编码 RL 环境大多从 issue、PR、commit、已有测试或文档中提取任务，覆盖范围天然受限于这些“开发记录”的存在。小米、北京大学、香港大学等机构的研究者提出 <strong>CodeMidas</strong>，直接从开源代码库的已实现功能出发，把源代码本身转化为可执行的 RL 训练环境。论文显示，训练后的模型在 DeepSWE 上的通过率从 10.0% 提升到 21.7%。</p>
+<h2>一、核心方法：把已有代码点石成金</h2>
+<p>CodeMidas 的输入只有源代码，不需要 issue、PR、commit、既有测试或书面描述。整个流水线分为四个模块：任务设计与代码库改造、执行锚定的测试构建、环境准备与执行一致性检查、基于 rollout 的后过滤。</p>
+<p><img alt="图1：CodeMidas整体框架" src="https://arxiv.org/html/2507.05462v1/fig1.png" /></p>
+<h3>1. 任务设计与代码库改造</h3>
+<p>智能体首先分析项目结构和构建元数据，识别具有公共入口与可观察行为的已实现功能。这些功能可以是命令行工具、纯库函数，也可以是有状态的库 API。对每个候选任务，智能体会追踪公共入口和共享依赖，界定任务范围，然后删除核心实现，保留项目结构、依赖和共享组件，形成一个真实但有待补全的开发起点。</p>
+<p>任务语句明确输入、可观察行为和所需公共接口。原始实现被单独保留，作为该任务的参考解决方案。论文没有把内部实现写入要求，求解者可以自由选择内部辅助函数和算法。</p>
+<h3>2. 执行锚定的测试构建</h3>
+<p>测试不是凭空生成，而是以原始代码的实际执行结果为依据。智能体根据任务语句映射测试输入和边界情况，在参考代码库中调用公共入口，记录真实输出。对 CLI 工具，测试通过命令执行；对纯函数，测试通过输入输出样例；对有状态 API，测试通过多轮调用序列验证依赖关系、顺序和清理行为。</p>
+<p>训练时采用如下二进制执行奖励：</p>
+$$r = \mathbf{1}(\text{提交实现通过隐藏验证器})$$
+
+<p>审阅智能体还会检查每条断言是否被任务语句支持。若断言依赖私有符号且没有行为替代，任务会被拒绝。这样可以减少“测试过于严格”或“测试泄露实现细节”的问题。</p>
+<p><img alt="图2：训练集语言覆盖情况" src="https://arxiv.org/html/2507.05462v1/fig2.png" /></p>
+<h3>3. 环境准备与执行一致性</h3>
+<p>环境准备从统一基础容器开始，智能体根据项目声明安装依赖、准备构建和运行时资源。清理步骤会删除可能暴露已删除实现的编译产物、缓存和构建文件，同时移除与目标功能相关的原始测试。训练求解时，验证器被放在求解环境之外，仅在评分阶段注入，返回二进制执行奖励。</p>
+<p>执行一致性检查要求在六个全新容器中验证状态转换：两个起始代码库运行必须失败，四个参考实现运行必须通过。这种重复检查用于确认任务具有预期的 fail-to-pass 结构，并筛除执行结果不稳定的环境。</p>
+<h3>4. 基于 rollout 的后过滤</h3>
+<p>执行一致性只覆盖起始态和参考解。CodeMidas 在 RL 训练前还会用智能体 rollout 进一步过滤：</p>
+<ul>
+<li><strong>泄露过滤</strong>：攻击性 rollout 会刻意搜索编译产物、缓存、遗留文件和已安装副本，并记录可疑漏洞。独立审阅确认泄露材料是否能绕过预期开发工作，若可绕过则排除任务。</li>
+<li><strong>智能体解一致性</strong>：编码智能体对每个任务尝试四次，审阅智能体结合轨迹、提交代码、测试输出和参考解，判断验证器是否产生假阳性或假阴性。</li>
+<li><strong>rollout 结果过滤</strong>：前沿模型对每个任务进行多次尝试，只保留既有成功又有失败的任务，避免所有尝试都失败或都通过带来的弱信号。</li>
+</ul>
+<p><img alt="图7：不同任务规模下的CodeMidas Val学习曲线" src="https://arxiv.org/html/2507.05462v1/fig7.png" /></p>
+<p>最终数据集包含 <strong>5,545 个训练任务</strong>，来自 <strong>3,185 个开源代码库</strong>，覆盖 <strong>23 种编程语言</strong>和 <strong>15 个技术领域</strong>。参考补丁中位数为 142 行，65.9% 的任务至少涉及两个源文件。</p>
+<h2>二、实验：一次性涨满五类外部基准</h2>
+<p>研究者用 CodeMidas 任务对 MiMo-V2.5 进行 GRPO 训练。验证器提供二进制执行奖励，每个任务 32 次 rollout，batch size 为 32。</p>
+<p><img alt="图5：在五个外部基准上的性能增益" src="https://arxiv.org/html/2507.05462v1/fig5.png" /></p>
+<p>结果显示，RL 训练后所有五个外部基准全部上涨：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>基准</th>
+<th style="text-align: right;">初始分数</th>
+<th style="text-align: right;">CodeMidas RL</th>
+<th style="text-align: right;">绝对提升</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSWE</td>
+<td style="text-align: right;">10.0%</td>
+<td style="text-align: right;">21.7%</td>
+<td style="text-align: right;">+11.7%</td>
+</tr>
+<tr>
+<td>Terminal-Bench v2.1</td>
+<td style="text-align: right;">63.7%</td>
+<td style="text-align: right;">72.2%</td>
+<td style="text-align: right;">+8.5%</td>
+</tr>
+<tr>
+<td>ProgramBench Almost Solved</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">21.5</td>
+<td style="text-align: right;">+17.0%</td>
+</tr>
+</tbody>
+</table></div>
+<p>这些任务覆盖 issue 修复、整程序构建、代码翻译和终端工作，说明从源代码提取的功能任务具备跨任务类型的迁移价值。在 CodeMidas Val 上，通过率从 35.0% 提升到 44.7%，同时轨迹总长度增加，说明模型更充分地利用了交互预算。</p>
+<h2>三、任务规模与质量：5k 高质量样本胜过 8k 未过滤样本</h2>
+<p>论文还做了规模与质量消融。研究者分别从高质量数据集中随机抽取 1k、3k 和完整 5k 任务，并与一个未做清理、未做执行一致性检查、未做后过滤的 8k 原始样本对比。训练配置完全一致。</p>
+<p>结果显示，随着高质量任务数量增加，DeepSWE 分数从 17.57 升到 19.05，再到 21.70；CodeMidas Val 从 41.30 升到 43.22，再到 44.73。更重要的是，<strong>高质量 5k 池在 SWE-bench Pro、DeepSWE 和 CodeMidas Val 上均超过未过滤的 8k 样本</strong>，分别高出 0.59、4.59 和 4.49 个百分点。甚至 3k 高质量子集也在三项评估上超过 8k 未过滤样本。</p>
+<p>这说明环境可靠性和训练适配性，比单纯堆任务数量更关键。</p>
+<h2>四、行为变化：模型开始主动探索和自验</h2>
+<p>研究者进一步分析了 RL 训练前后智能体的行为变化。早期和后期 rollout 对比显示：</p>
+<ul>
+<li><strong>代码库探索</strong>：首次编辑前的 read/search 调用从 27.2 升至 40.1；</li>
+<li><strong>代码草稿</strong>：写入代码片段此前出现在推理中的比例从 0.358 升至 0.629；</li>
+<li><strong>自我验证</strong>：最终仓库编辑后的不同验证命令从 2.03 升至 2.53。</li>
+</ul>
+<p>在 CodeMidas Val 上，同一任务、同一 checkpoint 内，带智能体自写验证的 rollout 平均通过率高 4.2 个百分点。外部基准同样观察到泛化：SWE-bench Pro、ProgramBench 和 Terminal-Bench 上的代码库探索次数均增加，SWE-bench Pro 与 ProgramBench 上的代码草稿比例也明显提高。</p>
+<h2>五、展望</h2>
+<p>CodeMidas 展示了一条从“已有代码库”直接扩容编码 RL 环境的可行路径。它不依赖 issue、PR 或文档，也不受已有测试覆盖率限制，因此可以在更多语言、更多软件工程任务中复制。未来若能进一步降低构建流水线的算力开销、提升跨语言和跨领域的验证鲁棒性，源代码本身将成为编码智能体持续进化的高质量燃料。</p>
+<p><strong>论文标题</strong>：CodeMidas: Scaling Agentic Coding RL Environments from Code Itself</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.22068.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-21_CodeMidas-Scaling-Agentic-Coding-RL-Environments-from-Code-Itself.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-21_CodeMidas-Scaling-Agentic-Coding-RL-Environments-from-Code-Itself.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
