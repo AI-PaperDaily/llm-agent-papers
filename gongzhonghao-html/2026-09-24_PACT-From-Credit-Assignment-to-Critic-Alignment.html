@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PACT: From Credit Assignment to Critic Alignment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">PACT: From Credit Assignment to Critic Alignment</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-26</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>AllSpark推出PACT：重构Token级信用分配，数学推理72.87%超GRPO 8.8点</h1>
+<h2>一、引言</h2>
+<p>大模型强化学习后训练中，奖励通常是整条轨迹结束后给出的标量结果，但优化更新发生在每个生成 token 上。这种粒度错配带来一个核心问题：最终奖励应如何分配到轨迹中的每个 token？如果分配不当，critic 估计误差可能淹没微小的局部信用信号，导致 PPO 类方法在长程推理与智能体任务中训练不稳定甚至策略崩溃。</p>
+<p>AllSpark 团队在 PACT 论文中从数学上回答了这一难题：研究者提出三条正则条件，唯一确定 token 级信用表征，并据此设计 <strong>Actor-then-Critic</strong> 训练流程，让 critic 对齐更新后的 actor。最终该方法在四项数学推理基准上取得 <strong>72.87%</strong> 平均精度，超出 GRPO <strong>8.8</strong> 个百分点；在 SWE-bench Verified 上达到 <strong>67.4%</strong> 的 pass@1。</p>
+<h2>二、唯一信用表征：条件奖励预测之差</h2>
+<p>论文首先为 token 级信用定义三条正则条件：<strong>完备性</strong>、<strong>前缀一致性</strong>与<strong>中性</strong>。完备性要求所有 token 信用之和等于最终奖励相对初始预测的偏离；前缀一致性要求已生成前缀的累计信用不随未来信息改变；中性要求每个 token 在已知前序信息下的期望信用为零。</p>
+<p>在这三条条件下，论文证明 token 级信用存在且唯一，并可表示为条件奖励预测之差：</p>
+$$C_i = V_i - V_{i-1} = \mathbb{E}[R|\mathcal{F}_i] - \mathbb{E}[R|\mathcal{F}_{i-1}]$$
+
+<p>其中 $V_i$ 表示第 $i$ 个 token 及环境观察揭示后的条件奖励期望，$\mathcal{F}_i$ 表示可用信息。该表征说明，信用不是额外的可调量，而是奖励预测随信息增加的增量。该结果同时为响应级信用与 turn 级信用提供统一说明：它们只是 token 级信用在连续片段上的聚合。</p>
+<h2>三、已有算法的统一解释</h2>
+<p>基于唯一信用表征，论文重新审视了 OPD、RLOO 与 GAE。在理想教师设定下，OPD 的 token 级信号在期望上等价于信用表征产生的策略梯度，因此 OPD 教师实际上是一个隐式 critic。RLOO 尽管使用响应级 baseline，但其 token 策略梯度估计在期望意义下同样等同于信用表征。</p>
+<p>更关键的是 GAE 的误差结构。若 critic 估计为 $\widehat{V}_i = V_i + \varepsilon_i$，则 GAE 优势估计可分解为：</p>
+$$\widehat{A}_t^\lambda = \sum_{i=t}^\tau \lambda^{i-t} C_i - \varepsilon_{t-1} + (1-\lambda)\sum_{i=t}^{\tau-1}\lambda^{i-t}\varepsilon_i$$
+
+<p>当 $\lambda<1$ 时，中间 critic 误差项可能接近甚至超过真实信用；当 $\lambda=1$ 时，该误差项消失，只留下前缀估计误差。这解释了为什么 DeepSeek-R1 等工作在长程任务中选择 $\lambda=1$ 更稳定，也说明 critic 与当前策略错位会严重污染精细信用估计。</p>
+<h2>四、PACT：先 Actor 后 Critic 的同步训练</h2>
+<p>传统 PPO 中，critic 在 rollout 时使用的是上一轮策略对应的值函数，而 actor 更新后 critic 又滞后一个策略版本。对于依赖连续条件值之差来恢复细小信用的 LLM 训练，这种滞后会显著伤害价值估计。</p>
+<p>PACT 改变更新顺序：先完成 actor 更新，再对同一批 rollout 数据做一次前向计算，用更新前后策略的重要性比修正 critic 训练目标：</p>
+$$I_t = \prod_{k=t}^\tau \frac{\pi(T_k|\mathcal{F}_{k-1})}{\mu(T_k|\mathcal{F}_{k-1})}$$
+
+<p>critic 训练目标由原始奖励 $R$ 替换为 $I_tR$，从而将值函数从旧策略 $\mu$ 的期望调整为更新后策略 $\pi$ 的期望。同时该方法使用 sigmoid 参数化 critic，并采用 BCE 损失：</p>
+$$\mathcal{L}_{BCE}(\phi) = \mathbb{E}[-R\log \widehat{V}_{\phi,i} - (1-R)\log(1-\widehat{V}_{\phi,i})]$$
+
+<p>相比 MSE，BCE 在值预测上具有更快的收敛特性。PACT 在理论上缓解了 critic 与 actor 的错位，在实现上仅需一次额外前向计算，无需新增 rollout 数据。</p>
+<p><img alt="图2：PPO与PACT训练流程对比" src="https://arxiv.org/html/2509.21357/figures/2.png" /></p>
+<h2>五、实验结果</h2>
+<p>在数学推理任务中，研究者基于 Qwen3.5-4B 与 OpenCode，在 DAPO-Math-17k 子集上训练。PACT 在 AIME 2025、AIME 2026、BeyondAIME 与 HMMT Nov. 2025 四项基准上全部取得最高精度，平均准确率 72.87%。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>AIME 2025</th>
+<th>AIME 2026</th>
+<th>BeyondAIME</th>
+<th>HMMT Nov. 2025</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base Model</td>
+<td>46.67</td>
+<td>51.25</td>
+<td>28.63</td>
+<td>37.50</td>
+<td>41.01</td>
+</tr>
+<tr>
+<td>GRPO</td>
+<td>76.50</td>
+<td>74.78</td>
+<td>41.81</td>
+<td>63.19</td>
+<td>64.07</td>
+</tr>
+<tr>
+<td>PPO $\lambda=0.95$</td>
+<td>32.33</td>
+<td>29.38</td>
+<td>17.86</td>
+<td>25.67</td>
+<td>26.31</td>
+</tr>
+<tr>
+<td>PPO $\lambda=1.0$</td>
+<td>66.04</td>
+<td>73.96</td>
+<td>40.31</td>
+<td>58.54</td>
+<td>59.71</td>
+</tr>
+<tr>
+<td>SAO</td>
+<td>51.25</td>
+<td>63.33</td>
+<td>36.63</td>
+<td>53.33</td>
+<td>51.14</td>
+</tr>
+<tr>
+<td>PACT w/o IS</td>
+<td>76.04</td>
+<td>82.50</td>
+<td>51.38</td>
+<td>61.04</td>
+<td>67.74</td>
+</tr>
+<tr>
+<td>PACT</td>
+<td><strong>83.12</strong></td>
+<td><strong>85.21</strong></td>
+<td><strong>51.69</strong></td>
+<td><strong>71.46</strong></td>
+<td><strong>72.87</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="图1：PACT与GRPO、PPO、SAO在数学推理和编程基准上的性能对比" src="https://arxiv.org/html/2509.21357/figures/1.png" /></p>
+<p>在 SWE-bench Verified 上，PACT 训练 Qwen3.6-35B-A3B 的 pass@1 达到 67.4%，超过 PPO($\lambda=1.0$) 的 65.0%、GRPO 的 65.4% 与 SAO 的 63.6%。</p>
+<p>消融实验进一步显示，在相同 rollout 数据下，BCE critic 相比 MSE critic 获得更低的损失与更大的正负样本值分离；移除重要性采样修正后，PACT w/o IS 的平均准确率降至 67.74%，说明 critic 与更新后 actor 的同步对稳定训练贡献显著。</p>
+<p><img alt="图3：固定策略下BCE与MSE critic训练对比" src="https://arxiv.org/html/2509.21357/figures/3.png" /></p>
+<h2>六、展望</h2>
+<p>PACT 展示了由信用分配理论直接驱动 critic 训练的方法论，为长程推理、Agent 工具调用等场景提供了一条新的 actor-critic 工程路径。未来可以进一步探索低方差重要性比估计、层级信用聚合，以及将唯一信用表征推广到多智能体交互中的信用归因。</p>
+<p><strong>论文标题</strong>：PACT: From Credit Assignment to Critic Alignment</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.26355.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-24_PACT-From-Credit-Assignment-to-Critic-Alignment.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-24_PACT-From-Credit-Assignment-to-Critic-Alignment.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
