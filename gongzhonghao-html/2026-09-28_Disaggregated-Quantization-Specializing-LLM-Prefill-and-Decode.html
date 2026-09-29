@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaggregated Quantization: Specializing LLM Prefill and Decode</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Disaggregated Quantization: Specializing LLM Prefill and Decode</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-09-30</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>NVIDIA提出分离量化技术：让LLM推理快1.78倍，1-bit精度暴涨32.5个点</h2>
+<p>大模型推理中存在一个长期被忽视的关键矛盾：<strong>Prefill阶段吃算力，Decode阶段吃带宽</strong>。传统量化方案对这两个阶段一视同仁，导致要么在生成阶段浪费内存带宽，要么在提示处理阶段牺牲计算速度。</p>
+<p>NVIDIA与ISTA的研究团队提出了<strong>Disaggregated Quantization（DQ，分离量化）</strong>，核心思路简单而激进：让Prefill和Decode使用不同的量化格式、不同的权重，甚至不同的存储位置。在Qwen3.8-27B上，该方法仅凭训练一个NVFP4格式的Prefiller，就让1-bit量化模型的MMLU-Pro精度<strong>暴增32.5个百分点</strong>，同时在8K上下文下实现<strong>1.78倍</strong>的首令牌延迟加速。</p>
+<h2>一、核心方法：为什么Prefill和Decode必须分开量化</h2>
+<p>要理解DQ的动机，先看一个基本事实：</p>
+<p>在Transformer的每一层线性计算中，系统需要加载权重矩阵$W \in \mathbb{R}^{H \times H}$和激活矩阵$A \in \mathbb{R}^{T \times H}$，执行矩阵乘法。内存传输量为$\mathcal{O}(H^2 + TH)$，计算量为$\mathcal{O}(TH^2)$。</p>
+<p>当序列长度$T=1$（Decode阶段）时，每个权重元素只参与一次乘法，<strong>权重加载时间主导一切</strong>；当$T \gg 1$（Prefill阶段）时，权重被跨token复用，<strong>计算成为瓶颈</strong>。</p>
+<p>这正是两种量化策略分道扬镳的数学根源：</p>
+<ul>
+<li><strong>Decode</strong>需要极致的权重压缩（哪怕解压缩逻辑复杂也无所谓），因为省下的每一字节内存传输都在直接减少延迟</li>
+<li><strong>Prefill</strong>需要硬件原生的低精度计算格式（如NVFP4、INT4），因为计算单元的吞吐才是瓶颈</li>
+</ul>
+<p>论文提出了三个层次的分离方案，层层递进：</p>
+<p><img alt="图2：不同分离程度的量化方案示意图" src="https://arxiv.org/html/2601.xxxxx/fig2.png" /></p>
+<h3>层面一：格式分离（Format Disaggregation）</h3>
+<p>最轻量的干预。权重仍共享一套，但<strong>Prefill使用NVFP4格式</strong>（权重和激活都量化），<strong>Decode使用NVFP4A16格式</strong>（仅量化权重，激活保持BF16）。</p>
+<p>这样做的好处立竿见影：Decode阶段跳过了激活量化步骤，在内存密集型任务中省去了一部分不必要的计算；同时Prefill仍享受完整的硬件加速。存储空间不变，准确率却显著提升。</p>
+<h3>层面二：完全分离（Full Disaggregation）</h3>
+<p>格式分离有一个根本限制：Prefill使用的权重仍受制于Decode的低比特编码。2-bit档位的权重编码已经很紧凑，但用它来做NVFP4的Prefill计算，等于让一个高速引擎喝劣质燃油。</p>
+<p>完全分离直接给Prefill<strong>训练一套独立的权重</strong>，从同一个BF16模型初始化，在训练中分别学习各自的量化表示。推理时，Prefill权重负责生成提示的KV缓存，Decode权重消费这些表示——<strong>注意这不需要修改任何注意力机制代码</strong>，因为缓存的维度完全一致。</p>
+<p>训练目标是标准的KL散度最小化：</p>
+$$\min_\theta \mathrm{KL}(p_{\text{teacher}} \| p_{\text{student}})$$
+
+<p>其中teacher是冻结的BF16模型，student是分离量化的模型。关键在于，训练数据中的<strong>SFT标签掩码不仅控制损失计算，还控制计算路径的选择</strong>：用户轮次走Prefill通道，助手轮次走Decode通道。</p>
+<p><img alt="图3：QADD训练框架" src="https://arxiv.org/html/2601.xxxxx/fig3.png" /></p>
+<h3>层面三：卸载式分离预填充（ODP）</h3>
+<p>完全分离带来一个实际问题：两套权重意味着额外的设备内存占用。对于本地部署场景（单GPU、单设备），这可能直接导致模型无法装载。</p>
+<p>研究者的解决方案颇具巧思：<strong>Prefill权重在处理完一个Transformer块后就不再被需要了</strong>——因为后续层只需要它的KV缓存输出。既然如此，为什么不把Prefill权重放在SSD上，按块流式加载？</p>
+<p>ODP的核心机制是用两个设备缓冲区交替工作：一个缓冲区处理当前块的Prefill计算，另一个同时从SSD加载下一块的权重。由于Prefill计算时间随上下文长度增长，而权重加载时间是常数，<strong>上下文越长，加载开销被摊销得越充分</strong>。</p>
+<p>在DGX Spark上实测，Qwen 3系列在8K上下文时计算时间开始超过SSD加载时间；到16K上下文时，卸载带来的延迟开销<strong>不足5%</strong>。</p>
+<p><img alt="图6：ODP流水线方案与延迟效果" src="https://arxiv.org/html/2601.xxxxx/fig6.png" /></p>
+<h2>二、实验：32.5个点的精度飞跃</h2>
+<p>核心实验覆盖Qwen 3（0.6B到8B）和Gemma 3（1B到12B）共7个模型，在解码密集型任务（GSM8K、MATH-500、MMLU-Pro）和预填充密集型任务（RULER的13个子任务，4K-32K上下文）上分别评估。</p>
+<p><img alt="图4：解码密集型和预填充密集型任务上不同格式的准确率对比" src="https://arxiv.org/html/2601.xxxxx/fig4.png" /></p>
+<p>三个关键发现：</p>
+<p><strong>第一，格式分离主要利好解码密集型任务。</strong> 在NVFP4格式上，格式分离在Qwen 3家族平均带来1.9个点的解码密集型准确率提升，在Gemma 3家族带来3.1个点提升。而在预填充密集型任务上，提升不足1.3个点——这与理论预期完全一致，因为格式分离主要优化的是Decode阶段的激活精度。</p>
+<p><strong>第二，完全分离在低比特档位效果炸裂。</strong> 在2-bit解码权重下，完全分离相比非分离方案在Qwen 3上带来<strong>10.7个点</strong>的解码密集型提升，在预填充密集型任务上带来<strong>15.3个点</strong>的提升。这意味着用2-bit权重做生成不再是精度灾难，只要有独立训练的Prefill权重在前端兜底。</p>
+<p><strong>第三，Prefiller可以独立于现有量化管线工作。</strong> 在Qwen3.8-27B上，研究者直接使用开源的Unsloth GGUF量化检查点（包括极端的IQ1_S 1-bit格式），<strong>不修改解码器一字节</strong>，仅训练NVFP4格式的Prefiller。结果令人震惊：</p>
+<p><img alt="图1：NVFP4 Prefiller对GGUF解码器的精度提升" src="https://arxiv.org/html/2601.xxxxx/fig1.png" /></p>
+<p>1-bit解码在MMLU-Pro上从约30分提升到约62分，<strong>提升32.5个点</strong>；在MMMU-Pro多模态推理上提升<strong>35.3个点</strong>。值得注意的是，训练数据中<strong>没有任何多模态样本</strong>，但精度提升依然迁移到了视觉推理任务。</p>
+<p>在大规模验证中，研究者将格式分离应用于8个模型，参数量最高达2.8T（Kimi-K3），在13个模型-基准组合中有11个实现提升，6个具有统计显著性，无一显著退化。</p>
+<h2>三、速度与精度的双重红利</h2>
+<p>理解DQ的价值不能只看精度。在速度维度，它同时拿走了两个阶段的最优解：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>Prefill加速比</th>
+<th>Decode加速比</th>
+<th>设备内存(GB)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BF16基线</td>
+<td>1.00x</td>
+<td>1.00x</td>
+<td>16.38</td>
+</tr>
+<tr>
+<td>NVFP4（非分离）</td>
+<td>1.49x</td>
+<td>2.86x</td>
+<td>6.40</td>
+</tr>
+<tr>
+<td>NVFP4 + 格式分离</td>
+<td>1.49x</td>
+<td><strong>2.93x</strong></td>
+<td>6.40</td>
+</tr>
+<tr>
+<td>3-bit + ODP</td>
+<td>1.47x</td>
+<td><strong>3.33x</strong></td>
+<td>5.53</td>
+</tr>
+<tr>
+<td>2-bit + ODP</td>
+<td>1.47x</td>
+<td><strong>3.82x</strong></td>
+<td>4.66</td>
+</tr>
+</tbody>
+</table></div>
+<p>对于Qwen3.8-27B的实际测量更加直观：使用IQ1_S解码权重时，原生GGUF推理的首令牌延迟在8K上下文下为12.27秒；加上NVFP4 Prefiller并通过ODP运行后，<strong>延迟降至6.90秒</strong>，加速1.78倍。</p>
+<p>这意味着一个此前被认为“不值当”的配置——1-bit量化——突然变得实用：<strong>解码阶段享受极致的内存节省和速度，预填充阶段由独立训练的Prefiller纠偏精度</strong>。</p>
+<h2>四、技术价值与开放性</h2>
+<p>DQ的最大启发在于它挑战了一个根深蒂固的假设：<strong>同一套模型权重必须服务所有推理阶段</strong>。一旦打破这个假设，优化的自由度被大幅扩展——两组权重可以在训练中互相适配，在部署中独立调整，在存储中按需流转。</p>
+<p>这种思路尤其适合两类场景：一是数据中心已经普遍采用的分离式服务架构，Prefill和Decode本身就运行在不同设备上，各自维护独立的模型实例；二是本地单设备部署，通过ODP在不增加设备内存的前提下获得分离量化的收益。</p>
+<p>当然，论文作者也坦言，当前方案在多轮对话中的缓存一致性、对MoE架构的适用性、高并发批处理场景下的表现仍待验证。但核心问题已经明朗：<strong>当Prefill和Decode的工作负载差异如此之大时，维持它们的“格式婚姻”本身就是一种浪费</strong>。</p>
+<p>分离量化能否成为下一代推理栈的默认选择？答案或许取决于各家的推理框架能否快速跟进。</p>
+<p><strong>论文标题</strong>：Disaggregated Quantization: Specializing LLM Prefill and Decode</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.26333.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-28_Disaggregated-Quantization-Specializing-LLM-Prefill-and-Decode.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-28_Disaggregated-Quantization-Specializing-LLM-Prefill-and-Decode.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
