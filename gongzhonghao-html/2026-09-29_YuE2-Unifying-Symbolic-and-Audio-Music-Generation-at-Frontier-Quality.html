@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YuE2: Unifying Symbolic and Audio Music Generation at Frontier Quality</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">YuE2: Unifying Symbolic and Audio Music Generation at Frontier Quality</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-01</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>港科大等推出YuE2：符号与音频统一生成，SongBench Global Avg 6.73逼近Suno v5</h2>
+<h3>一、音乐生成的分裂困境与YuE2的破局</h3>
+<p>音乐生成领域长期存在一条清晰的断层线：<strong>符号模型</strong>能写出旋律、和声、节奏和曲式，却止步于乐谱生成，无法输出可听的成品；<strong>音频模型</strong>能直接产出完整歌曲，但作曲决策隐含在声学表征中，用户无法查看或修改其中的音乐逻辑。这一分裂使得“可编辑性”和“高音质”难以兼得。</p>
+<p>面对这一困境，香港科技大学联合Tokenwave.AI、纽约大学、斯坦福大学、MBZUAI等机构的研究者提出了<strong>YuE2</strong>，一个通过<strong>符号规划</strong>（Symbolic Planning）统一符号与音频音乐生成的单一模型。该模型能先生成可读的旋律与和弦乐谱，再由同一套参数扩展为语义token和声学潜变量，最终解码为48kHz立体声音频。在WildSongBench基准测试中，YuE2以6.73的SongBench Global Avg领先所有公开基线系统，best-of-8设定下达到6.96，为所有评估系统中的最高均值。专家盲听中，YuE2（best-of-8）对Suno v4.5的总体质量偏好率达到57.3%对30.5%，与Suno v5的偏好几乎持平（40.4% vs 39.9%）。</p>
+<h3>二、核心方法：从乐谱到声学的分层承诺</h3>
+<p>YuE2的设计核心在于<strong>渐进式音乐承诺</strong>（Progressive Musical Commitment）：文本和歌词声明意图，乐谱确定旋律、和声、节奏与曲式，声学表征则解决音色、表现力和制作细节。乐谱与声音之间的空间，留给诠释。</p>
+<p>令 $y$ 表示文本条件与歌词，$s$ 为符号乐谱，$c$ 为语义token，$z$ 为连续声学潜变量。模型将生成分解为：</p>
+$$p_{\theta}(s,c,z\mid y)=p_{\theta,\mathrm{AR}}(s,c\mid y)\,p_{\theta,\mathrm{NAR}}(z\mid y,s,c)$$
+
+<p>符号序列 $s$ 使用ABC记谱法，经BPE序列化后与文本共享词表；25Hz的语义序列 $c$ 提供密集的音乐轨迹；25Hz的潜变量序列 $z\in\mathbb{R}^{T\times 64}$ 保留声学细节。训练目标在训练前离线构建——普通录音缺少对齐的乐谱标注，因此论文引入<strong>MERT2</strong>和<strong>SheetSage2</strong>来分别提供语义与符号监督信号。</p>
+<p><img alt="图3：YuE2的生成概览——从符号乐谱到语义token再到声学潜变量，最终解码为48kHz音频" src="https://arxiv.org/html/2609.33757v1/yue2_overview.png" /></p>
+<h4>创新点一：符号组合规划</h4>
+<p>YuE2的生成先经过一个<strong>符号组合规划</strong>步骤：模型从文本条件中先生成包含速度、拍号、调性、小节线、段落标签、和弦符号以及旋律声部的完整ABC乐谱。自回归流按照<code>[ABC_START], s, [ABC_END], [MUSIC_START], c, [MUSIC_END]</code>的顺序生成。ABC音符与语义编码占据互不相交的输出范围，类型特定的输出掩码防止两类符号互相误生成。</p>
+<h4>创新点二：AR–NAR混合Transformer（MoT）</h4>
+<p>符号与声学对信息流的需求截然不同：离散序列需要因果预测，而声学帧可以利用完整的双向上下文。YuE2在28层骨干网络中同时实现两种计算，每层包含<strong>并排的AR和NAR专家</strong>，各自拥有独立的归一化、投影和MLP，共享同一个注意力计算。混合注意力掩码为：</p>
+$$\begin{array}[]{c|cc}\text{query}\backslash\text{key}&A&N\\ \hline A&\text{causal}&\text{blocked}\\ N&\text{full}&\text{bidirectional}\end{array}$$
+
+<p>离散位置无法读取声学目标，声学位置则能关注所有文本、乐谱和语义token，并在完整潜变量序列上双向通信。</p>
+<p>训练采用联合损失：</p>
+$$\mathcal{L}=0.25\mathcal{L}_{\mathrm{AR}}+\mathcal{L}_{\mathrm{FM}}$$
+
+<p>其中 $\mathcal{L}_{\mathrm{AR}}$ 为符号与语义跨度的下一token交叉熵，$\mathcal{L}_{\mathrm{FM}}$ 为条件流匹配损失。训练数据约34.6万小时音乐，模型参数约3.58B。</p>
+<h4>创新点三：MERT2与SheetSage2——从录音中重建监督信号</h4>
+<p>由于真实录音不包含对齐的乐谱标注，论文构建了两套离线分析框架。<strong>SheetSage2</strong>从完整录音中恢复可编辑的lead sheet，涵盖旋律、和弦、调性、节拍、下拍和段落结构；<strong>MERT2 tokenizer</strong>则输出紧凑的语义音乐token。</p>
+<p><img alt="图4：MERT2的多视图目标合成与训练流程——双编码器映射到共享量化瓶颈，经四阶段课程训练" src="https://arxiv.org/html/2609.33757v1/mert2_ssl.png" /></p>
+<p>MERT2采用<strong>多视图目标合成</strong>：冻结的MuQ和Qwen2-Audio-Instruct编码器分别将同一录音映射到时间对齐特征，融合网络将其输入四级残差向量量化器，独立解码器从同一量化状态重建两个特征空间。这一设计使得每个离散编码同时受两种互补视图约束。在MARBLE基准上，MERT2在15个指标中领先14个，创下音乐表征学习的新SOTA。SheetSage2-AR则在15个基准-指标对中领先12对。</p>
+<h3>三、实验：从消融到前沿对标</h3>
+<h4>符号规划的贡献</h4>
+<p>研究者利用同一checkpoint的两种生成模式直接对比：有规划时先生成旋律与和弦ABC乐谱，无规划时直接从文本生成语义token与声学潜变量。212条专家评估结果显示，<strong>有规划生成的总体质量获得49.3%的偏好，无规划为34.6%</strong>；音乐性偏好分别为45.0%和29.4%。旋律偏好为44.0%对29.5%，和弦进行偏好为39.0%对21.0%。在配对示例中，有规划的版本在段落间通过八度移调和变奏发展核心动机，无规划版本则重复相同的 $B$–$D$–$E$–$E$ 模式，缺乏主题连续性。</p>
+<h4>统一MoT vs 分离LM+DiT</h4>
+<p>在两者均使用旋律与和弦规划、训练数据量和表征相同的条件下，专家对YuE2的统一MoT与分离的1.7B LM + 1.7B DiT进行盲听对比。<strong>总体质量上，53.4%的判定偏向MoT，35.6%偏向LM+DiT</strong>；音频质量的偏好为48.5%对29.6%。音乐性、人声和伴奏方面MoT同样占优，文本对齐则几乎持平（34.0% vs 33.5%）。</p>
+<p><img alt="图8：符号规划对感知歌曲质量、旋律及和弦进行的提升——专家盲听偏好分布" src="https://arxiv.org/html/2609.33757v1/symbolic_planning_preference.png" /></p>
+<h4>WildSongBench系统对比</h4>
+<p>在192条提示词的WildSongBench上，YuE2以6.7316的SongBench Global Avg领先所有公开系统，也是其中唯一超过6.7的模型。AudioBox PQ达到8.2598，超越所有参评的专有系统。文本对齐方面，MuLan得分0.5068，为公开系统中的最优；歌词准确率PER为0.0844。best-of-8设定下，SongBench Musicality提升至6.2666，Global Avg升至6.9632。</p>
+<h4>零样本翻唱与乐谱编辑</h4>
+<p>在不包含原唱-翻唱训练对的情况下，YuE2以完整乐谱为条件在948首未见作品上达到了<strong>CLEWS mAP 0.647和Discogs-VINet mAP 0.288</strong>，在全部八个作品身份检索指标上超越了SongEcho和ACE-Step 1.5。分数编辑实验中，旋律编辑的精确音高准确率达84.17%，和声编辑的和弦一致率为79.54%，且未编辑内容的保留率均在90%以上。</p>
+<p><img alt="图7：YuE2及best-of-8对六个专有系统的专家偏好——音频质量为突出优势" src="https://arxiv.org/html/2609.33757v1/expert_preferences.png" /></p>
+<h3>四、展望</h3>
+<p>YuE2证明了一条可行的技术路径：让生成模型先“写下来”，再“唱出来”，不仅提升了感知质量，还打开了编辑与协作的接口。ABC乐谱的可读性使得外部语言模型Agent能够将用户的自然语言反馈转化为对乐谱的具体修订，再由YuE2重新渲染为完整歌曲。这种“<strong>乐谱即接口</strong>”的设计，或许将重塑音乐创作工具的交互范式——当模型的可编辑性与音质不再互斥，创作者拿回的不仅是成品，更是对创作的掌控力。</p>
+<p><strong>论文标题</strong>：YuE2: Unifying Symbolic and Audio Music Generation at Frontier Quality</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.33757.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-29_YuE2-Unifying-Symbolic-and-Audio-Music-Generation-at-Frontier-Quality.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-29_YuE2-Unifying-Symbolic-and-Audio-Music-Generation-at-Frontier-Quality.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
