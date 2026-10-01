@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context Language Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Context Language Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-02</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>一、当大模型的上下文需要“自我管理”</h2>
+<p>大模型的上下文窗口是其最核心的认知边界。然而，传统上下文管理一直依赖外部harness的预设策略——无论是固定阈值触发的总结压缩，还是近年来出现的模型可调用的compaction、offloading工具，本质上都是将“该记住什么、该丢弃什么”的决策权留给人类工程师设计的规则。</p>
+<p>Meta Superintelligence Labs与华盛顿大学等机构的研究者提出了<strong>Context Language Models（CLMs）</strong>：让语言模型原生管理自己的上下文，将上下文直接建模为可自由编辑的“文件”。这种方法在BrowseComp-Plus上以<strong>11.4%更高的精度、21.5%更低的计算开销</strong>超越最强基线，在12小时EdgeBench上得分提升5%的同时节省59%的FLOPs，在24小时多智能体仓库优化任务中取得<strong>65%更大的端到端加速</strong>。研究者的发现呼应了The Bitter Lesson：让模型自己搜索和习得更优策略，远比依赖人类先验更有生命力。</p>
+<blockquote>
+<p>论文链接：https://arxiv.org/html/2609.37725v1</p>
+</blockquote>
+<p><img alt="图1：论文总览图" src="https://arxiv.org/html/2609.37725v1/figures/CLM_Teaser_v8.png" /></p>
+<h2>二、核心方法：让上下文成为模型自身的思考载体</h2>
+<h3>2.1 上下文即文件：从“只能追加”到“任意编辑”</h3>
+<p>传统LM的上下文演化遵循最简单的追加逻辑：</p>
+$$c_{t+1} = c_{t} \oplus f^{\mathrm{LM}}_{\theta}(c_t)$$
+
+<p>其中 $c_t$ 为第 $t$ 轮的上下文，$\oplus$ 表示拼接，模型只能将新生成的token追加到现有上下文末尾。这种<strong>append-only</strong>机制意味着无关信息、冗余观察和过期的中间步骤永远占据宝贵的上下文空间。</p>
+<p>CLM的核心形式定义则将上下文演化的控制权完全交给模型：</p>
+$$c_{t+1} = f^{\mathrm{CLM}}_{\theta}(c_t)$$
+
+<p>这里 $f^{\mathrm{CLM}}_{\theta}$ 可以是模型控制的任意变换，不再局限于预设的拼接操作。实现上，研究者将模型的活动上下文镜像为一个直接可编辑的文件，将其路径写入系统提示。模型可以用Bash指令自由读写、重写、裁剪该上下文文件，每次修改即时同步到LLM的下一轮输入。这一设计在保留上下文复用能力的同时，赋予了模型完整的编辑自由度。当模型不进行编辑时，生成的token默认追加，保持了行为连续性。</p>
+<p>CLM的多智能体扩展同样自然：多个上下文文件可共存并分别与其对应的LLM服务端同步，形成智能体群体的协同工作空间。在数学优化任务和软件仓库优化任务中，研究者观察到CLM会自发维护上下文内的记分板、构建子代理状态追踪器，甚至创造新的对话角色（如“notes”）来管理内部笔记。</p>
+<h3>2.2 从外部规则到内在技能的可学习性</h3>
+<p>CLM将上下文管理从外部harness的静态控制转变为模型的内部行为，这一根本性转变带来了一个关键优势：<strong>上下文管理策略本身可以被学习、被泛化、被优化</strong>。</p>
+<p>在上下文学习方面，研究者发现CLM可以通过简单的自然语言指令被引导采用特定的上下文管理策略——例如触发压缩的阈值、按语义边界进行分组压缩、在压缩前备份上下文等。更进一步，通过文本技能演化循环，可以在上下文中优化出一份技能文档 $s^*$，使模型在给定任务分布上获得最优轨迹奖励：</p>
+$$s^{*} = \arg\max_{s} \mathbb{E}_{x \sim \mathcal{D}}[R(\tau(x; s))]$$
+
+<p>在强化学习方面，CLM的上下文编辑能力同样可以通过参数化训练习得。为避免仅使用结果奖励带来的弱监督问题，研究者引入了<strong>success-gated efficiency advantage</strong>——只在成功轨迹之间按推理成本进行排序：</p>
+$$A_{i}^{\mathrm{eff}} = \begin{cases} \operatorname{clip}\left(\frac{\bar{c}_g - c_i}{\bar{c}_g}, -1, 1\right), & i \in \mathcal{G}_g^{+} \[6pt] 0, & i \notin \mathcal{G}_g^{+} \end{cases}$$
+
+<p>其中 $\bar{c}_g$ 为组内成功轨迹的平均前缀复用FLOPs，$c_i$ 为当前轨迹的开销。该机制只对成功轨迹进行效率区分，确保了正确性优先于效率优化。与结果优势 $A_{i}^{\mathrm{out}}$ 组合为 $A_i = A_{i}^{\mathrm{out}} + w_{\mathrm{eff}} A_{i}^{\mathrm{eff}}$，共同驱动训练。</p>
+<p><img alt="图2：CLM技能演化结果" src="https://arxiv.org/html/2609.37725v1/selfevo_main_two_rows_kv.png" /></p>
+<h3>2.3 让推理服务适应上下文编辑：Suffix Cache Reuse</h3>
+<p>模型的中间编辑行为对现有服务系统提出了新挑战。在标准服务中，前缀缓存复用仅在匹配前缀处有效——一旦上下文中间发生修改，修改点之后的所有token都必须重新预填充。这意味着CLM的编辑操作可能带来额外的重预填开销。</p>
+<p>CLM的效率度量采用<strong>prefix-reuse FLOPs</strong>指标：</p>
+$$\mathrm{FLOPs}_{\mathrm{prefix\text{-}reuse}} = \mathrm{FLOPs}_{\mathrm{prefill}}(\text{unmatched suffix}) + \mathrm{FLOPs}_{\mathrm{decode}}(\text{generated tokens})$$
+
+<p>该指标明确区分了从首个前缀不匹配处开始的重预填开销与解码开销。研究者进一步提出<strong>Suffix Cache Reuse（SCR）</strong>：当上下文中间发生编辑时，不丢弃修改点之后的缓存状态，而是复用所有存活token的已缓存状态，仅重新计算新插入的token。这种策略在实验上不仅降低了计算开销，甚至因保留了更丰富的历史信息而对任务性能无害。</p>
+<p><img alt="图3：Suffix Cache Reuse原理对比" src="https://arxiv.org/html/2609.37725v1/figures/suffix-cache-reuse.png" /></p>
+<h2>三、实验：零样本部署即超越专用基线</h2>
+<h3>3.1 深研与编码任务：Pareto前沿上的新坐标</h3>
+<p>在BrowseComp-Plus深研基准上，CLM以Qwen3.6-27B和32K上下文预算零样本取得<strong>59.4%精度</strong>，超过最强基线Codex-style summarization 11.4个百分点，同时节省21.5%的prefix-reuse FLOPs。在TerminalBench 2.1上，CLM与最强基线精度持平但仅消耗约70%的计算量；在TBLite上则以73.7%对67.0%的精度优势超越摘要方案，且FLOPs仅为后者的91%。</p>
+<h3>3.2 长程优化：12小时和24小时的验证</h3>
+<p>在12小时的EdgeBench-10单仓库优化任务中，CLM以Qwen3.6-27B取得44.6分、179 PFLOPs的成绩，对摘要方案的42.3分、437 PFLOPs实现了分数与效率的双重超越。使用Claude 4.6 Sonnet时，CLM达到51.0分，较摘要方案的42.3分提升超过20%。在24小时的多仓库agent-swarm场景中，CLM在相同计算预算下取得了<strong>65%更大的端到端加速</strong>，证明CLM在开放发现型长期任务中的可扩展性。</p>
+<h3>3.3 学习的效果：RL让小模型凭编辑能力反超</h3>
+<p>RL实验结果最具说服力：Qwen3.5-9B在训练前CLM以28.8%落后于摘要方案的34.7%，经过OpenResearcher RL训练后达到<strong>42.5%</strong>，不仅超过训练后摘要方案的42.1%，更将推理成本从2.19 PFLOPs降至1.34 PFLOPs。效率奖励的加入使得模型在保持正确率的同时进一步降低推理成本。在数学优化任务上，CLM在四个问题（circle packing、Heilbronn、min-max/min-distance、Erdős overlap）全部超越专用进化工作流OpenEvolve。</p>
+<h2>四、展望</h2>
+<p>CLM的意义超越了上下文管理的工程优化。它揭示了一个更本质的方向：<strong>模型的上下文空间可以成为模型自身的学习对象</strong>。现有的外部harness——总结、检索、压缩模块——本质上都是将人类对信息管理的规划固化在代码中，而CLM将这些可转化为模型自身可探索、可优化、可内化的技能。未来，随着RL训练规模的扩大以及harness到CLM的蒸馏方法的成熟，语言模型有望在更本质的层面学会“如何思考”，而不仅仅是“思考什么”。</p>
+<p>让模型学会管理自己的上下文，是否意味着通用智能体在自主性上又迈出了一步？</p>
+<p><strong>论文标题</strong>：Context Language Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.37725.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-09-30_Context-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-09-30_Context-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
