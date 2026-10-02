@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PivotOPD: Learning to Recover from Pivotal Mistakes in Multi-Turn Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">PivotOPD: Learning to Recover from Pivotal Mistakes in Multi-Turn Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-03</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>一、引言</h2>
+<p>多轮交互中的<strong>错误累积</strong>是当前语言Agent面临的核心挑战之一。一个看似微小的决策失误，可能将后续所有轮次拖入错误的状态空间，导致任务在无声中走向失败。NVIDIA与普林斯顿大学联合研究团队在论文中揭示了一个关键现象：超过半数的失败轨迹中，存在一个<strong>枢轴失误</strong>——一个让Agent偏离最优路径的关键动作，且该失误通常发生在交互早期。</p>
+<p>更重要的发现是，这些枢轴失误大多<strong>可恢复</strong>。反事实实验表明，纠正枢轴轮次或在其后引导恢复轮次，均能将成功率从8%提升至59%左右。然而，标准在线策略蒸馏对这些失误的修复效果极其有限。基于此，论文提出<strong>PivotOPD</strong>框架，在ALFWorld、WebShop、Search-based QA三大基准上均取得最佳平均性能，其中1.7B学生模型在ALFWorld上相较最强基线提升<strong>+5.5%</strong>，8B模型在SWE-Bench Verified上解析率提升<strong>+3.2%</strong>。</p>
+<h2>二、核心方法</h2>
+<p>PivotOPD的核心思想可概括为：<strong>在枢轴轮次预防失误，在失误之后学会恢复</strong>。框架在组基RL之上叠加三个关键组件：枢轴检测、预防性蒸馏、恢复蒸馏。</p>
+<p><img alt="图2：PivotOPD框架总览" src="https://arxiv.org/html/2609.40285v1/Picture1.png" /></p>
+<h3>2.1 枢轴检测</h3>
+<p>由于大多数环境缺乏符号化oracle来计算剩余最优轨迹，PivotOPD用<strong>教师模型</strong>进行枢轴检测。教师以事后视角阅读整条轨迹，选取至多$m$个候选轮次并给出对应的<strong>黄金动作</strong>。当学生的已执行动作与黄金动作不一致时，该候选轮次被判定为枢轴轮次，构成集合$\mathcal{T}_{\text{pivot}}$。在ALFWorld上，教师检测的枢轴轮次与oracle标注枢轴轮次的±1轮一致率平均为<strong>77.8%</strong>，是随机选择的两倍以上。</p>
+<h3>2.2 预防性蒸馏</h3>
+<p>在每个枢轴轮次，预防性蒸馏的目标是将学生从已犯的错误拉回黄金动作。具体地，以被黄金动作提示的冻结学生作为<strong>特权自教师</strong>，对学生的已记录响应计算反向KL损失：</p>
+$$\mathcal{L}^{\mathrm{prev}}_{t}(\theta)=D_{\mathrm{KL}}\!\left(\pi_{\theta}\!\left(\cdot\mid c_{t}\right)\,\middle\|\,\pi_{\bar{\theta}}\!\left(\cdot\mid c_{t},\,h(a^{*}_{t})\right)\right)$$
+
+<p>反向KL损失在学生已有响应上求期望，因此它能有效抑制学生已分配到犯错动作上的概率质量，将其重新引导到黄金动作。</p>
+<p><img alt="图1：失败轨迹追溯至早期枢轴失误" src="https://arxiv.org/html/2609.40285v1/x1.png" /></p>
+<h3>2.3 恢复蒸馏</h3>
+<p>恢复蒸馏解决了一个更棘手的问题：<strong>如何在失误已发生的状态下继续完成任务的？</strong> 论文发现，标准OPD训练后，黄金动作在每个枢轴轮次上被分配的概率仍低于$10^{-2}$，一组8条rollout几乎不可能采样到它。这意味着学生依赖自身采样的学习方法在恢复信号上几乎为零。</p>
+<p>恢复蒸馏扭转了这一局面。在每个恢复轮次，特权自教师被恢复动作提示，采样恢复响应，学生则在不带提示的条件下接受训练，学习目标为<strong>前向KL损失</strong>：</p>
+$$\mathcal{L}^{\mathrm{rec}}_{t,k}(\theta)=D_{\mathrm{KL}}\!\left(\pi_{\bar{\theta}}\!\left(\cdot\mid\tilde{c}_{t+k},\,h(a^{*}_{t+k})\right)\,\middle\|\,\pi_{\theta}\!\left(\cdot\mid\tilde{c}_{t+k}\right)\right)$$
+
+<p>前向KL具有<strong>质量覆盖</strong>特性，当学生几乎不采样恢复动作时，该损失仍能推动学生增加恢复动作的概率。命题1给出了严格的对比分析：在学生采样条件下（组基RL或预防性蒸馏的更新形式），恢复动作上的更新幅度以$p(a^{*})$为上限，当学生不采样恢复动作时更新消失；而在自教师采样条件下（恢复蒸馏），当提示将恢复动作概率提升至少$e^{\delta}$倍时，更新幅度满足：</p>
+$$g(a^{*})\geq\delta\bigl(q(a^{*})-p(a^{*})\bigr)>0$$
+
+<p>完整的训练目标将三类信号统一在PPO更新中：</p>
+$$\mathcal{L}(\theta)\;=\;\mathcal{L}^{\mathrm{RL}}(\theta)\;+\;w_{\text{prev}}\sum_{t\in\mathcal{T}_{\text{pivot}}}\mathcal{L}^{\mathrm{prev}}_{t}(\theta)\;+\;w_{\text{rec}}\sum_{t\in\mathcal{T}_{\text{pivot}}}\sum_{k=1}^{K}\mathcal{L}^{\mathrm{rec}}_{t,k}(\theta)$$
+
+<p>在实现层面，每个蒸馏项通过<strong>蒸馏优势</strong>$\mathcal{A}^{\mathrm{distill}}_{\ell}=\log\pi_{\bar{\theta}}(y_{\ell}\mid c,h(a),y_{<\ell})-\log\pi_{\bar{\theta}}(y_{\ell}\mid c,y_{<\ell})$注入PPO的裁剪代理目标。预防性蒸馏将该优势乘以权重后叠加到组基RL优势上，恢复蒸馏则将裁剪后的蒸馏优势作为恢复序列的唯一优势信号。</p>
+<h2>三、实验结果</h2>
+<p>论文在四个多轮Agent基准上进行了系统评估，对比了<strong>13个基线方法</strong>，涵盖组基RL、自蒸馏、轮次级蒸馏、技能引导等多个技术路线。</p>
+<p><img alt="图3：Qwen3-8B自蒸馏设置下的对比结果" src="https://arxiv.org/html/2609.40285v1/x2.png" /></p>
+<p>在Qwen3-1.7B学生模型上，PivotOPD在三个主基准的<strong>全部八项平均指标</strong>中排名第一。ALFWorld平均成功率相较最强基线<strong>SDAR提升+5.5%</strong>，Search-based QA相较<strong>RLSD提升+5.9%</strong>。值得关注的是，PivotOPD在Clean、Cool、Heat这三类基础模型几乎无法解决的任务类型上，相较GRPO的提升最为显著——这正是成功rollout稀缺的场景，也是恢复蒸馏信号发挥最大价值的场景。</p>
+<p>在Qwen3-8B学生模型上，PivotOPD的ALFWorld平均成功率达到<strong>93.0%</strong>，在Pick、Look、Clean三类任务上实现<strong>100%成功率</strong>。WebShop的成功率相较RLSD提升<strong>+14.1%</strong>，而规范化得分仅提升1.2%，这表明增益主要来自将部分完成的轨迹转化为完整任务成功，与恢复蒸馏的设计目标高度一致。</p>
+<p><img alt="图4：SWE-Bench Verified结果对比" src="https://arxiv.org/html/2609.40285v1/x3.png" /></p>
+<p>跨模型家族的迁移实验进一步验证了方法的泛化性。在软件工程领域，以Nemotron-3-Super为教师训练Nemotron-3.5学生，PivotOPD将SWE-Bench Verified的解析率提升<strong>+3.2%</strong>，而标准OPD仅提升+0.2%。</p>
+<p><img alt="图5：枢轴失误后的恢复行为分析" src="https://arxiv.org/html/2609.40285v1/case.png" /></p>
+<p>恢复行为分析揭示了PivotOPD成功的内在机制。在重放相同枢轴失误前缀的实验设置中，PivotOPD的最终恢复率达到<strong>72.7%</strong>，是基础模型的<strong>九倍</strong>，是标准OPD的<strong>3.5倍以上</strong>。对数72个枢轴失误的逐条配对比较显示，PivotOPD在其中60个上提升了恢复率，且<strong>没有任何一个失误上表现退化</strong>。组件消融证实了预防性蒸馏与恢复蒸馏的互补性：单独训练任何一个组件都无法达到完整方法的平均水平。</p>
+<h2>四、展望</h2>
+<p>PivotOPD为多轮Agent的训练提供了一个新视角：<strong>关注失败的结构而非失败的现象</strong>。通过识别并密集监督枢轴轮次，同时主动训练恢复行为，该方法在多个基准上展现了稳健的增益。值得注意的是，恢复蒸馏需要可复现环境的支持，将其扩展到实时交互场景仍是一个开放问题。当Agent学会从失误中恢复时，失败将不再是终点，而是一次可修正的岔路。这种方法能否在更复杂的长期规划任务中维持优势，值得持续关注。</p>
+<p><strong>论文标题</strong>：PivotOPD: Learning to Recover from Pivotal Mistakes in Multi-Turn Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.40285.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-01_PivotOPD-Learning-to-Recover-from-Pivotal-Mistakes-in-Multi-Turn-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-01_PivotOPD-Learning-to-Recover-from-Pivotal-Mistakes-in-Multi-Turn-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
