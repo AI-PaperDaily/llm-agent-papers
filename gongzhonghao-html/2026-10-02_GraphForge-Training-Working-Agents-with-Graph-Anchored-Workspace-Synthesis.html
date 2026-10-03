@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphForge: Training Working Agents with Graph-Anchored Workspace Synthesis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">GraphForge: Training Working Agents with Graph-Anchored Workspace Synthesis</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-04</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>中科院联合上海AI Lab发布GraphForge：证据图锚定训练工作Agent，GDPVal提升65.7分</h2>
+<h2>一、引言</h2>
+<p>大模型Agent正在从对话走向真实工作场景。它们需要读取多样化文件、协调工具调用、产出可交付成果。然而训练这类<strong>工作Agent</strong>面临根本性困境：高质量训练数据要求任务建立在大量真实文件之上，且结果必须具备可验证性。现有合成管线要么用模型生成文件——缺乏真实性与多样性；要么在真实文件上构建任务——却缺少任务特定的验证器，结果质量无从检查。EnvCraft用状态检查脚本验证，但无法读取文件内容以发现文档交付物中的错误；NexForge基于真实文件构建任务，却完全不提供任务特定rubric。针对这一双重缺口，论文提出<strong>GraphForge</strong>——一个基于<strong>证据图</strong>的框架，将任务与其验证同时锚定在真实文件上。训练Qwen3.6-27B在<strong>GDPVal</strong>上达到1445.7 Elo（+65.7），在<strong>Workspace-Bench-Lite</strong>上达到63.7（+7.7），在<strong>SpreadsheetBench II</strong>上达到24.0（+13.7），展现出跨scaffold的泛化能力。</p>
+<p><img alt="图1：GraphForge管道概览" src="https://arxiv.org/html/2609.38923v1/GraphForge_overview.png" /></p>
+<h2>二、核心方法</h2>
+<p>GraphForge的设计哲学是<strong>种子与文件各司其职</strong>。模型自由发明的任务容易坍缩到高频职业和泛化任务类型。因此，论文用<strong>职业锚定种子</strong>固定任务方向以控制多样性，而具体任务及其验证则在真实工作区实例化之后才从文件中推导。</p>
+<h3>1. O*NET种子构建与覆盖性选择</h3>
+<p>种子源自<strong>O*NET数据库</strong>。论文筛选出被AI4Work标记为DIGITAL的任务，将每个任务映射到其官方Detailed Work Activities（DWA），以DWA作为受控任务类型。过滤后保留246个职业、891个DWA任务类型、3419个有效职业-任务类型对。</p>
+<p>每个种子$s_{i}=(o_{i},a_{i},w_{i},p_{i},u_{i},e_{i}^{\mathrm{occ}})$包含职业$o_i$、DWA任务类型$a_i$、职业特定工作需求$w_i$、主导执行模式$p_i$、预期输入文件族$u_i$及检索到的职业证据$e_i^{\mathrm{occ}}$。为避免语料集中在高频职业或泛化分析任务上，论文采用<strong>边际覆盖</strong>选择策略。定义$\mathcal{D}$为维度集合，$n_{d}(v)$为已选种子中维度$d$取值为$v$的数量，则候选种子$s$的增益为：</p>
+$$\Delta(s\mid\mathcal{S})=\sum_{d\in\mathcal{D}}\frac{1}{1+n_{d}(v_{d}(s))}$$
+
+<p>该公式以<strong>边际增益递减</strong>原则贪婪选择种子。文件下载验证后，同一规则再次应用于实际输入输出文件族，实现全面多样性平衡。</p>
+<h3>2. 真实文件工作区与证据图构建</h3>
+<p>种子是<strong>案例中立的</strong>——它不指定公司、事件或数据集。一个搜索代理将种子实例化为连贯的公共案例，检索完成工作所需的真实文件，形成工作区$W_{i}=\{f_{i1},\dots,f_{im}\}$。每个保留文件被赋予隐藏角色$\rho(f)\in\{\text{core},\text{supporting},\text{confuser},\text{ambient}\}$，分别表示核心驱动文件、支持性政策文件、貌似合理但不适用的干扰文件，以及增加现实冗余的环境文件。角色仅用于指导组装，对工作Agent不可见。</p>
+<p>在工作区之上，GraphForge构建<strong>证据图</strong>$G_{i}=(V_{i},E_{i})$。节点$v\in V_{i}$记录源文件、其提供的事实或字段及任务角色；边$e\in E_{i}$记录跨文件依赖关系，用于解释、比较、协调或推导信息。证据图不是Ground Truth，而是一个中间表示，其所有声明必须能从原始文件中恢复。</p>
+<h3>3. 可验证Rubric与质量评分</h3>
+<p>证据图被编译为任务规范$\mathcal{C}_{i}=(q_{i},\mathcal{D}_{i},\mathcal{R}_{i}^{+},\mathcal{R}_{i}^{-};G_{i})$，包含任务陈述$q_i$、交付物要求$\mathcal{D}_i$、正向标准$\mathcal{R}_{i}^{+}$和负向惩罚标准$\mathcal{R}_{i}^{-}$。每个正向标准$c_{k}=(d_{k},r_{k},z_{k},w_{k},A_{k},\phi_{k})$指定目标交付物、要求、期望值、权重、<strong>证据锚点</strong>$A_{k}\subseteq V_{i}$及验证程序$\phi_{k}$。工作Agent只看到任务陈述与交付物要求；判定器接收锚点和验证指令，知道该检查哪些文件和交付物部分。这种<strong>执行与验证分离</strong>的设计确保锚点指导rubric生成与判定，但不会将解决方案泄漏到任务陈述中。</p>
+<p>轨迹质量评分由证据锚定判定器给出：</p>
+$$Q_{i}(\tau)=\frac{\sum_{k\in\mathcal{R}_{i}^{+}}w^{+}_{ik}\,a_{ik}(\tau)-\sum_{j\in\mathcal{R}_{i}^{-}}\lambda_{ij}\,v_{ij}(\tau)}{\sum_{k\in\mathcal{R}_{i}^{+}}w^{+}_{ik}}$$
+
+<p>其中$a_{ik}\in[0,1]$为正向标准的满足比例，$v_{ij}\in[0,1]$为负向标准的违反程度，$w^{+}_{ik}$和$\lambda_{ij}$分别为权重与惩罚强度。最终仅接纳$Q_{i}(\tau_{i})>0.90$的轨迹。</p>
+<h2>三、实验</h2>
+<p>训练语料包含<strong>2,169条</strong>接纳轨迹，覆盖466个O*NET任务类型、16个职业扇区中的15个、全部16种执行模式。图2展示了语料在职业扇区-执行模式联合维度及输入文件族上的分布多样性。</p>
+<p><img alt="图2：SFT语料多样性" src="https://arxiv.org/html/2609.38923v1/joint_coverage.png" /></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>GDPVal (OpenHands)</th>
+<th>Workspace-Bench-Lite (Claude Code)</th>
+<th>SpreadsheetBench II (Claude Code)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3.6-27B</td>
+<td>1380.0</td>
+<td>56.0</td>
+<td>10.3</td>
+</tr>
+<tr>
+<td>+ SFT (GraphForge)</td>
+<td><strong>1445.7</strong> (+65.7)</td>
+<td><strong>63.7</strong> (+7.7)</td>
+<td><strong>24.0</strong> (+13.7)</td>
+</tr>
+<tr>
+<td>Qwen3.6-35B-A3B</td>
+<td>1260.6</td>
+<td>55.9</td>
+<td>2.8</td>
+</tr>
+<tr>
+<td>+ SFT (GraphForge)</td>
+<td><strong>1362.3</strong> (+101.7)</td>
+<td><strong>59.7</strong> (+3.8)</td>
+<td><strong>19.3</strong> (+16.5)</td>
+</tr>
+<tr>
+<td>Nex-N2-Mini-35B</td>
+<td>1288.8</td>
+<td>33.1</td>
+<td>6.5</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>跨scaffold泛化</strong>是重要发现：所有GraphForge轨迹在Codex scaffold下生成，但评估覆盖OpenHands、Codex和Claude Code。SFT模型在所有scaffold下均优于基座模型，说明语料教授的是<strong>可迁移的工作技能</strong>而非特定rollout scaffold的习惯。</p>
+<p><strong>RFT消融</strong>进一步验证了证据锚定的价值。从相同候选池中分别用锚定判定器、去锚定判定器和随机选择三条臂进行拒绝采样微调。锚定RFT在Workspace-Bench-Lite和SpreadsheetBench II上均获得最大提升，随机选择臂总体最弱。污染审计显示，39,201个训练文件与260个GDPVal文件零重叠；按职业覆盖划分GDPVal任务后，基座vs SFT的胜率在覆盖组（0.692）和未覆盖组（0.739）之间无显著差异，证明性能提升源于可迁移技能而非记忆。</p>
+<h2>四、展望</h2>
+<p>GraphForge的价值在于建立了一条<strong>从真实文件到可验证训练数据</strong>的完整管线，证据图作为中间表示同时约束任务生成与质量判定。该方法不依赖特定基座模型，对不同参数量级均有效，且RFT阶段可利用同一rubric对模型自身rollout进行筛选，形成数据飞轮。后续研究可探索更大数据预算下的扩展性、更强判定模型对细粒度内容验证的改进，以及跨模型家族的迁移效果。证据锚定思想是否也能应用到代码生成、多模态Agent等更广泛场景，值得进一步探索。</p>
+<p><strong>论文标题</strong>：GraphForge: Training Working Agents with Graph-Anchored Workspace Synthesis</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2609.38923.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-02_GraphForge-Training-Working-Agents-with-Graph-Anchored-Workspace-Synthesis.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-02_GraphForge-Training-Working-Agents-with-Graph-Anchored-Workspace-Synthesis.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
