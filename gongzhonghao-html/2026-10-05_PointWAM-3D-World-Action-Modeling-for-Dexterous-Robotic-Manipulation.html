@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PointWAM: 3D World Action Modeling for Dexterous Robotic Manipulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">PointWAM: 3D World Action Modeling for Dexterous Robotic Manipulation</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-07</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>POSTECH等提出PointWAM：以3D点轨迹预训练解锁灵巧操作，DexJoCo成功率提升至69.0%</h2>
+<h3>一、当机器人学会“想象”物理世界</h3>
+<p>灵巧操作是机器人领域公认的硬骨头。传统视觉-语言-动作模型（VLA）将观测直接映射为电机指令，如同凭借条件反射完成动作，缺乏对物理后果的预判。而世界行动模型（WAM）试图补上这一环：让模型在预测动作的同时，预测世界将如何变化。但现有WAM大多以RGB帧或视频潜变量表征世界，对3D空间结构与接触几何的捕捉先天不足。</p>
+<p>论文提出的<strong>PointWAM</strong>给出了一个截然不同的答案：将世界拆解为<strong>场景点云</strong>与<strong>手部关键点</strong>，在共享时空坐标系中联合预测二者的3D点轨迹。凭借这一显式、解耦的3D表征，PointWAM得以在<strong>115万段人类演示视频</strong>上高效预训练，在DexJoCo基准上以<strong>69.0%的平均成功率</strong>超越最强基线11.7个百分点，并在真实机器人上实现最高25个百分点的领先。</p>
+<p><img alt="图1：PointWAM以3D点轨迹联合预测场景与手部运动，左侧展示预训练数据中RGB与深度输入，右侧展示共享时空坐标系下的轨迹预测" src="https://arxiv.org/html/2610.02840v1/figures/teaser/forecast.png" /></p>
+<h3>二、核心方法：在共享时空中预测点轨迹</h3>
+<h4>创新一：场景与手部的统一3D点轨迹表示</h4>
+<p>PointWAM的核心设计在于世界表示的彻底3D化。给定一个带颜色的点云 $\mathcal{P}_t = \{(\boldsymbol{p}^{(i)}_t, \boldsymbol{c}^{(i)}_t)\}_{i=1}^N$，模型不预测像素，也不预测潜变量，而是直接预测每个场景点在未来 $T$ 步的位移：</p>
+$$\boldsymbol{u}^{(i)}_{t,\tau} = \boldsymbol{p}^{(i)}_{t+\tau} - \boldsymbol{p}^{(i)}_t, \quad \tau = 1, \ldots, T$$
+
+<p>手部则用语义对应的关键点 $\mathcal{Q}_t = \{\boldsymbol{q}^{(k)}_t\}_{k=1}^K$ 表示（每只手10个关键点），其位移同样在共享坐标系中预测：</p>
+$$\boldsymbol{v}^{(k)}_{t,\tau} = \boldsymbol{q}^{(k)}_{t+\tau} - \boldsymbol{q}^{(k)}_t$$
+
+<p>这一设计的精妙之处在于：<strong>人类演示视频与机器人演示数据天然共享同一种轨迹格式</strong>。人类视频中的手部关键点来自姿态标注或重建，场景轨迹来自CoTracker3稠密跟踪配合单目深度估计；机器人数据中的手部轨迹则通过前向运动学直接获得。两者无需任何任务特定的物体选择或关键点筛选，即可统一监督同一个预测模型。</p>
+<p><img alt="图2：PointWAM架构。3D轨迹预测器编码场景点云、手部关键点与语言指令，联合预测场景轨迹与手部轨迹；动作重定向器将手部轨迹与机器人状态映射为动作块" src="https://arxiv.org/html/2610.02840v1/figures/method/input_cloud.png" /></p>
+<h4>创新二：从点云到轨迹的编码-融合-解码流水线</h4>
+<p>PointWAM的3D轨迹预测器由三个关键模块构成。首先，冻结的<strong>Mosaic3D编码器</strong>为每个场景点提取融合局部几何与语义信息的特征；手部关键点则通过MLP将索引独热编码映射到与场景特征相同的维度。</p>
+<p>随后，场景点与手部关键点按3D坐标被放置在<strong>1cm体素网格</strong>上，经稀疏卷积编码后划分为非重叠体素块，线性投影为视觉token。语言指令经冻结文本编码器后投影为指令token。视觉token与指令token拼接后送入Transformer编码器，以全局自注意力实现多模态融合。</p>
+<p>融合后的输出经反token化恢复为逐点特征，再与残差连接中的底层特征结合，最终由两个独立的MLP预测头分别输出场景轨迹 $\boldsymbol{\mathcal{U}}_t$ 与手部轨迹 $\boldsymbol{\mathcal{V}}_t$：</p>
+$$\boldsymbol{\mathcal{U}}_t = \text{MLP}_{\boldsymbol{u}}(\boldsymbol{F}^{\text{scene}}_t), \qquad \boldsymbol{\mathcal{V}}_t = \text{MLP}_{\boldsymbol{v}}(\boldsymbol{F}^{\text{hand}}_t)$$
+
+<p>论文强调的核心在于<strong>联合监督</strong>：场景预测头为共享骨干网络提供了关于环境如何随手的运动而变化的因果信号，这比单独预测手部轨迹多了对物理交互的理解。</p>
+<h4>创新三：动作重定向器与两阶段训练</h4>
+<p>预测出手部轨迹 $\boldsymbol{\mathcal{V}}_t$ 后，PointWAM还需将其转化为机器人的动作块。动作重定向器将每步手部位移经MLP编码，与步长嵌入相加，并附加机器人状态嵌入，构成上下文序列 $\boldsymbol{C}_t$。Transformer解码器以可学习的动作查询$\boldsymbol{Q}$为输入，通过交叉注意力从上下文中提取信息，输出完整的动作块 $\boldsymbol{A}_t \in \mathbb{R}^{T \times d_a}$。</p>
+<p>训练采用<strong>两阶段策略</strong>：第一阶段在115万段人类演示视频（EgoDex的324K段 + VITRA的约826K段）上从零预训练轨迹预测器骨干与两个轨迹预测头；第二阶段在机器人演示上微调全部组件，同时从零训练动作重定向器。总损失函数如下：</p>
+$$\mathcal{L}_{\text{traj}} = \sum_{i,\tau} w_{i,\tau} \|\boldsymbol{u}^{(i)}_{t,\tau} - \boldsymbol{u}^{(i)\ast}_{t,\tau}\|_2^2 + \frac{1}{KT} \sum_{k,\tau} \|\boldsymbol{v}^{(k)}_{t,\tau} - \boldsymbol{v}^{(k)\ast}_{t,\tau}\|_2^2$$
+
+<p>其中 $w_{i,\tau}$ 在偏重运动点的同时保证覆盖所有场景点。</p>
+<h3>三、实验揭秘：3D世界建模到底有多大用</h3>
+<h4>为什么PointWAM能大幅超越VLA与WAM基线</h4>
+<p>在DexJoCo的十任务单一策略评测中，PointWAM以69.0%的平均成功率登顶，比最强基线GR00T N1.6高出<strong>11.7个百分点</strong>，比同为WAM路线的Fast-WAM高出<strong>16.1个百分点</strong>。值得关注的是，GR00T N1.6的预训练包含大规模真实与仿真机器人数据，而PointWAM的预训练<strong>完全来自人类演示视频</strong>，没有任何机器人动作标注。</p>
+<p><img alt="图3：预训练增益。EgoDex人类演示预训练后各方法平均成功率变化，PointWAM从12.1%跃升至60.1%，基线方法变化不超过1.4个百分点" src="https://arxiv.org/html/2610.02840v1/figures/pretraining_gain.png" /></p>
+<p>上图展示了一个关键发现：GR00T N1.6、Fast-WAM和PointACT即使加入EgoDex预训练，成功率变化也微乎其微。而PointWAM从12.1%跃升至60.1%，实现了<strong>近五倍的提升</strong>。这有力证明：增益的来源不是简单的“预训练更多数据”，而是<strong>共享3D点轨迹表示</strong>本身——只有在这种表示下，人类视频里的手部运动和场景变化才能无缝迁移到机器人策略中。</p>
+<h4>3D世界建模的独立贡献有多大</h4>
+<p>论文组件消融实验将Volt-L12模型在EgoDex预训练后的参考SR设为64.4%。移除场景轨迹监督后，SR骤降至53.5%，即便是保持3D骨干和深度输入不变。这意味着<strong>仅“看见”3D场景是不够的，模型必须主动预测场景将如何变化</strong>，才能将物理因果关系的理解内化。</p>
+<p>进一步对比2D世界建模：使用DINOv3图像特征并预测未来帧潜变量的方案达到60.1%，比无世界建模高6.6个百分点，但仍比3D点轨迹方案低4.3个百分点。3D编码器（Mosaic3D）对比提升的2D特征（DINOv3）也有5.4个百分点的独立增益。两项实验共同指向同一个结论：<strong>3D点轨迹既是更好的世界表征，也是更好的监督信号</strong>。</p>
+<h4>真实机器人：3D形状感知带来鲁棒泛化</h4>
+<p>在OpenArm人形机器人平台上，PointWAM在香蕉抓取放置任务中面对与桌面颜色相近的未见盒子，仍达到58.3%的成功率，而GR00T N1.6仅为16.7%。在需要双臂精确协作的方钉插入任务中，PointWAM达到50.0%的成功率，对比基线为16.7%与25.0%。论文分析认为，RGB方法难以将颜色欺骗性的物体与桌面区分，而PointWAM可以依赖点云的3D形状信息实现鲁棒定位。</p>
+<p><img alt="图4：DexJoCo与RoboDojo-Precision上的定性对比。PointWAM成功完成双臂汉诺塔任务，而GR00T N1.6超时失败" src="https://arxiv.org/html/2610.02840v1/figures/qual_traj/hammer_nail.png" /></p>
+<h3>四、从人类视频到机器人操作：一条新路径的起点</h3>
+<p>PointWAM的启示远超数值本身：<strong>当表征选对，人类演示与机器人操作之间的鸿沟可以被大幅弥合</strong>。人类视频中蕴含的海量物理交互知识——物体如何被推动、翻转、堆叠——此前难以被机器人策略直接利用。3D点轨迹提供了这种共享语言。</p>
+<p>当然，点云表征也有其盲区：小于点间距的纹理细节、透明物体的表面、物体的质量与摩擦等物理属性，都超出当前输入的表达能力。论文指出，未来探索的方向之一是扩展每个点所承载的信息维度，从几何颜色延伸到物理属性。这或许能将世界行动模型的“想象力”推向新的边界。</p>
+<p><strong>论文标题</strong>：PointWAM: 3D World Action Modeling for Dexterous Robotic Manipulation</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.02840.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-05_PointWAM-3D-World-Action-Modeling-for-Dexterous-Robotic-Manipulation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-05_PointWAM-3D-World-Action-Modeling-for-Dexterous-Robotic-Manipulation.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
