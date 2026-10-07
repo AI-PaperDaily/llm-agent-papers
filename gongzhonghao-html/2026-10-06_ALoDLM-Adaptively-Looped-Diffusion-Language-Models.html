@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALoDLM: Adaptively Looped Diffusion Language Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">ALoDLM: Adaptively Looped Diffusion Language Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-08</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>Amazon AGI提出ALoDLM：自适应循环扩散语言模型，8B参数平均分80.3超越同规模自回归模型</h2>
+<p><img alt="图1：ALoDLM结合强大性能与快速推理。左：ALoDLM-8B在11个推理、编码和知识基准上平均超越所有基线。右：在GSM8K上，ALoDLM-8B在相当或更高准确率下实现约2.7倍于vLLM服务的Qwen3-8B的吞吐量" src="https://arxiv.org/html/2506.23770v2/x1.png" /></p>
+<h2>一、扩散语言模型的质量困局</h2>
+<p>扩散语言模型（DLMs）长期以来面临着一个尴尬的处境：它们在推理速度上拥有显著优势，能够并行预测多个被遮蔽的token，但在生成质量上始终难以追平同等规模的自回归（AR）模型。这一质量差距成为制约DLMs大规模应用的核心瓶颈。</p>
+<p>现有解决方案主要沿着两条路径展开：一是引入半自回归结构，如块扩散方法，部分恢复顺序生成的特性；二是将DLMs降格为“草稿生成器”，产出候选结果后交由自回归模型验证。这两种路径虽然在一定程度上缓解了质量差距，但都回避了一个更根本的问题：<strong>DLMs的质量差距究竟从何而来？</strong></p>
+<p>论文提出的核心假设是<strong>计算-难度错配</strong>（computation–difficulty mismatch）。在一个部分遮蔽的序列中，不同未知token的预测难度差异巨大：有些token凭借上下文即可轻松推断，有些则需要多跳推理或依赖其他尚未解析的位置。然而，标准DLMs在每个去噪步骤中对所有未知位置施加完全相同深度的计算——简单的token被过度计算，困难的token则计算不足。</p>
+<p><img alt="图2：ALoDLM概览。标准DLMs在每个去噪步骤应用固定深度的去噪器。ALoDLM在每个步骤内引入token自适应循环：自信的token提前提交并提供离散上下文，未解决的token通过额外循环传递保留并精炼其潜在状态" src="https://arxiv.org/html/2506.23770v2/x2.png" /></p>
+<h2>二、核心方法：让计算随难度自适应</h2>
+<h3>2.1 自适应循环架构</h3>
+<p>ALoDLM对每个去噪步骤（外循环）引入了一个<strong>内循环</strong>机制。在每个内循环中，模型对当前状态进行循环精炼，并允许不同token在不同深度“提交”预测结果。</p>
+<p>具体来说，模型架构被划分为三个组件：</p>
+<ul>
+<li><strong>前奏层（Prelude）</strong> ：包含token嵌入层和前几个Transformer块，负责生成初始循环状态 $h^{(0)} \in \mathbb{R}^{N \times d}$</li>
+<li><strong>循环核心（Recurrent Core）</strong> ：由中间Transformer块组成，负责反复精炼潜在状态</li>
+<li><strong>尾声层（Coda）</strong> ：由剩余后缀Transformer块组成，将循环核心的输出映射为读出状态</li>
+</ul>
+<p>在第 $s$ 次循环传递中：</p>
+$$\widetilde{h}^{(s)}=\mathsf{Recurrent\ Core}(h^{(s-1)}),\qquad r^{(s)}=\mathsf{Coda}(\widetilde{h}^{(s)})$$
+
+<p>每个读出状态 $r_i^{(s)}$ 并行通过两个头部处理。<strong>语言模型头</strong>生成词表分布 $p_i^{(s)}$，用于判断token的预测置信度；<strong>退出门</strong>（ExitGate）生成标量logit，通过sigmoid函数定义在该循环深度处停止的概率：</p>
+$$\lambda_i^{(s)}=\begin{cases}\sigma\left(\mathsf{ExitGate}(\operatorname{sg}[r_i^{(s)}])\right),&s<K,\\1,&s=K.\end{cases}$$
+
+<p><strong>token提交与潜在反馈</strong>是这一架构的关键机制。当某个位置的预测熵低于阈值 $\tau$ 时，该token被“提交”——从其预测分布中采样出具体token，并将其嵌入向量反馈到下一轮循环的输入中。尚未提交的位置则保留其累积的潜在状态继续精炼。这意味着，早期提交的token为后续循环提供了离散上下文，而困难token则持续利用更丰富的上下文进行更深层的推理。</p>
+<h3>2.2 联合训练目标</h3>
+<p>训练的核心挑战在于：提交决策是离散的，且一个token的提交会改变后续所有token的上下文。为了同时学习token预测和计算分配策略，论文将每个token的退出深度建模为<strong>潜变量</strong>，并推导出条件负证据下界（NELBO）目标：</p>
+$$J(\theta,\phi;\mathbf{x}_t,\mathbf{y}):=\mathbb{E}_{\mathbf{z}\sim q_{\phi}}\left[-\sum_{i\in\mathcal{M}_t}\log p_{\theta,i}^{(z_i)}(y_i\mid\mathbf{x}_t;\mathbf{z})\right]+D_{\mathrm{KL}}(q_{\phi}\|\pi)$$
+
+<p>这一目标函数包含两个部分：轨迹损失 $\mathcal{L}_{\mathrm{traj}}(\mathbf{z})$ 衡量给定退出调度下所有遮蔽位置token的预测质量；KL散度项则鼓励退出策略接近一个倾向于浅层退出的几何先验分布。</p>
+<p>由于离散的退出决策阻碍了梯度传播，论文采用<strong>得分函数估计器</strong>构造无偏梯度估计。对于采样得到的退出调度 $\mathbf{z}$，代理损失定义为：</p>
+$$\widehat{\mathcal{L}}_{\mathrm{sur}}(\mathbf{z})=\frac{1}{t}\left\{\mathcal{L}_{\mathrm{traj}}(\mathbf{z})+\operatorname{sg}\left[\mathcal{L}_{\mathrm{traj}}(\mathbf{z})+\log\frac{q_{\phi}(\mathbf{z})}{\pi(\mathbf{z})}\right]\log q_{\phi}(\mathbf{z})\right\}$$
+
+<p>其中第一项训练去噪器预测目标token，第二项利用得分函数估计器训练停止策略。被停止梯度包裹的项充当“信用信号”，告知策略哪些退出调度整体表现更好。</p>
+<h3>2.3 方差削减技术</h3>
+<p>单一轨迹采样的梯度估计存在较高方差。ALoDLM利用同一次前向传播中所有中间深度的预测结果，对每个token在 $s=1$ 到 $z_i$ 的所有深度上的交叉熵损失进行加权平均，而非仅在采样退出深度处监督。同时，减去首次传递预测损失的基线值作为控制变量。实验表明，这一中间监督策略将条件梯度方差降低了约1.4至1.8倍。</p>
+<h2>三、实验：质量与效率的双重突破</h2>
+<p>论文在1.7B和8B两个参数规模上训练了ALoDLM，直接基于Qwen3骨干进行监督微调（SFT），使用50亿token的语料库，跳过了传统转换流程中昂贵的持续预训练阶段。</p>
+<p>在11个基准测试（涵盖通用推理、数学推理和代码生成）上的结果表明，ALoDLM在两个规模上均超越了所有评估的扩散模型和对应的自回归基线：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>平均得分</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-1.7B (AR基线)</td>
+<td>63.8</td>
+</tr>
+<tr>
+<td>SDAR-1.7B (DLM基线)</td>
+<td>61.0</td>
+</tr>
+<tr>
+<td><strong>ALoDLM-1.7B</strong></td>
+<td><strong>65.5</strong></td>
+</tr>
+<tr>
+<td>Qwen3-8B (AR基线)</td>
+<td>78.5</td>
+</tr>
+<tr>
+<td>WeDLM-8B (DLM基线)</td>
+<td>75.1</td>
+</tr>
+<tr>
+<td><strong>ALoDLM-8B</strong></td>
+<td><strong>80.3</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>ALoDLM-8B在所有四个代码生成基准上全面领先，包括HumanEval（87.8%）、MBPP（81.5%）等。在数学推理方面，GSM8K达到94.2%，MATH-500达到80.8%，GPQA-Diamond达到49.5%。</p>
+<p><img alt="图3：(a) 熵阈值和停止阈值的互补作用。增加τ放宽提交标准加速生成，在高阈值时准确率损失更显著。增加q允许更深的潜在精炼，在较低吞吐量下获得准确率提升。(b) 自适应循环改善质量-效率前沿。在大多数评估范围内，ALoDLM-8B在相当吞吐量下实现比WeDLM-8B更高的准确率" src="https://arxiv.org/html/2506.23770v2/x3.png" /></p>
+<p>在效率方面，GSM8K任务上ALoDLM-8B通过并行解码实现了约<strong>2.7倍于vLLM服务的Qwen3-8B</strong>的吞吐量，同时保持相当或更高的准确率。与最强的扩散基线WeDLM-8B相比，在93.25%的匹配准确率下，ALoDLM达到612.4 tokens/s，比WeDLM的564.2 tokens/s提升了8.5%。就计算效率而言，达到相同准确率所需的计算量减少了13.6%。</p>
+<p><img alt="图4：左：学习动态。初始训练阶段后，更深的循环读出在其活跃token上表现出更低的训练损失。中：使用q进行测试时扩展。增加q提高每token循环次数和11个基准上的平均得分。右：token自适应循环。不同token类别的平均首轮停止概率存在差异，数值token表现出最低均值" src="https://arxiv.org/html/2506.23770v2/x4.png" /></p>
+<p>分析实验揭示了几个关键发现。训练过程中，更深循环深度（$s=4$）的读出状态显示出显著更低的训练损失，证实了潜在状态在循环中持续精炼。在推理时，将退出阈值 $q$ 从低值提高到高值，使每token平均循环次数从1.6增加到2.34，平均得分从77.9%提升至79.1%，验证了<strong>循环深度作为测试时扩展轴</strong>的有效性。数值token的平均首轮停止概率（0.369）显著低于单词token（0.428），表明模型在没有显式难度标签的情况下学会了为数值预测分配更多计算资源。</p>
+<h2>四、展望：可扩展的推理计算范式</h2>
+<p>ALoDLM的核心洞察在于将“计算分配”本身作为一个可学习的问题来对待，而不是对所有位置施加统一的计算预算。这一思想的影响可能超越扩散语言模型本身：在大模型推理过程中，如何根据输入的难度动态分配计算资源，是自回归模型和扩散模型共同面临的课题。ALoDLM展示了即使在并行解码框架下，通过巧妙的架构设计和训练目标，模型也能自动习得合理的计算分配策略。未来的研究方向可能包括将这一自适应机制扩展到更长的序列、更复杂的多模态场景，以及探索更加精细化的计算预算控制策略。</p>
+<p><strong>论文标题</strong>：ALoDLM: Adaptively Looped Diffusion Language Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.04198.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-06_ALoDLM-Adaptively-Looped-Diffusion-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-06_ALoDLM-Adaptively-Looped-Diffusion-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
