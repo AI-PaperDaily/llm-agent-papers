@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeMo-DCR: Bit-Exact Delta-Compressed Refit for Scalable Agentic RL at Trillion-Parameter Scale</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">NeMo-DCR: Bit-Exact Delta-Compressed Refit for Scalable Agentic RL at Trillion-Parameter Scale</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-09</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>NVIDIA推出NeMo-DCR：万亿参数Agentic RL权重同步仅150秒，比全量快40倍</h2>
+<p>Agentic强化学习（RL）将训练与推理分离，以实现大规模rollout。然而，每个策略更新后都需要将完整权重从训练集群传输到推理集群，对于万亿参数模型，跨区域的全量检查点传输耗时长达87.5分钟，成为系统瓶颈。研究发现，BF16训练中每步仅有约1%的权重值实际发生变化。如何只发送这1%的变化，同时保证接收端得到与全量传输完全一致的比特级精确权重，是一个巨大挑战。NVIDIA团队提出的<strong>NeMo-DCR</strong>系统，通过<strong>Delta-Compressed Refit</strong>技术，在3%变化率下将1T模型权重同步缩短至150秒，速度提升达40倍，并保证比特级精确。</p>
+<p><img alt="图1：NeMo-DCR relay-tree refit与全量检查点传输对比" src="https://arxiv.org/html/2505.xxxxx/fig1.png" /></p>
+<h2>一、核心方法：以“规范化坐标”驱动比特级精确的增量更新</h2>
+<p>NeMo-DCR的核心思想是将权重更新描述在<strong>规范化坐标</strong>（canonical coordinates）中，即Hugging Face检查点格式的张量名称与索引。训练分片和推理布局都映射到这套坐标，由推理运行时的<strong>原生加载器</strong>（如vLLM的loader）决定最终存储位置，从而避免重实现复杂的放置规则。</p>
+<h3>1. 直接投影与残差转换</h3>
+<p>一个训练rank作为每个分片的“owner”，比较当前权重与源基线，找出存储值发生变化的元素。对于具有固定仿射索引映射的转换任务（如行/列分片、复制等），owner可以直接将变化投影到规范化目标位置，无需组装完整张量：</p>
+$$d=\pi_{T}(j),\qquad o_{T}^{v+1}(j)=I(Q_{T}(S_{T}^{v+1}))_{d}.$$
+
+<p>对于无法通过仿射映射覆盖的变化（如融合QKV、共享缩放因子等），系统采用<strong>残差转换</strong>：只对受影响的规范化张量进行组装和比较，利用分布式残差基线找出真正变化的位。在Qwen3和Nemotron MoE检查点中，仿射映射覆盖超过96%的权重字节，因此直接投影大幅降低了构造开销。</p>
+<p><img alt="图4：NeMo-DCR架构及refit步骤" src="https://arxiv.org/html/2505.xxxxx/fig4.png" /></p>
+<h3>2. 混合XOR/覆写编码</h3>
+<p>编码层决定如何将变化值交给接收端。XOR编码发送旧值与新值的位异或掩码，接收端对本地旧值执行XOR即可得到精确的新值，且掩码具有良好的压缩性。但XOR要求源投影与加载器是“表示保持”的。对于不满足条件的路径（如量化缩放、类型转换），使用<strong>绝对覆写</strong>直接发送新值的完整位模式。</p>
+<p>对于直接投影的变化，掩码计算为：</p>
+$$x_{T}^{v+1}(j)=I(S_{T}^{v+1})_{j}\oplus I(A_{T}^{v})_{j}.$$
+
+<p>混合编码在Qwen3测试中将有效载荷字节数减少了38–40%，相比纯覆写方式。XOR条目在压缩后通常比覆写值小1.7–2.2倍。</p>
+<h3>3. 可恢复的就地refit</h3>
+<p>接收端应用更新时，利用原生加载器的最终存储拷贝进行拦截，在<strong>不保留接收端独立基线副本</strong>的情况下就地更新。对于失败的refit尝试，系统停止该尝试并等待未决写入失效，然后重新计算完整变化集，将每个记录改为<strong>绝对覆写</strong>，从而修复部分写入留下的新旧混合状态。</p>
+<p>在所有接收者确认后，协调器执行<strong>联合提交</strong>，将策略版本绑定到源基线，随后owner就地更新任务跟踪器和残差基线。该协议通过比较并设置操作保证提交记录的权威性，并支持协调器故障转移。</p>
+<p><img alt="图6：应用单个item及等价性链条" src="https://arxiv.org/html/2505.xxxxx/fig6.png" /></p>
+<p>通过以上机制，NeMo-DCR满足比特级精确要求，即接收端存储与全量refit完全一致：</p>
+$$\operatorname{bits}\!\left(\operatorname{apply}_{r}(\Delta^{v+1},P_{r}^{v})\right)=\operatorname{bits}\!\left(L_{r}(W^{v+1})\right)\kern 5.0pt\forall r.$$
+
+<h3>4. 无跨集群集合的流水线递送</h3>
+<p>传输层支持对象存储和<strong>中继树</strong>两种模式，均不依赖跨训练/推理集群的集体通信。中继树模式下，每个owner的载荷只跨越集群边界一次，通过推理集群内部的平衡树进行分发。载荷在构建过程中流式传输，与残差转换、编码和应用阶段重叠，进一步隐藏延迟。</p>
+<p><img alt="图7：两种传输模式的载荷移动逻辑" src="https://arxiv.org/html/2505.xxxxx/fig7.png" /></p>
+<h2>二、实验结果：万亿参数同步从87.5分钟降至150秒</h2>
+<p>实验在跨AWS区域的两个集群上进行：32块GB300 GPU（训练）与64块H100 GPU（推理）。测试模型包括Qwen3-30B-A3B、Qwen3-235B-A22B、以及扩展至1T参数的Nemotron-3-Ultra-550B-A55B。</p>
+<p>在120B模型上，包括增量构造、传输和加载器应用在内的端到端refit延迟，中继树模式在3%变化率下仅需<strong>22.6秒</strong>，对象存储模式为24.5秒，相比全量检查点传输的750秒，加速分别达到<strong>33.2倍</strong>和<strong>30.6倍</strong>。在5%变化率下，仍保持15.1–18.0倍加速。</p>
+<p>扩展到30B至1T模型，NeMo-DCR在3%和5%变化率下整体维持<strong>12–40倍加速</strong>。对于1T模型，中继树在3%变化率下完成refit仅需<strong>150秒</strong>，而全量传输需87.5分钟；5%变化率下为300秒，依旧快17.5倍。</p>
+<p><img alt="图10：不同规模模型下refit延迟与加速比" src="https://arxiv.org/html/2505.xxxxx/fig10.png" /></p>
+<p>研究者进一步验证了故障恢复能力。在训练Qwen3-30B-A3B的50步GRPO过程中，每5步随机杀死一个vLLM实例，使进行中的refit失败并触发覆写重试。结果表明，对象存储和中继树两种NeMo-DCR传输均与全量NCCL refit的奖励曲线和KL散度轨迹重合，平均奖励均为0.41。</p>
+<p><img alt="图9：接收端中途杀死时三类refit的训练轨迹对比" src="https://arxiv.org/html/2505.xxxxx/fig9.png" /></p>
+<p>性能剖析显示，在中继树refit延迟中，<strong>传输下界占77–94%</strong>，成为主导因素，而增量构造仅占18–45%，且与传输完全重叠。这印证了流水线设计的有效性：发送端不再成为瓶颈，未来优化空间集中在网络传输本身。</p>
+<p>NeMo-DCR以约7K行Python代码实现，完全开源，已合并至NeMo RL主分支。其设计不依赖模型特定逻辑，可同时处理Qwen3和混合Mamba-Transformer的Nemotron模型。随着万亿参数Agentic RL走向生产，这一技术使得每次策略更新后的权重同步不再是不可逾越的障碍。</p>
+<p><strong>论文标题</strong>：NeMo-DCR: Bit-Exact Delta-Compressed Refit for Scalable Agentic RL at Trillion-Parameter Scale</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.08430.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-07_NeMo-DCR-Bit-Exact-Delta-Compressed-Refit-for-Scalable-Agentic-RL-at-Trillion-Parameter-Scale.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-07_NeMo-DCR-Bit-Exact-Delta-Compressed-Refit-for-Scalable-Agentic-RL-at-Trillion-Parameter-Scale.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
