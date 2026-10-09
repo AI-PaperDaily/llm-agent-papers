@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Long-WAM: Scaling the Context of World-Action Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Long-WAM: Scaling the Context of World-Action Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-10</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>NVIDIA等提出Long-WAM：长上下文世界-行动模型突破实时控制瓶颈，动态堆叠成功率95%</h2>
+<p><img alt="图1：Long-WAM整体架构概览" src="https://arxiv.org/html/2610.10528v1/1_2.png" /></p>
+<p>机器人实时控制面临一个根本性矛盾：要理解场景变化就需要足够的视觉历史，但处理这些历史会延迟动作响应。NVIDIA、MIT、港大等机构的研究者提出的<strong>Long-WAM</strong>框架给出了一个值得关注的答案：<strong>访问历史不等于利用历史</strong>。当视频基础模型采用自回归（AR）方式预训练时，更长的上下文带来的收益远高于双向预训练初始化。在RoboCasa GR-1基准上，上下文从0.0秒扩展到19.2秒，成功率从63.3%跃升至78.7%；而在LIBERO-Long上，2.4秒的历史将成功率从94.5%推高至99.5%。更关键的是，优化后的推理管线在RTX 5090上以107.4毫秒完成每个动作块——包括未来视频隐变量预测——实现了真正意义上的实时部署。</p>
+<h2>一、核心方法：从自回归视频预训练到因果行动适配</h2>
+<h3>1. LongLive2.0-Robot：机器人领域的AR视频预训练</h3>
+<p>Long-WAM的第一阶段是在约<strong>10,000个窗口等效小时</strong>的机器人与自中心视频数据上，从LongLive-2.0的16秒AR检查点继续训练。数据来源覆盖RoVid-X、AgiBot World、EgoDex、EgoVerse和VITRA。由于监督信号仅为视频本身，模型可以跨多种机器人形态学习，而不受限于共享动作空间。</p>
+<p>训练采用<strong>教师强制</strong>（teacher-forcing）的AR视频生成范式，序列最长可达30秒。具体而言，给定目标块潜变量 $\bar{z}_i$、采样的高斯噪声 $\bar{\epsilon}_i$ 和前置真实上下文 $h_{<i}$，噪声输入和目标函数定义为：</p>
+$$x_i^{\sigma_i} = (1-\sigma_i)\bar{z}_i + \sigma_i\bar{\epsilon}_i, \qquad \sigma_i \in [0,1]$$
+
+$$\mathcal{L}_{\mathrm{TF\text{-}AR}} = \mathbb{E}\left[w(\sigma_i)\left\|v_\theta(x_i^{\sigma_i}, \sigma_i \mid h_{<i}, c) - (\bar{\epsilon}_i - z_i)\right\|_2^2\right]$$
+
+<p>其中 $\sigma_i$ 是噪声水平，$v_\theta$ 为视频速度预测器，$c$ 为语言条件。这一阶段的核心价值在于：模型在没有任何动作标签的情况下，学会了从历史观测预测未来物理演化的能力。</p>
+<h3>2. 因果到因果的World-Action适配</h3>
+<p>第二阶段将AR视频基础模型适配为世界-行动模型（WAM），关键在于<strong>保留视频专家的因果时间结构</strong>。视频查询只读取自身及更早的视觉块，绝不访问动作令牌；动作查询则同时读取观测历史、部分去噪的未来预测和整个噪声动作块。</p>
+<p>在决策时刻 $t$，视频专家先预测 $K_v$ 步未来隐变量 $\widetilde{Z}_t^+$ 到噪声水平 $\sigma_\star$，然后将其联合视觉缓存 $\mathcal{K}_t$ 供给动作专家：</p>
+$$\widetilde{Z}_t^+ = \operatorname{Rollout}_{\theta,\sigma_\star}(\epsilon^v \mid Z_t^-, c, q_t), \qquad \mathcal{K}_t = \operatorname{Prefill}_\theta(Z_t^-, \widetilde{Z}_t^+; c, q_t, \sigma_\star), \qquad \widehat{\mathbf{A}}_t = \operatorname{Denoise}_\psi(\epsilon^a \mid \mathcal{K}_t, c, q_t)$$
+
+<p>这种<strong>先预测后行动</strong>的模式被称为逆向动力学建模（IDM）。值得注意的是，未来隐变量从不解码为像素——它们是控制决策的中间表示。在推理时，四个视频去噪步骤停在 $\sigma_\star$ 而非干净视频，缓存被动作去噪过程全程复用。</p>
+<h3>3. 异步执行与流式VAE编码</h3>
+<p><img alt="图3：异步模型-机器人执行与流式VAE" src="https://arxiv.org/html/2610.10528v1/async.png" /></p>
+<p>实时部署的关键创新在于<strong>异步调度</strong>：推理与机器人执行重叠进行。Pure异步执行在Long-WAM上无需推理时引导或前缀条件训练即可保持动作连续性。在RoboTwin 2.0上，Long-WAM的IDM模式在异步下仅损失0.2个百分点（94.4%到94.2%），而Fast-WAM和LingBot-VA分别损失15.4和45.5个百分点——这是AR预测条件化带来的时间连续性的直接体现。</p>
+<p><strong>流式因果VAE编码</strong>进一步压缩了推理触发后的计算量。它持续编码输入帧组，在触发时只需编码剩余帧并拼接特征，满足握手截止时间约束 $T_{\mathrm{ready}} \leq O\Delta t$，其中 $O = R - S$ 表示重叠步数。</p>
+<p><img alt="图4：边缘部署的高效优化策略" src="https://arxiv.org/html/2610.10528v1/edge.png" /></p>
+<p>在边缘加速方面，论文采用<strong>NVFP4量化</strong>（视频专家线性层使用W4A4，动作计算保持BF16）、<strong>CUDA Graph重放</strong>、<strong>去噪不变KV复用</strong>和<strong>视频-动作在线softmax融合注意力</strong>等共享优化。设备特定调优后，RTX 5090、DGX Spark和Jetson AGX Thor分别达到3.3×、4.1×和3.2×的端到端加速。</p>
+<h2>二、实验：上下文价值的条件性释放</h2>
+<h3>1. 上下文扩展的核心发现</h3>
+<p><img alt="图7：Unitree G1上的动态操作实验" src="https://arxiv.org/html/2610.10528v1/experiment_2.png" /></p>
+<p>论文最核心的发现来自不同视频初始化的上下文扩展对比。在RoboCasa GR-1上，两种AR预训练变体从2.4秒到19.2秒分别获得12.4和11.0个百分点的提升，而双向初始化（Wan2.2）在9.6秒处达到64.1%后回落到61.6%——净增益几乎为零。更值得关注的是，AR变体对双向初始化的领先优势从无历史时的3.3个百分点扩大到19.2秒处的17.1个百分点。研究者推测，AR预训练学到了在行动适配阶段被保留的历史到未来的因果依赖，从而让额外观测能够通过预测表示真正服务于控制。</p>
+<p>在LIBERO-Long上，Long-WAM（IDM）以99.5%的成功率领先所有对比方法，超过LingBot-VA 1.0个点、Fast-WAM 4.3个点。在DOMINO动态环境中，Long-WAM以34.9%的成功率超过最强基线Fast-WAM达15.0个百分点，操纵分数超出PUMA 10.1分——近期观测提供的运动线索是单帧图像无法提供的。</p>
+<h3>2. 层级规划的策略放大效应</h3>
+<p>在RoboCasa365的50个任务上，Long-WAM与GPT-6 Astra的结合将总体成功率从Long-WAM单独的31.4%提升至54.4%。复合未见任务上从6.1%跃升至35.0%。更关键的发现是：规划器增强对Long-WAM的增益达+23.0个百分点，而对 $\pi_{0.5}$ 仅为+13.6个百分点——<strong>更强的执行质量让高层规划的价值更充分地兑现</strong>。</p>
+<h3>3. 真实世界的动态与长程操作</h3>
+<p>在Unitree G1上，传送带速度从3.0 cm/s增加到7.5 cm/s，Long-WAM的抓取成功率稳定在90-100%（100%、100%、95%、90%），而Fast-WAM从75%降至0%，$\pi_{0.5}$ 从15%降至0%。动态杯堆叠任务中，Long-WAM在20次试验中成功19次（95%），两个基线一次都未成功。在YAM双臂平台上，砖块分色、饺子放置和碗堆叠三类任务平均成功率达81.7%，任务平均时长超过40秒。</p>
+<h3>4. 效率与性能的平衡</h3>
+<p>在RTX 5090上，优化后的V4/A4配置达到107.4毫秒的端到端延迟（含完整VAE计算），比BF16 eager执行快3.3倍，同时RoboTwin 2.0成功率仅从94.4%降至93.5%。V2/A2配置进一步降至81.8毫秒，损失1.0个百分点。这意味着Long-WAM在同时预测未来视频的前提下，推理延迟仍低于Fast-WAM（244.1毫秒）的2.3倍速优势。</p>
+<h2>三、展望：上下文作为生成式控制的第一类资源</h2>
+<p>Long-WAM的核心贡献在于将<strong>上下文</strong>确立为生成式机器人控制的第一类资源——其价值取决于两个条件：预训练是否学到了历史到未来的因果结构，以及系统是否能在实时约束内交付这种上下文。异步执行、流式VAE和边缘量化的协同设计证明了：<strong>预测性条件化与实时性并非不可兼得</strong>。当世界模型的想象力与行动执行的及时性在同一个框架内被同时优化，动态操作和长程任务的门槛正在被实质性降低。接下来的问题或许是：在更长的上下文、更复杂的物理交互和更受限的算力预算之间，是否存在一个可学习的帕累托最优结构？</p>
+<p><strong>论文标题</strong>：Long-WAM: Scaling the Context of World-Action Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.10528.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-08_Long-WAM-Scaling-the-Context-of-World-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-08_Long-WAM-Scaling-the-Context-of-World-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
