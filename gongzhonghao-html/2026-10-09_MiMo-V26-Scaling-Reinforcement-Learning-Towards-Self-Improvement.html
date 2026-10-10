@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiMo-V2.6: Scaling Reinforcement Learning Towards Self-Improvement</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">MiMo-V2.6: Scaling Reinforcement Learning Towards Self-Improvement</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-11</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>小米MiMo-V2.6发布：RL规模化三轴驱动，DeepSWE猛涨14分逼近72%</h2>
+<p>大模型社区正在经历一场静默的范式转移：<strong>从“堆数据预训练”转向“规模化强化学习（RL）驱动自我改进”</strong>。当GPT-5、Claude Opus 5等前沿模型在Agent基准上展开激烈角逐时，一个根本性问题浮出水面：如何让模型在真实、可交互、可验证的复杂环境中，通过持续探索与反馈信号，实现可度量的能力跃迁？</p>
+<p>小米大模型团队发布的 <strong>MiMo-V2.6系列</strong>，以一次系统性工程实践回应了这一挑战。该系列包含两个规模化MoE模型——<strong>1.02T参数的Pro（42B激活）</strong>与<strong>310B参数的Flash（15B激活）</strong>——核心贡献在于将RL计算沿<strong>批次规模、环境多样性、评分器算力</strong>三个维度同步放大。在DeepSWE v1.1基准上，Pro从58.4提升至<strong>72.6</strong>，Flash从48.7提升至<strong>65.7</strong>，单次RL训练成本达<strong>260万美元</strong>。</p>
+<h2>一、核心方法：RL规模化的“铁三角”</h2>
+<h3>1.1 架构底座：混合注意力+MoE的探空间设计</h3>
+<p>RL的有效性高度依赖前序阶段提供的<strong>探索空间</strong>。MiMo-V2.6采用混合稀疏MoE Transformer骨干，将<strong>Local Sliding Window Attention（SWA）</strong>与<strong>Global Attention（GA）</strong>交替堆叠：Pro配置70层（60 SWA + 10 GA），Flash配置48层（39 SWA + 9 GA）。SWA窗口大小为<strong>128</strong>，GA层周期性插入以聚合全局上下文。MoE FFN无共享专家，Pro拥有<strong>384个专家/激活8个</strong>，Flash为<strong>256个专家/激活8个</strong>。</p>
+<p>该架构的视觉编码器MiMo-ViT同样采用混合注意力设计，以<strong>sink-augmented SWA</strong>替代固定窗口注意力，在行主序与列主序之间交替序列化，大幅降低高分辨率视觉处理成本。音频侧则采用两阶段编码：<strong>Audio Tokenizer</strong>以20层RVQ将每帧离散化为20个token，再经patch encoder压缩至6.25Hz。</p>
+<p><img alt="图2：MiMo-V2.6整体架构图" src="https://arxiv.org/html/2610.11959v1/architecture.png" /></p>
+<h3>1.2 评分器升级：Groupwise Agentic Grading</h3>
+<p>传统二元测试奖励无法区分同为“通过”的解决方案之间的质量差异。论文提出两条互补路径：</p>
+<p><strong>Groupwise Reward Synthesis（GRS，离线评分标准）</strong> 针对高通过率任务子集，预先收集多轮离线rollout，由Agent分析不同解法路径与行为模式，构建任务专属的<strong>解法评分项</strong>与<strong>行为评分项</strong>。训练时，最终奖励将测试奖励与两项评分相乘：</p>
+$$R_{i}=R_{i}^{\mathrm{test}}\cdot S_{i}^{\mathrm{sol}}\cdot S_{i}^{\mathrm{beh}}$$
+
+<p>该乘法形式确保评测监督始终锚定于测试结果，同时让通过的轨迹在实现质量与解题行为层面被进一步区分。</p>
+<p><strong>Groupwise Advantage Redistribution（GAR，在线评分）</strong> 用于其余代码任务。对每个混合结果的rollout组，评分Agent联合审查所有轨迹，从<strong>方案适配性、实现精度、最小性、副作用规避、代码工艺</strong>五个维度排序。排序结果通过质量因子$f_i\in(0,1]$对序列级优势进行重分配：</p>
+$$\lambda=\frac{\sum_{j\in\mathcal{P}}A_{j}}{\sum_{j\in\mathcal{P}}f_{j}A_{j}},\qquad A_{i}^{\prime}=\begin{cases}\lambda f_{i}A_{i},&i\in\mathcal{P},\\ A_{i},&i\notin\mathcal{P}.\end{cases}$$
+
+<p>该更新保留组内正优势总质量不变，将优势从低质量通过轨迹向高质量通过轨迹再分配。训练对比显示，未启用在线评分的策略在turn数和token长度上迅速膨胀，且维持性审计发现其倾向采用<strong>投机兼容分支、异常吞噬、宽松校验</strong>等奖励投机行为；启用GAR后，patch平均更小、更精准、更易维护。</p>
+<p><img alt="图7：Groupwise agentic grading工作流示意图" src="https://arxiv.org/html/2610.11959v1/groupwise_grading.png" /></p>
+<p><img alt="图6：奖励黑客防护与监控" src="https://arxiv.org/html/2610.11959v1/reward_hack.png" /></p>
+<h3>1.3 稳定训练的关键：冻结Router与多层防御</h3>
+<p>RL训练中MoE路由面临严重的<strong>负载崩塌</strong>风险。实验显示，可训练Router在前20步内专家负载变异系数从0.78飙升至2.0，冷专家比例从0.5%暴增至22%。将Router恢复至RL前初始参数后，负载恢复而基准性能不变——证明崩塌由Router漂移驱动，与专家权重退化无关。因此，论文采用<strong>冻结Router</strong>策略，冷专家比例稳定在约1%。</p>
+<p><img alt="图11：Router冻结实验对比" src="https://arxiv.org/html/2610.11959v1/router_freezing.png" /></p>
+<h2>二、实验：一次RL，多域跃迁</h2>
+<p>RL训练以<strong>GRPO</strong>为优化器，全局批次含<strong>1,568个prompt × 16个rollout</strong>，单步处理25K轨迹、<strong>2.7B–3.7B token</strong>，上下文长达<strong>1M</strong>。训练使用<strong>Muown优化器</strong>（Muon变体，引入显式行范数控制），学习率$3\times10^{-6}$，无warmup，并以MXFP4量化感知训练稳定数值。</p>
+<p>计算开销分解显示：rollout占<strong>43.8%</strong>、训练占<strong>43.5%</strong>、评分器占<strong>12.7%</strong>。评分器算力的量级投入是本次工作区别于以往RL的关键标志。</p>
+<h3>2.1 主要性能结果</h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align: left;">基准</th>
+<th style="text-align: center;">MiMo-V2.6 Pro</th>
+<th style="text-align: center;">MiMo-V2.6 Flash</th>
+<th style="text-align: center;">Claude Opus 5</th>
+<th style="text-align: center;">GPT-5.6 Sol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">DeepSWE v1.1</td>
+<td style="text-align: center;"><strong>71.9</strong></td>
+<td style="text-align: center;">67.9</td>
+<td style="text-align: center;">74.0</td>
+<td style="text-align: center;">73.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">AutomationBench v1.0.6</td>
+<td style="text-align: center;"><strong>53.1</strong></td>
+<td style="text-align: center;">52.3</td>
+<td style="text-align: center;">50.3</td>
+<td style="text-align: center;">45.8</td>
+</tr>
+<tr>
+<td style="text-align: left;">GDPval-AA 2.1</td>
+<td style="text-align: center;"><strong>1673</strong></td>
+<td style="text-align: center;">-</td>
+<td style="text-align: center;">1708</td>
+<td style="text-align: center;">1588</td>
+</tr>
+<tr>
+<td style="text-align: left;">CyberGym</td>
+<td style="text-align: center;">94.0</td>
+<td style="text-align: center;"><strong>95.1</strong></td>
+<td style="text-align: center;">-</td>
+<td style="text-align: center;">-</td>
+</tr>
+<tr>
+<td style="text-align: left;">MiMo Visual Coding</td>
+<td style="text-align: center;">72.3</td>
+<td style="text-align: center;">71.5</td>
+<td style="text-align: center;">70.0</td>
+<td style="text-align: center;">73.4</td>
+</tr>
+</tbody>
+</table></div>
+<p>MiMo-V2.6-Pro在<strong>AutomationBench与GDPval</strong>上超越Claude Opus 5与GPT-5.6 Sol，在DeepSWE上达到<strong>71.9</strong>，逼近Claude Opus 5的74.0。Flash在CyberGym上以<strong>95.1</strong>领先。值得关注的是，MiMo-V2.5 Pro在DeepSWE上仅<strong>19.0</strong>，两代之间提升约3.8倍。</p>
+<h3>2.2 多Harness泛化验证</h3>
+<p>为验证跨harness迁移能力，论文在四个训练用mini-harness与三个留出harness（codex、claude code、mini-swe-agent）上评估DeepSWE。训练与留出harness的平均Pass@1从约<strong>50%提升至66%</strong>，两者差距显著缩小，证明轻量模块化mini-harness引入的受控多样性确实促进了任务求解策略的泛化。</p>
+<p><img alt="图9：RL训练过程基准分数变化" src="https://arxiv.org/html/2610.11959v1/benchmark_curve.png" /></p>
+<h2>三、展望：开源生态与自我改进的可复现路径</h2>
+<p>MiMo-V2.6的实践揭示了一个关键判断：<strong>规模化RL的效果不取决于单一维度的突破，而依赖于批次规模、环境质量、评分精度三者的同步协同</strong>。当二元奖励信号被细粒度级评分替代，当奖励黑客行为在环境准备与训练审计双层防线中被系统性压制，RL才能真正释放模型的自我改进潜力。</p>
+<p>论文已开源<strong>MiMo-V2.6-Distill-Qwen-9B</strong>、跨四大领域的约7K训练任务环境、端到端RL框架及可组合mini-harness。在开源9B模型上的实验显示，多harness RL在所有21个数据集-harness组合上均实现提升。这是否意味着小模型同样具备在规模化RL范式下的持续改进能力？答案留给社区验证。</p>
+<p><strong>论文标题</strong>：MiMo-V2.6: Scaling Reinforcement Learning Towards Self-Improvement</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.11959.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-09_MiMo-V26-Scaling-Reinforcement-Learning-Towards-Self-Improvement.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-09_MiMo-V26-Scaling-Reinforcement-Learning-Towards-Self-Improvement.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
