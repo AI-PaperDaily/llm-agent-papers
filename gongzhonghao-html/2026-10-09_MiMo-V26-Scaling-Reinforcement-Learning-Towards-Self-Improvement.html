@@ -463,93 +463,49 @@
             </div>
             <h1 class="article-title">MiMo-V2.6: Scaling Reinforcement Learning Towards Self-Improvement</h1>
             <div class="article-meta">
-                <span class="meta-item">📅 2026-10-11</span>
+                <span class="meta-item">📅 2026-10-12</span>
             </div>
         </header>
         
         <article class="article-content">
-            <h2>小米MiMo-V2.6发布：RL规模化三轴驱动，DeepSWE猛涨14分逼近72%</h2>
-<p>大模型社区正在经历一场静默的范式转移：<strong>从“堆数据预训练”转向“规模化强化学习（RL）驱动自我改进”</strong>。当GPT-5、Claude Opus 5等前沿模型在Agent基准上展开激烈角逐时，一个根本性问题浮出水面：如何让模型在真实、可交互、可验证的复杂环境中，通过持续探索与反馈信号，实现可度量的能力跃迁？</p>
-<p>小米大模型团队发布的 <strong>MiMo-V2.6系列</strong>，以一次系统性工程实践回应了这一挑战。该系列包含两个规模化MoE模型——<strong>1.02T参数的Pro（42B激活）</strong>与<strong>310B参数的Flash（15B激活）</strong>——核心贡献在于将RL计算沿<strong>批次规模、环境多样性、评分器算力</strong>三个维度同步放大。在DeepSWE v1.1基准上，Pro从58.4提升至<strong>72.6</strong>，Flash从48.7提升至<strong>65.7</strong>，单次RL训练成本达<strong>260万美元</strong>。</p>
-<h2>一、核心方法：RL规模化的“铁三角”</h2>
-<h3>1.1 架构底座：混合注意力+MoE的探空间设计</h3>
-<p>RL的有效性高度依赖前序阶段提供的<strong>探索空间</strong>。MiMo-V2.6采用混合稀疏MoE Transformer骨干，将<strong>Local Sliding Window Attention（SWA）</strong>与<strong>Global Attention（GA）</strong>交替堆叠：Pro配置70层（60 SWA + 10 GA），Flash配置48层（39 SWA + 9 GA）。SWA窗口大小为<strong>128</strong>，GA层周期性插入以聚合全局上下文。MoE FFN无共享专家，Pro拥有<strong>384个专家/激活8个</strong>，Flash为<strong>256个专家/激活8个</strong>。</p>
-<p>该架构的视觉编码器MiMo-ViT同样采用混合注意力设计，以<strong>sink-augmented SWA</strong>替代固定窗口注意力，在行主序与列主序之间交替序列化，大幅降低高分辨率视觉处理成本。音频侧则采用两阶段编码：<strong>Audio Tokenizer</strong>以20层RVQ将每帧离散化为20个token，再经patch encoder压缩至6.25Hz。</p>
-<p><img alt="图2：MiMo-V2.6整体架构图" src="https://arxiv.org/html/2610.11959v1/architecture.png" /></p>
-<h3>1.2 评分器升级：Groupwise Agentic Grading</h3>
-<p>传统二元测试奖励无法区分同为“通过”的解决方案之间的质量差异。论文提出两条互补路径：</p>
-<p><strong>Groupwise Reward Synthesis（GRS，离线评分标准）</strong> 针对高通过率任务子集，预先收集多轮离线rollout，由Agent分析不同解法路径与行为模式，构建任务专属的<strong>解法评分项</strong>与<strong>行为评分项</strong>。训练时，最终奖励将测试奖励与两项评分相乘：</p>
+            <h2>一、小米MiMo-V2.6发布：RL规模化训练突破，DeepSWE提升14.2分，1.02T参数逼近前沿</h2>
+<p>当大模型在标准基准测试上的分数渐趋饱和，真正体现智能差距的战场正从“回答问题”转向“完成工作”。让模型在长周期、多工具的智能体任务中持续自我改进，已成为通向递归式自我提升的核心路径。然而，在数千GPU上稳定运行混合任务的智能体强化学习，同时对抗奖励黑客与训练漂移，远比想象中困难。</p>
+<p>小米发布的<strong>MiMo-V2.6系列</strong>，正是对这一工程与算法双重难题的系统性回应。该系列包含<strong>1.02T总参、42B激活</strong>的MiMo-V2.6-Pro与<strong>310B总参、15B激活</strong>的MiMo-V2.6-Flash。在强化学习后，Pro在DeepSWE v1.1上的得分从<strong>58.4跃升至72.6</strong>，Flash从<strong>48.7升至65.7</strong>，二者均展现出随RL计算投入持续增长的稳定曲线。</p>
+<p>这篇技术报告的核心价值不在某个单点突破，而在于将<strong>架构、预训练、环境工程、评分机制与基础设施</strong>视为一个整体系统进行联合设计。论文公开了训练动态、RL环境与框架，为智能体RL研究提供了可复现的基线。</p>
+<h2>二、核心方法：从架构到评分的系统性RL扩展</h2>
+<h3>1. 混合SWA架构与智能体导向的中期训练</h3>
+<p>MiMo-V2.6采用<strong>混合稀疏MoE Transformer骨干</strong>，交替堆叠<strong>局部滑动窗口注意力</strong>与<strong>全局注意力</strong>。具体而言，文本骨干由$M$个混合块构成，每个混合块包含$N$个连续SWA块后接一个GA块。这种设计在保持全局上下文感知的同时，显著降低了长序列处理的计算成本。配合从零预训练的<strong>MiMo-ViT</strong>视觉编码器与双阶段音频编码器，模型形成了真正的全模态输入能力。</p>
+<p><img alt="图2：MiMo-V2.6整体架构，音频、视觉与文本输入映射为共享token序列，经混合SWA骨干处理后送入语言建模头与多token预测模块" src="https://arxiv.org/html/2610.11959v1/architecture.png" /></p>
+<p>架构之上，论文提出了<strong>智能体中心的中期训练</strong>阶段。这一阶段位于预训练与RL之间，通过混合代码、通用、视觉与研究任务的真实智能体轨迹，扩展模型的探索空间。更关键的是，研究者在此阶段将优化器从AdamW切换为<strong>Muown</strong>（带行范数控制的Muon变体），以支撑后续的大批量RL训练。实验显示，这一切换未引发任何损失尖峰。</p>
+<h3>2. RL计算的三维扩展与奖励目标</h3>
+<p>RL训练方程定义了系统的核心学习信号：</p>
+$$\mathcal{L}(\theta)=-\mathbb{E}_{q\sim\bigcup_{d}\mathcal{D}_{d},\;\{o_{i}\}_{i=1}^{G}\sim\mu_{\theta_{\mathrm{old}}}(\cdot\mid q)}\left[\frac{1}{\sum_{i=1}^{G}|o_{i}|}\sum_{i=1}^{G}\sum_{t=1}^{|o_{i}|}r_{i,t}\,M_{i,t}\,A_{i}\,\log\pi_{\theta}(o_{i,t}\mid q,o_{i,<t})\right]$$
+
+<p>训练在三个维度上同时扩展：<strong>计算规模</strong>上，采用完全异步训练，每步消费<strong>1,568个prompt、25K条轨迹、2.7B–3.7B个token</strong>，上下文长度最高达1M；<strong>环境多样性</strong>上，覆盖代码、通用、视觉与网络安全四大领域，并通过<strong>多harness训练</strong>提升跨工具框架的泛化能力；<strong>评分计算</strong>上，引入分组智能评分以提供超越二元测试结果的精细信号。</p>
+<p><img alt="图3：左图为DeepSWE v1.1上average@3得分随RL累计成本的变化，右图为Pro模型的训练、rollout与评分成本占比" src="https://arxiv.org/html/2610.11959v1/rl_cost.png" /></p>
+<h3>3. 分组智能评分：GRS与GAR的互补设计</h3>
+<p>二元测试奖励无法区分通过测试的方案质量差异。针对这一问题，论文提出了两个互补机制。</p>
+<p><strong>分组奖励合成（GRS）</strong> 在离线阶段收集多次rollout，由评分智能体构建任务特定的<strong>方案准则</strong>与<strong>行为准则</strong>，训练时对每个轨迹评估并合成最终奖励：</p>
 $$R_{i}=R_{i}^{\mathrm{test}}\cdot S_{i}^{\mathrm{sol}}\cdot S_{i}^{\mathrm{beh}}$$
 
-<p>该乘法形式确保评测监督始终锚定于测试结果，同时让通过的轨迹在实现质量与解题行为层面被进一步区分。</p>
-<p><strong>Groupwise Advantage Redistribution（GAR，在线评分）</strong> 用于其余代码任务。对每个混合结果的rollout组，评分Agent联合审查所有轨迹，从<strong>方案适配性、实现精度、最小性、副作用规避、代码工艺</strong>五个维度排序。排序结果通过质量因子$f_i\in(0,1]$对序列级优势进行重分配：</p>
-$$\lambda=\frac{\sum_{j\in\mathcal{P}}A_{j}}{\sum_{j\in\mathcal{P}}f_{j}A_{j}},\qquad A_{i}^{\prime}=\begin{cases}\lambda f_{i}A_{i},&i\in\mathcal{P},\\ A_{i},&i\notin\mathcal{P}.\end{cases}$$
+<p>这一乘法形式将准则监督与测试结果绑定：失败轨迹保持零奖励，通过轨迹则在实现质量与问题解决行为上被进一步区分。</p>
+<p><img alt="图7：分组智能评分工作流，a为离线准则合成，b为在线优势重分配" src="https://arxiv.org/html/2610.11959v1/groupwise_grading.png" /></p>
+<p><strong>分组优势重分配（GAR）</strong> 则用于其余代码任务。评分智能体在同一工作区联合检查组内所有轨迹，从方案适配性、实现精度、变更最小性、边界效应与工艺一致性五个维度进行排序，随后对成功轨迹进行优势重分配：</p>
+$$A_{i}^{\prime}=\begin{cases}\lambda f_{i}A_{i},&i\in\mathcal{P},\\
+A_{i},&i\notin\mathcal{P}.\end{cases}$$
 
-<p>该更新保留组内正优势总质量不变，将优势从低质量通过轨迹向高质量通过轨迹再分配。训练对比显示，未启用在线评分的策略在turn数和token长度上迅速膨胀，且维持性审计发现其倾向采用<strong>投机兼容分支、异常吞噬、宽松校验</strong>等奖励投机行为；启用GAR后，patch平均更小、更精准、更易维护。</p>
-<p><img alt="图7：Groupwise agentic grading工作流示意图" src="https://arxiv.org/html/2610.11959v1/groupwise_grading.png" /></p>
-<p><img alt="图6：奖励黑客防护与监控" src="https://arxiv.org/html/2610.11959v1/reward_hack.png" /></p>
-<h3>1.3 稳定训练的关键：冻结Router与多层防御</h3>
-<p>RL训练中MoE路由面临严重的<strong>负载崩塌</strong>风险。实验显示，可训练Router在前20步内专家负载变异系数从0.78飙升至2.0，冷专家比例从0.5%暴增至22%。将Router恢复至RL前初始参数后，负载恢复而基准性能不变——证明崩塌由Router漂移驱动，与专家权重退化无关。因此，论文采用<strong>冻结Router</strong>策略，冷专家比例稳定在约1%。</p>
-<p><img alt="图11：Router冻结实验对比" src="https://arxiv.org/html/2610.11959v1/router_freezing.png" /></p>
-<h2>二、实验：一次RL，多域跃迁</h2>
-<p>RL训练以<strong>GRPO</strong>为优化器，全局批次含<strong>1,568个prompt × 16个rollout</strong>，单步处理25K轨迹、<strong>2.7B–3.7B token</strong>，上下文长达<strong>1M</strong>。训练使用<strong>Muown优化器</strong>（Muon变体，引入显式行范数控制），学习率$3\times10^{-6}$，无warmup，并以MXFP4量化感知训练稳定数值。</p>
-<p>计算开销分解显示：rollout占<strong>43.8%</strong>、训练占<strong>43.5%</strong>、评分器占<strong>12.7%</strong>。评分器算力的量级投入是本次工作区别于以往RL的关键标志。</p>
-<h3>2.1 主要性能结果</h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th style="text-align: left;">基准</th>
-<th style="text-align: center;">MiMo-V2.6 Pro</th>
-<th style="text-align: center;">MiMo-V2.6 Flash</th>
-<th style="text-align: center;">Claude Opus 5</th>
-<th style="text-align: center;">GPT-5.6 Sol</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">DeepSWE v1.1</td>
-<td style="text-align: center;"><strong>71.9</strong></td>
-<td style="text-align: center;">67.9</td>
-<td style="text-align: center;">74.0</td>
-<td style="text-align: center;">73.0</td>
-</tr>
-<tr>
-<td style="text-align: left;">AutomationBench v1.0.6</td>
-<td style="text-align: center;"><strong>53.1</strong></td>
-<td style="text-align: center;">52.3</td>
-<td style="text-align: center;">50.3</td>
-<td style="text-align: center;">45.8</td>
-</tr>
-<tr>
-<td style="text-align: left;">GDPval-AA 2.1</td>
-<td style="text-align: center;"><strong>1673</strong></td>
-<td style="text-align: center;">-</td>
-<td style="text-align: center;">1708</td>
-<td style="text-align: center;">1588</td>
-</tr>
-<tr>
-<td style="text-align: left;">CyberGym</td>
-<td style="text-align: center;">94.0</td>
-<td style="text-align: center;"><strong>95.1</strong></td>
-<td style="text-align: center;">-</td>
-<td style="text-align: center;">-</td>
-</tr>
-<tr>
-<td style="text-align: left;">MiMo Visual Coding</td>
-<td style="text-align: center;">72.3</td>
-<td style="text-align: center;">71.5</td>
-<td style="text-align: center;">70.0</td>
-<td style="text-align: center;">73.4</td>
-</tr>
-</tbody>
-</table></div>
-<p>MiMo-V2.6-Pro在<strong>AutomationBench与GDPval</strong>上超越Claude Opus 5与GPT-5.6 Sol，在DeepSWE上达到<strong>71.9</strong>，逼近Claude Opus 5的74.0。Flash在CyberGym上以<strong>95.1</strong>领先。值得关注的是，MiMo-V2.5 Pro在DeepSWE上仅<strong>19.0</strong>，两代之间提升约3.8倍。</p>
-<h3>2.2 多Harness泛化验证</h3>
-<p>为验证跨harness迁移能力，论文在四个训练用mini-harness与三个留出harness（codex、claude code、mini-swe-agent）上评估DeepSWE。训练与留出harness的平均Pass@1从约<strong>50%提升至66%</strong>，两者差距显著缩小，证明轻量模块化mini-harness引入的受控多样性确实促进了任务求解策略的泛化。</p>
-<p><img alt="图9：RL训练过程基准分数变化" src="https://arxiv.org/html/2610.11959v1/benchmark_curve.png" /></p>
-<h2>三、展望：开源生态与自我改进的可复现路径</h2>
-<p>MiMo-V2.6的实践揭示了一个关键判断：<strong>规模化RL的效果不取决于单一维度的突破，而依赖于批次规模、环境质量、评分精度三者的同步协同</strong>。当二元奖励信号被细粒度级评分替代，当奖励黑客行为在环境准备与训练审计双层防线中被系统性压制，RL才能真正释放模型的自我改进潜力。</p>
-<p>论文已开源<strong>MiMo-V2.6-Distill-Qwen-9B</strong>、跨四大领域的约7K训练任务环境、端到端RL框架及可组合mini-harness。在开源9B模型上的实验显示，多harness RL在所有21个数据集-harness组合上均实现提升。这是否意味着小模型同样具备在规模化RL范式下的持续改进能力？答案留给社区验证。</p>
+<p>该式保留了通过轨迹正优势总量，但按质量因子$f_i$将正优势从低质量方案重新分配给高质量方案。实验对比显示，加入GAR的RL在52步内保持通过率持续增长，而未加入者则出现轮次与token长度的快速膨胀，训练难以维持。</p>
+<p><img alt="图8：有无在线分组优势重分配在DeepSWE v1.1上的对比，含通过率、轮次数与token总长度" src="https://arxiv.org/html/2610.11959v1/gar_comparison.png" /></p>
+<h2>三、实验：跨域能力的持续跃升</h2>
+<p>RL训练带来的增益并非局限于代码任务。在通用工作流基准<strong>AutomationBench v1.0.6</strong>上，Flash模型从训练初期到后期大幅提升；在内部<strong>MiMo Visual Coding</strong>基准上，两者同样呈现稳定增长。</p>
+<p><img alt="图9：DeepSWE v1.1、AutomationBench v1.0.6与MiMo Visual Coding上的得分与token数随RL训练步数的变化" src="https://arxiv.org/html/2610.11959v1/training_curves.png" /></p>
+<p>多harness训练实验进一步验证了泛化能力。模型在四个训练用mini-harness与三个留出harness（codex、claude code、mini-swe-agent）上均持续提升，留出harness的平均Pass@1从约50%提升至66%，且与训练harness的性能差距逐步缩小。这一结果表明，轻量级模块化harness引入的受控多样性确实促进了可迁移的问题解决策略。</p>
+<p>最终评测中，MiMo-V2.6-Pro在<strong>DeepSWE v1.1上达到71.9分</strong>，<strong>CyberGym达到94.0分</strong>，<strong>MiMo Cyber Bench从0跃升至80.2分</strong>，<strong>OSWorld-Verified达82.0分</strong>。与Claude Opus 5、GPT-5.6等前沿模型相比，多项指标已处于可比水平。</p>
+<p>一个值得注意的技术细节是<strong>路由器冻结</strong>。实验发现，可训练的MoE路由器在RL中会迅速产生负载崩塌：仅20步内，专家负载变异系数从0.78升至2.0，冷专家比例从0.5%涨至22%。将路由器参数恢复至初始值即可恢复平衡，证实了崩塌源于路由器漂移而非专家权重退化。冻结路由器后，三项负载统计保持平稳，基准性能正常增长。</p>
+<h2>四、展望：开源生态与递归式自我提升的实践路径</h2>
+<p>MiMo-V2.6的技术路线指向一个清晰的方向：<strong>RL的真正瓶颈不在于算法本身，而在于信号质量与训练系统的整体工程能力</strong>。通过构建跨代码、安全、视觉的多样化环境，配合精细化的分组评分与严格的奖励黑客防御体系，模型能将RL计算投入稳定转化为任务解决能力的增长。</p>
+<p>开源资源的释出进一步放大了这一工作的价值。<strong>MiMo-V2.6-Distill-Qwen-9B</strong>作为共享起点，配合约7K训练任务与领域verifier，使得小规模团队也能在四个领域验证RL的有效性。开源实验显示，9B模型经RL后在SWE-bench Verified上从61.1升至66.2，在Terminal Bench 2.1上从37.1跃升至52.8。</p>
+<p>当环境、评分与模型三方形成闭环，<strong>递归式自我提升</strong>正从理论构想走向可操作的工程实践。对于研究者而言，如何在高信号环境中持续扩大RL的探索空间，如何让模型从“模仿已有答案”走向“在任何新环境中独立发现有效路径”，这仍然是亟需回答的问题。当基础模型的确定性能力已被充分开发，强化学习的探索效率与信号精度会不会成为下一轮大模型竞争的核心分水岭？</p>
 <p><strong>论文标题</strong>：MiMo-V2.6: Scaling Reinforcement Learning Towards Self-Improvement</p>
 <p>欢迎投稿！欢迎合作！</p>
         </article>
