@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-16</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>一、核心方法</h2>
+<p>长周期智能体(Long-Horizon Agent)在自动化发现与递归自我改进(RSI)中扮演关键角色，但开源模型始终面临两大难题：<strong>训练数据匮乏</strong>与<strong>奖励信号稀疏</strong>。传统语料库(SWE-Smith、TMAX等)中的任务平均仅需几分钟，且单元测试只提供通过/失败二值反馈；而人类编写的长周期基准(如ALE)规模过小，无法用于训练。针对这些困境，论文提出了一套<strong>潜在世界优先(Latent-World-First)</strong> 的合成范式，并基于此构建了<strong>Tev-Gym</strong>——首个具备可验证、密集、渐进式奖励的长周期智能体训练数据集。</p>
+<p>该方法的核心在于：先构造一个<strong>完整且正确的隐藏世界(ground truth)</strong>，再通过受控损坏将其渲染为智能体可见的任务输入。整个环境由同一个潜在世界推导而出，从而保证任务、验证器与进度信号的一致性：</p>
+$$E=(x,s_{0},\operatorname{ver}_{W},\Phi_{W})$$
+
+<p>其中 $x$ 为任务提示，$s_0$ 为初始工作区，$\operatorname{ver}_{W}$ 为严格通过/失败验证器，$\Phi_{W}$ 为进度潜力。</p>
+<p><img alt="图1：Tev在ALE-CM及Terminal-Bench 3.0/4.0/2.1上的结果与潜在世界优先合成方法概览" src="https://arxiv.org/html/2610.18868v1/teaser_ours_v12.png" /></p>
+<p>在具体实现上，每个环境由种子驱动的生成器完成：首先生成潜在世界 $W$（如零售仓库的客户、产品与交易记录），再编译工作流有向无环图(DAG)，定义阶段依赖与关键路径。随后将潜在世界投影为公共接口文件(CSV、SQLite、safetensors等)，并注入<strong>受控损坏</strong>（模式漂移、重复/缺失记录、分片索引乱序等）。由于损坏有明确声明且可逆，从代理实际可见的损坏状态即可精确计算正确答案，无需运行求解器。这种设计避免了“环境—任务—验证器”三者各自生成却彼此矛盾的<strong>伪迹漂移</strong>问题。</p>
+<p><img alt="图3：潜在世界优先合成示例，任务为“零售仓库ETL恢复”" src="https://arxiv.org/html/2610.18868v1/pip_fig_final_v3.png" /></p>
+<p>Tev-Gym最终包含 <strong>1,170 个验证过的长周期任务环境</strong>，覆盖软件工程、数据工程、AI/CS研究、数学与运筹学、安全取证、基础设施管理与量子计算共7大领域。与之前语料相比，前沿智能体在Tev-Gym上单次轨迹中位耗时 <strong>12.4 分钟</strong>，约为最耗时旧数据集的6倍，且通过率最低，充分体现其长周期与高复杂度。</p>
+<h2>二、密集奖励设计</h2>
+<p>长周期任务面临极端的奖励稀疏：若仅采用终局通过信号，在GRPO等群体相对策略优化算法中，一个批次内所有轨迹均失败时，优势函数为零，该组对梯度贡献为零。当策略单任务成功率 $p=0.05$ 且每任务采样 $G=8$ 条轨迹时，浪费组比例高达 $1-(1-p)^G \approx 66\%$。为解决这一问题，论文提出<strong>进度潜力奖励塑形(Progress-Potential Reward Shaping，PPRS)</strong>。</p>
+<p>每个Tev-Gym环境定义一组可检查的中间状态节点 $V$，每个节点对应工作流DAG中的阶段，并具有权重 $w_v$ 与前置条件 $\operatorname{pre}(v)$。部分评分器 $c_v(s)$ 直接对照潜在世界对当前工作区 $s$ 打分。节点的有效得分被其所有前置节点的最低得分所门槛，最终潜力为：</p>
+$$\Phi(s)=\sum_{v\in V}w_{v}\tilde{c}_{v}(s)\in[0,1]$$
+
+<p>该潜力在智能体每一步动作后更新，从而提供密集、确定且无语言模型介入的中间反馈。每步奖励定义为潜力增量，整条轨迹的总奖励为：</p>
+$$R(\tau)=\mathds{1}[\tau\text{ passes}]+\lambda\sum_{t=1}^{T}r_{t}=\mathds{1}[\tau\text{ passes}]+\lambda\Phi(s_T)$$
+
+<p>其中 $\lambda=0.25$。这种设计保证了任何通过轨迹的奖励严格大于未通过轨迹，且同一最终工作区无论达成路径如何均获得相同奖励，避免奖励黑客。在GRPO框架下，所有轨迹均失败时也会因不同深度进度而产生非零优势，从而持续提供学习信号。</p>
+<p><img alt="图4：一组(G=8)轨迹的进度潜力变化。终局奖励下所有轨迹均为0；进度奖励下仅有1条完整仓库、2条提交不完整、5条耗尽上下文" src="https://arxiv.org/html/2610.18868v1/progress_potential_group.png" /></p>
+<h2>三、实验与性能</h2>
+<p>研究者基于 Qwen3.5-9B 与 Qwen3.8-27B 进行 DPPO 训练，得到 <strong>Tev-9B</strong> 和 <strong>Tev-27B</strong>。9B模型在单位难度子集上训练，27B模型则使用完整Tev-Gym。在长周期评估基准 <strong>ALE-CM</strong> 上，Tev-9B 的 Pass@5 提升 83%，Tev-27B 的 Pass@5 提升 65%，达到 <strong>0.28</strong>，与 GPT-6 Astra 及 Claude Opus 5 持平，超越了 Qwen3.8-2.4T-A95B 等开源模型。</p>
+<p>在更长期的 <strong>Terminal-Bench 3.0 与 4.0 “CM”子集</strong>上，尽管训练数据仅与 ALE 相关，Tev-27B 仍表现出强泛化：TB 3.0-CM Pass@1 提升 56%，TB 4.0-CM 提升 150%，并超过 GLM 5.2 与 Gemini 3.7 Flash。将相同配方应用于更大的 GLM-5.3-Flash 后得到 <strong>Tev-320B</strong>，在 TB 4.0-CM 上 Pass@1 达 0.37，位列开源模型第一，仅次于 Claude Opus 5、Claude Fable 5 与 GPT-5.6 (sol)。在中周期基准 TB 2.1 上，Tev-27B 取得 0.794 Pass@1，与 Claude Opus 4.8 相当；Tev-9B 也提升 28%。</p>
+<p>消融实验显示，移除潜在世界隐藏真值(改用LLM编写验证器)会导致88%的训练组被丢弃，效果退化至基线水平；而删除PPRS仅保留终局奖励，则训练效率大幅下降，27B模型甚至无法完成单步优化。这验证了两个核心贡献的必要性。</p>
+<h2>四、展望</h2>
+<p>潜在世界优先合成与 PPRS 为解决长周期智能体训练中的数据与奖励瓶颈提供了可复现的工程路径。该方法无需人工步骤标签或语言模型法官，所有验证与奖励均基于确定性的隐藏世界，为未来扩展到更多专业工作流、结合更强开源基座模型打下基础。一个值得思考的问题是：如果将这种密集进度奖励与开源长周期智能体生态结合，能否真正缩小与封闭前沿模型的差距？</p>
+<p><strong>论文标题</strong>：Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.18868.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-14_Tev-Scaling-Long-Horizon-Agentic-Environments-with-Dense-Progress-Rewards.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-14_Tev-Scaling-Long-Horizon-Agentic-Environments-with-Dense-Progress-Rewards.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
