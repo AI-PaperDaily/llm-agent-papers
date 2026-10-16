@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Reasoning Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Hybrid Reasoning Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-17</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>斯坦福提出HybridAgents：潜空间与文本双模推理，性能提升10.4%，Token消耗锐减54.7%</h2>
+<p>在人工智能的前沿探索中，一个深层次的分裂长期存在：LLM Agent的推理与交互被困在文本的“语言牢笼”中，而潜空间推理虽然高效，却始终难以跨越模型边界触碰真实世界。来自斯坦福大学、UIUC及Together AI的研究团队近期提出的<strong>HybridAgents</strong>架构，试图终结这一割裂局面。该架构在单一生成流程中动态切换潜空间思维与文本交互，在11项基准测试上实现了<strong>10.4%的平均性能提升</strong>，同时带来<strong>35.5%–54.7%的Token削减</strong>与<strong>1.8–2.6倍的推理加速</strong>。</p>
+<h2>一、核心方法：架设文本与潜空间之间的桥梁</h2>
+<p>现代LLM Agent的所有中间推理轨迹——无论是调用Python解释器，还是执行搜索查询——都必须以Token为单位逐字生成文本，才能与环境交互。这带来了巨大的推理开销。而潜空间推理方法虽然能在连续隐藏空间中直接展开计算，却面临两个根本性限制：缺乏原生工具调用通路，以及难以被人类解读与审计。HybridAgents的核心设计目标，正是将这两种能力统一到同一套生成流程之中。</p>
+<h3>1.1 HybridLink：轻量残差适配器</h3>
+<p>要实现文本模式与潜空间模式的自由切换，首先需要解决一个表示空间的不匹配问题。传统的潜推理方法将最后一层隐藏状态 $h_t$ 直接作为下一步输入，这导致了与预训练输入嵌入空间的分布偏差，使得连续潜状态与离散Token之间的来回切换极为困难。</p>
+<p>论文提出的<strong>HybridLink</strong>是一个约10M参数的轻量残差适配器，其数学形式为：</p>
+$$e_{t+1}=\mathcal{R}(h_t)=h_t+W_2\,\sigma\!\left(W_1h_t\right)$$
+
+<p>其中 $W_1$ 与 $W_2$ 为标准线性投影，$\sigma$ 为GELU激活函数。关键在于残差连接的设计—— $h_t$ 的大部分语义被直接保留，HybridLink只需学习从隐藏空间到输入嵌入空间的分布对齐，而非从零开始学习整个投影映射。</p>
+<h3>1.2 动态模式切换与可解释潜思维</h3>
+<p>在推理过程中，HybridAgent的文本模式与标准LLM完全一致，直至模型生成特殊Token <code>&lt;latent&gt;</code> 作为进入潜空间模式的入口锚点。随后，每个时间步的最后一层隐藏状态经由HybridLink映射后直接作为下一步输入，形成序列级的循环计算。潜空间推理持续到满足退出条件为止：</p>
+$$\operatorname*{arg\,max}_{v\in\mathcal{V}}\;\cos\bigl(\mathcal{R}(h_t),\,\operatorname{Emb}(v)\bigr)=\texttt{</latent>}$$
+
+<p>这个退出机制带来了一个极为有用的副产品：<strong>潜空间思维本身是可解释的</strong>。只需将每个潜步骤的HybridLink输出映射到最近邻的Token嵌入，就能将连续向量还原为可读的“伪文本”，使隐式推理透明化。下图展示了潜空间伪文本与周围文本推理高度的语义一致性。</p>
+<p><img alt="图2：可解释潜空间模式" src="https://arxiv.org/html/2610.18861v1/plots/Probe_Analyses_New.png" /></p>
+<h3>1.3 跨轮工作记忆：完整的混合上下文延续</h3>
+<p>多轮工具调用场景对混合推理提出了更高的上下文管理要求。文本Token与潜向量交织的混合轨迹，无法通过传统的Token化方式重建。HybridAgent的解决方案是将Transformer每一层累积的KV缓存直接作为<strong>连续工作记忆</strong>。首轮轨迹的文本、潜思维和工具观察结果共同形成KV条目，后续轮次直接从当前工作记忆中恢复生成，并以追加方式更新KV条目，从而实现了混合上下文的无损跨轮延续。</p>
+<h2>二、训练算法：HybridSFT与HybridRL</h2>
+<p>仅有架构设计不足以让模型真正学会协调两种推理模式。论文为HybridAgent设计了专用的两阶段后训练管线。</p>
+<p><strong>HybridSFT</strong>的核心是解决一个“训练-推理不匹配”问题：在激活训练阶段，骨干网络尚未学习如何基于自身HybridLink产生的潜输入进行推理。论文采用双遍自条件训练方案——第一遍以教师强制方式产生潜输入，第二遍将真值潜嵌入替换为模型自身的HybridLink预测，并在文本位置施加交叉熵损失、在潜位置施加回归损失。实验显示，完整的自条件训练相较于仅做HybridLink激活，在AIME25、AIME26和MATH500上平均提升了<strong>30.5%</strong>。</p>
+<p><strong>HybridRL</strong>则要解决一个更根本的算法适配问题：标准PPO/GRPO假设每个生成位置都有Token级似然比，但潜位置产出的是连续向量，重要性比率 $\rho_t$ 在数学上未定义。论文通过<strong>混合策略因子分解</strong>证明了优化仅需在采样文本位置上进行：</p>
+$$\pi_{\theta}(\tau\mid x)=\prod_{t\in\mathcal{T}}\pi_{\theta}\bigl(y_t\mid x,\,\tau_{<t}\bigr)$$
+
+<p>其中 $\mathcal{T}$ 为轨迹中所有采样文本位置的集合。在具体实现中，混合轨迹的潜输入在Rollout阶段被完整记录，策略更新时通过<strong>精确潜上下文回放</strong>——在保持潜向量不变的前提下，以单次可微前向传播重新计算文本Token的采样似然。</p>
+<p>下图的训练动态展示了HybridRL的关键趋势：随着训练步数增加，模型逐步将更多生成从文本模式迁移到潜空间模式，同时工具调用能力同步增强。</p>
+<p><img alt="图9：HybridRL训练动态" src="https://arxiv.org/html/2610.18861v1/plots/training_dynamics.png" /></p>
+<h2>三、实验评估：11项基准上的全面验证</h2>
+<p>HybridAgent以Qwen3-Base为骨干，在4B、8B和14B三个规模上进行了系统验证。测试覆盖数学推理（AIME25、AIME26、MATH500）、知识密集任务（GPQA-D、MedQA、MuSiQue）以及富有挑战性的Agent任务（GAIA、HLE、WebWalker、SealQA、DSQA）。</p>
+<p>在8B规模上，HybridAgent在GAIA上取得了43.7%的平均准确率——与GPT-5.6-Luna（37.9%）和Kimi-K3（41.7%）相比优势显著。在WebWalker的困难子集上，HybridAgent（8B）达到45.2%，而最强的文本基线ARPO仅为35.7%，提升幅度近<strong>10个百分点</strong>。14B模型进一步将这一优势扩展至GAIA的52.4%与WebWalker的49.5%。</p>
+<p>效率方面的优势同样突出。下图展示了HybridAgent在三个模型规模上的Token消耗对比：</p>
+<p><img alt="图6：HybridAgent的高效混合生成" src="https://arxiv.org/html/2610.18861v1/token_effeciency.png" /></p>
+<p>在14B规模上，HybridAgent的文本Token使用量仅为匹配文本Agent的<strong>49%</strong>，总生成步数减少<strong>54%</strong>，推理延迟降低至基线的一半以下。测试时扩展性实验进一步表明，随着采样预算从4增加到64，HybridAgent的pass@k呈现出比text-only GRPO更陡峭的提升曲线，说明混合推理范式在计算扩展性上具备结构性优势。</p>
+<p><img alt="图5：HybridAgent的测试时扩展性" src="https://arxiv.org/html/2610.18861v1/plots/pass_k_endonly.png" /></p>
+<p>因果干预实验则揭示了潜思维在推理中的真实作用：将潜向量替换为跨问题潜状态或随机Token嵌入时，准确率骤降<strong>44.9%–51.3%</strong>，而高斯噪声扰动的影响远小于语义替换，证明性能依赖的不是扰动幅度，而是潜思维承载的语义内容。</p>
+<h2>四、展望</h2>
+<p>HybridAgents的意义不仅在于性能数字上的提升。它将潜空间推理从“模型内部的黑箱”转化为“可审计的第一等公民”，在工作记忆中赋予潜向量与文本Token同等的地位，这为未来Agent框架的设计打开了新的空间：上下文管理可以直接操作KV条目，工作流调度可以按模式分配步骤，而一个Agent的混合轨迹可以原样作为消息传递给另一个Agent。当内部推理不再受限于语言的生成速率，而外部交互仍保留人类可理解的语言界面时，Agent能力的上限，或许将被重新定义。</p>
+<p><strong>论文标题</strong>：Hybrid Reasoning Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.18861.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-15_Hybrid-Reasoning-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-15_Hybrid-Reasoning-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
