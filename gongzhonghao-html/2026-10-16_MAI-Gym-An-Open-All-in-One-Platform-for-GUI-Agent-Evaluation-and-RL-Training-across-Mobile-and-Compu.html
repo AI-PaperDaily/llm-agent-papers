@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAI-Gym: An Open All-in-One Platform for GUI Agent Evaluation and RL Training across Mobile and Computer Environments</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">MAI-Gym: An Open All-in-One Platform for GUI Agent Evaluation and RL Training across Mobile and Computer Environments</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-20</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>阿里巴巴开源MAI-Gym：9B模型霸榜GUI Agent评测，2万并发环境重塑在线RL训练</h2>
+<p><strong>大模型在数学、编程领域靠强化学习（RL）持续突破，但当场景切换到手机和电脑的图形界面（GUI），RL的规模化之路却步履维艰。</strong> 一个GUI任务需要独立的环境实例、数十次截图推理调用和可靠的奖励验证，而训练所需的成千上万个任务从何而来？阿里巴巴MAI-UI团队发布的<strong>MAI-Gym</strong>平台试图一次性解决这些问题，并基于该平台训练出9B参数的统一移动端/电脑端Agent——<strong>MAI-Gym-9B</strong>，在MobileWorld上取得78.4%、在OSWorld-Verified上取得76.2%的成绩，成为10B参数以下开源GUI Agent的新标杆。</p>
+<p><img alt="图1：MAI-Gym框架总览，包括在线GUI环境、核心能力、评估-诊断-合成-重训练闭环，以及模型性能对比" src="https://arxiv.org/html/2610.20939v1/fig1_mai_gym_overview.png" /></p>
+<h2>一、GUI Agent在线RL的两大困局</h2>
+<p>与数学题或代码任务不同，GUI环境天然具有<strong>状态隔离</strong>和<strong>重置成本</strong>的难题。一个Agent操作的是整个屏幕，会修改设备的文件系统与应用状态，因此每次尝试都需要独立的手机、虚拟机或浏览器实例，并在已知初始状态下运行。大规模训练意味着同时维持数千个这样的实例。更棘手的是，评估与训练往往使用不同的Agent实现，截图预处理、历史截断、提示词模板的任何微小偏差都会导致"训练的是一个Agent，评估的是另一个Agent"的漂移问题。</p>
+<p>第二个困局在于<strong>任务供给</strong>。真实的GUI工作流经常依赖跨应用的信息整合——比如回复一封附有发票的邮件，需要邮件、附件和发票内容在环境中保持一致。然而现有的任务合成方法要么依赖孤立的输入文件，要么共享相同的样本数据，难以支撑大规模online RL对多样性和真实性的需求。</p>
+<h2>二、MAI-Gym的三大核心设计</h2>
+<h3>2.1 共享Rollout路径：让评估与训练看到同一个Agent</h3>
+<p>MAI-Gym的核心架构决策是<strong>一条共享的rollout pipeline</strong>。论文将可执行任务形式化定义为：</p>
+$$x=(\mathcal{E},\,s_{0},\,g,\,V)$$
+
+<p>其中$\mathcal{E}$为环境，$s_0$为初始状态，$g$为自然语言指令，$V$为验证器。Agent的奖励与成功判定为：</p>
+$$r=\frac{\sum_{j}w_{j}b_{j}}{\sum_{j}w_{j}}\in[0,1],\qquad S=\prod_{j\in\mathcal{C}}b_{j}$$
+
+<p>评估、数据收集和训练复用同一套观测处理、上下文构建和动作执行逻辑。一个对Agent代码的修复会同时触达三种工作负载，从根本上消除了harness漂移问题。环境管理器通过统一接口屏蔽底层差异，支持移动端（ReDroid容器）、电脑端（Docker/Kubernetes虚拟机）和Web端（headless Chromium）三种部署后端。</p>
+<p><img alt="图2：MAI-Gym系统架构，展示共享rollout路径、环境管理器、部署后端和仪表盘的层级关系" src="https://arxiv.org/html/2610.20939v1/images/architecture.png" /></p>
+<h3>2.2 窗口化历史管理：让Transformer的KV缓存真正复用</h3>
+<p>GUI推理的昂贵之处在于每步决策都需要携带完整的历史截图。常见的"保留最近k张截图"策略在每一步都改变提示词前缀，导致推理引擎无法复用KV缓存。MAI-Gym提出<strong>窗口化历史管理</strong>：将连续的步骤分组为$K$步窗口，窗口间重叠$O$步。</p>
+<p><img alt="图3：窗口化历史机制，展示窗口内追加历史实现KV缓存复用，窗口边界处旧截图变为占位符" src="https://arxiv.org/html/2610.20939v1/window_history.png" /></p>
+<p>在窗口内部，新截图和文本仅追加到已有提示词之后，每个prompt都是前一个的扩展，前缀缓存命中率从42.5%跃升至85.9%。窗口边界处，早期截图折叠为占位符而文本保留。训练时每个窗口成为一个独立的因果序列，截图只被编码一次，训练输入token数从566,375降至86,855，更新耗时减少62.6%。</p>
+<h3>2.3 自动化环境与任务合成：从Mocked Apps到跨应用世界</h3>
+<p>MAI-Gym的合成管线分三层递进。<strong>环境层</strong>生成两类mocked apps：一类是对真实应用的克隆（如12306、中国建设银行、滴滴、美团等7款），带有可重置后端以支持安全练习；另一类是全新发明的novel apps，用于研究Agent对陌生界面的适应能力。</p>
+<p><img alt="图4：真实应用与MAI-Gym克隆应用对比，上方为真实应用截图，下方为对应克隆" src="https://arxiv.org/html/2610.20939v1/mocked_apps_pairs.png" /></p>
+<p><strong>世界层</strong>构建跨应用的一致状态：从persona和scenario出发，生成共享人物、事件和事实的文件与应用记录。任务不再是被孤立的导航指令驱动，而是要求Agent跨应用检索和整合信息。<strong>任务层</strong>采用"需求先于验证器"的原则——先固定任务规格和成功标准，再独立生成golden code和验证器代码，并通过初始态-完成态-重置态的完整执行测试来接受或拒绝候选任务。</p>
+<p><img alt="图5：世界构建、任务生成与验证器合成的完整流程，强调执行验证和失败驱动的任务生成" src="https://arxiv.org/html/2610.20939v1/images/generated/fig5_environment_synthesis.png" /></p>
+<h2>三、实验：9B模型凭什么挑战32B甚至更大的对手</h2>
+<p>MAI-Gym-9B从Qwen3.5-9B出发，经过SFT预热后，在5,000个合成任务上进行<strong>移动端与电脑端联合</strong>的GRPO在线RL训练。研究者采用policy-adaptive task sampling（策略自适应任务采样），只对策略"有时能解决"的任务分配完整rollout组，避免将算力浪费在永远成功或永远失败的任务上。</p>
+<p>在Task OOD基准（环境相同、任务未见过）上，MAI-Gym-9B在MobileWorld上取得78.4%，超越Claude Opus 4.8（69.2%）、GPT-5.5（62.4%）和Qwen3.8-Max（77.8%）；在OSWorld-Verified上取得76.2%，大幅领先同尺寸的UI-Venus-2-9B（70.8%）和SCALECUA-Qwen3.5-9B（68.7%），甚至超过了GUI-Owl-1.5-32B和CUA-GYM-397B-A17B等更大模型。在Env OOD基准（环境完全未见）上，RL在全部五个基准上均带来正向增益，Env-OOD平均分从32.3提升至36.5。</p>
+<p><img alt="图6：SFT预热与联合RL在七个基准上的增益分解，展示各阶段对最终分数的贡献" src="https://arxiv.org/html/2610.20939v1/gains_decomposition.png" /></p>
+<p>更具说服力的是<strong>sim-to-real迁移实验</strong>。在与真实12306应用配对的52个任务中，仅在克隆应用上进行的RL将真实手机上的任务成功率从28.8%提升至48.1%，增幅达19.2个百分点。在全新发明的novel apps上，RL仅凭验证器奖励就将held-out任务成功率从25.8%提升至45.2%，且平均轨迹长度从33.3步压缩至16.4步。</p>
+<p><img alt="图7：MAI-Gym-9B学到的三种高效行为：移动端自适应缩放、电脑端批量GUI操作、以及CLI工具调用" src="https://arxiv.org/html/2610.20939v1/mai_gym_three_cases_onepage_flat.png" /></p>
+<h2>四、一个基础设施问题如何决定Agent的上限</h2>
+<p>MAI-Gym的真正贡献或许不在于某一个模型或某一组分数，而在于它证明了<strong>基础设施与算法创新之间的因果关系</strong>。当环境实例可以异步并行地大量提供，当KV缓存复用率从42.5%提升到85.9%，当任务合成与验证形成一个可自动迭代的闭环时，9B参数模型在GUI场景下逼近乃至超越数十倍参数量的对手就不再是偶然。这套"评估-诊断-合成-重训练"的循环一旦运转起来，GUI Agent的能力边界将不再受限于手写任务的数量，而是取决于自动化管线能生成多少有意义的新场景。</p>
+<p><strong>论文标题</strong>：MAI-Gym: An Open All-in-One Platform for GUI Agent Evaluation and RL Training across Mobile and Computer Environments</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.20939.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-16_MAI-Gym-An-Open-All-in-One-Platform-for-GUI-Agent-Evaluation-and-RL-Training-across-Mobile-and-Compu.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-16_MAI-Gym-An-Open-All-in-One-Platform-for-GUI-Agent-Evaluation-and-RL-Training-across-Mobile-and-Compu.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
