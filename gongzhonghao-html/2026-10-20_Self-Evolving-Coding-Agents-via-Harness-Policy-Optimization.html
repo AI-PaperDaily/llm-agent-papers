@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Evolving Coding Agents via Harness-Policy Optimization</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Self-Evolving Coding Agents via Harness-Policy Optimization</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-22</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>微软推出Self-HPO：让编程Agent自己进化，性能提升超7个百分点</h2>
+<p>在大型语言模型（LLM）驱动的编程Agent领域，性能的瓶颈早已不是单纯的模型能力。一个常被忽视却至关重要的组件是<strong>harness</strong>——它决定了模型能看到什么、如何执行动作、获得何种反馈、以及何时停止。当策略模型的能力边界与harness的引导效率形成错配，Agent的潜力便无法充分释放。</p>
+<p>来自微软研究院与卡内基梅隆大学的研究者提出了 <strong>Self-HPO（Self-Evolving via Harness-Policy Optimization）</strong>，这是一个递归自改进框架，让编程Agent<strong>交替优化harness与策略模型</strong>，并利用不断进化的模型自身来提出harness改进方案。在SWE-Bench Verified等三个编程基准上，该方法将Qwen3.5-35B-A3B的平均任务解决率从57.8%提升至64.8%，增益在分布外场景中同样显著。</p>
+<p><img alt="图1：Self-HPO递归改进harness与策略的流程概览与性能曲线" src="https://arxiv.org/html/2610.22791v1/teaser_overview.png" /></p>
+<p><img alt="图1：Self-HPO递归改进harness与策略的流程概览与性能曲线" src="https://arxiv.org/html/2610.22791v1/teaser_curve.png" /></p>
+<h2>一、引言：被低估的harness与错配困境</h2>
+<p>现有针对编程Agent的优化研究大多沿着两条独立路径展开。<strong>Harness优化</strong>保持模型参数不变，在提示词、工作流或执行代码层面搜索更优配置；<strong>策略优化</strong>则固定harness，通过强化学习或监督微调更新模型权重。然而，这两类方法各自存在结构性的局限。</p>
+<p>harness优化的上限受制于模型本身的能力边界，无法从根本上提升模型的推理质量；策略优化则被固定的harness所束缚，只能从当前交互方式所诱导出的行为轨迹中学习。更关键的是，一个针对旧模型调优的harness未必能适配更新后模型的失败模式——<strong>当一个组件进化时，另一个组件成了隐性的瓶颈</strong>。</p>
+<p>论文指出，harness与策略之间存在<strong>相互塑造、彼此强化</strong>的关系。有效的harness能够暴露并弥补当前策略的弱点，而策略的更新又会改变模型的失败分布，使得原本针对性的harness干预逐渐失效。这一动态关系构成了联合优化的核心动机。</p>
+<h2>二、Self-HPO：交替进行的双侧优化</h2>
+<p>Self-HPO的核心思想简洁而有力：<strong>让每一轮更新后的模型成为下一轮harness搜索的提案者</strong>。算法在H-step（harness优化）与P-step（策略优化）之间交替进行，每个步骤的输出直接驱动下一步骤的输入。</p>
+<p><img alt="图2：Self-HPO方法概览，上方为H-step的harness搜索流程，下方为P-step的强化学习更新流程" src="https://arxiv.org/html/2610.22791v1/method_overview.png" /></p>
+<h3>2.1 H-step：失败条件化的harness搜索</h3>
+<p>H-step的核心任务是<strong>从当前策略的失败轨迹中提取改进信号</strong>。具体流程为：当前策略模型在搜索集上生成轨迹，识别失败案例，然后以自身作为proposer，针对这些失败模式提出harness修订方案。每次修订基于所有历史harness及其轨迹的累积经验，候选harness在当前搜索集上评估，得分最高者进入下一轮。</p>
+<p>此设计的关键创新在于<strong>搜索集本身是动态演化的</strong>。初始搜索集从训练数据中随机采样，而后续搜索集则由上一轮P-step训练过程中<strong>从未被成功解决的任务</strong>构成。这意味着harness搜索的目标始终对准策略模型<strong>当下最棘手的失败模式</strong>，而非初始任务分布上的固定问题集。</p>
+<h3>2.2 P-step：优化harness下的强化学习</h3>
+<p>P-step在已选定的优化harness下更新策略模型权重。研究者采用<strong>GRPO（Group Relative Policy Optimization）</strong> 结合<strong>BAR（Balanced Adaptive Rollout）</strong> 作为默认优化器。BAR通过自适应采样构建奖励均衡的训练组，有效缓解了二元结果奖励下的稀疏性问题——当一组内所有采样结果均为失败时，GRPO无法获得有效的组内对比信号。</p>
+<p>harness-策略联合优化的目标函数可以形式化地表示为：</p>
+$$J(H,P)=\mathbb{E}_{x\sim\mathcal{D}}\,\mathbb{E}_{\tau\sim\pi_{H,P}(\cdot\mid x)}\big[y(x,\tau)\big]$$
+
+<p>其中 $\pi_{H,P}$ 表示由harness $H$ 和策略 $P$ 共同决定的轨迹分布，$y(x,\tau)$ 为可执行验证器给出的二元评分。值得注意的是，优化对象不仅是策略参数，还包括harness的配置空间。</p>
+<h3>2.3 自我提案：无需外部模型的闭环进化</h3>
+<p>Self-HPO的一个显著特点是<strong>不依赖外部更强的模型来提出harness改进</strong>。在每一轮H-step中，充当harness proposer的正是当前待优化的策略模型本身。它既负责解决任务、暴露失败，又负责分析失败、提出干预方案。这种设计形成了一个完整的自改进闭环：<strong>模型发现问题，模型提出解决方案，模型在新的条件下学习，然后再次发现问题</strong>。</p>
+<h2>三、实验：跨三个基准的持续增益</h2>
+<p>研究者在SWE-Bench Verified（500个任务）、SWE-Bench Multilingual（300个任务）和SWE-Bench Pro（642个任务）上进行了系统评测。训练集包含2,484个来自SWE-rebench、SWE-rebench V2和Scale-SWE的任务，进行两轮交替优化。</p>
+<p><img alt="图3：优化轨迹对比，展示Self-HPO、Self-Harness与RLVR在各基准上的性能变化" src="https://arxiv.org/html/2610.22791v1/optimization_trajectories.png" /></p>
+<h3>3.1 主结果：超越单边优化的确定性优势</h3>
+<p>Self-HPO在三个基准上均取得了最好的成绩。具体数据如下表所示：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Harness优化</th>
+<th>策略优化</th>
+<th>SWE-Verified</th>
+<th>SWE-Multi</th>
+<th>SWE-Pro</th>
+<th>平均值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td>✘</td>
+<td>✘</td>
+<td>61.0%</td>
+<td>54.2%</td>
+<td>58.3%</td>
+<td>57.8%</td>
+</tr>
+<tr>
+<td>RLVR</td>
+<td>✘</td>
+<td>✓</td>
+<td>67.5%</td>
+<td>56.3%</td>
+<td>61.8%</td>
+<td>61.9%</td>
+</tr>
+<tr>
+<td>Self-Harness</td>
+<td>✓</td>
+<td>✘</td>
+<td>65.2%</td>
+<td>54.3%</td>
+<td>60.7%</td>
+<td>60.1%</td>
+</tr>
+<tr>
+<td><strong>Self-HPO</strong></td>
+<td>✓</td>
+<td>✓</td>
+<td><strong>69.5%</strong></td>
+<td><strong>59.7%</strong></td>
+<td><strong>65.2%</strong></td>
+<td><strong>64.8%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>两个关键发现值得关注。其一，Self-HPO在分布外场景中优势更为突出：在SWE-Multi上，Self-Harness相较Base仅提升0.1个百分点，而Self-HPO的增益达到5.5个百分点。这说明<strong>策略优化释放了harness优化的泛化潜力</strong>。其二，从优化轨迹来看，第二轮的H-step能够为更新后的策略带来持续性改进，而同样条件下的harness-only更新则出现性能下降。</p>
+<p><img alt="图4：pass@k曲线与按任务难度分层的pass@1分析，以及RL训练中零成功组的比例" src="https://arxiv.org/html/2610.22791v1/passk_curve.png" /></p>
+<h3>3.2 组件互补性：联合增益超越个体增益之和</h3>
+<p>交叉评估实验揭示了harness与策略之间深刻的互补关系。将第二轮优化后的harness $H_2$ 应用于基础策略时，解决率从61.0%提升至64.5%；将更新后的策略 $P_2$ 搭配初始harness时，解决率达到64.4%。两者的单独增益之和为6.9个百分点，而联合使用的总增益达到8.5个百分点——<strong>额外1.6个百分点的增益来自两个优化组件之间的协同效应</strong>。</p>
+<h3>3.3 pass@k分析与信号质量改善</h3>
+<p>在可靠性维度上，Self-HPO的pass@k曲线在所有k值上均高于基础Agent，pass@8从80.0%提升至84.8%。按任务难度分层后，中等难度和简单难度任务上的pass@1增益分别达到17.2和12.9个百分点，显示出<strong>策略模型在边界案例上可靠性的显著提升</strong>。</p>
+<p><img alt="图5：基础harness与优化后harness的代码级对比，展示新增的四类运行时检查" src="https://arxiv.org/html/2610.22791v1/harness_diff.png" /></p>
+<p>训练过程的信号质量同样得到改善。在最终P-step中，零成功组（所有采样均失败）的比例降至6.5%，而RLVR在最后50个更新中该比例维持在11%至17%之间。这一改善直接源于harness优化对模型行为的引导作用，使得训练数据中可用的奖励对比信号更加丰富。</p>
+<h2>四、harness进化的微观图景</h2>
+<p>图5的案例研究展示了harness优化的具体形态。优化后的harness在保留原有模型查询与命令执行循环的基础上，新增了四类针对性干预：在步数或时间预算接近耗尽时提示尽早提交、检测空补丁并要求纳入新文件、在首次通过空补丁检查后延迟提交以核对API签名、以及在补丁应用失败时回退到沙箱的git diff。</p>
+<p>这些干预<strong>并非泛泛的提示词调整，而是针对具体失败模式的精确运行时逻辑修补</strong>。它们共同指向一个核心观察：有用的代码修改可能在多个环节丢失——预算耗尽导致空提交、新建文件未暂存导致空补丁、基于错误API假设的补丁无法应用、以及格式错误导致提交无效。harness优化的价值在于为每一个可能的丢失点设置防线。</p>
+<h2>五、技术价值与开放问题</h2>
+<p>Self-HPO的方法论意义超越了编程Agent本身。它揭示了一个通用原则：<strong>当优化目标涉及多个相互作用的组件时，将任一组件的优化视为独立问题是次优的</strong>。交替优化框架让每个组件在另一个组件更新的条件下重新校准，从而保持优化目标的一致性。</p>
+<p>在应用层面，该方法为中等规模模型的自我提升提供了路径。Qwen3.5-35B-A3B通过两轮交替优化，在多个基准上达到了接近更大参数模型或外部辅助系统的水平。论文同时表明，当有更强的外部模型（如Opus 4.8）可用时，同样的框架可以将性能进一步提升至71.6%，<strong>外部知识可以通过harness优化被高效吸收</strong>。</p>
+<p>一个值得思考的问题是：当harness的复杂度随多轮优化不断累积时，是否存在过拟合的风险？动态搜索集的设计部分缓解了这一担忧，但其长期演化轨迹仍需观察。更根本的问题在于，<strong>模型自提案的harness改进是否存在系统性的盲区</strong>——一个模型能否发现并修补自身推理架构中根本性的缺陷？这或许是自改进范式面临的下一个理论挑战。</p>
+<p><strong>论文标题</strong>：Self-Evolving Coding Agents via Harness-Policy Optimization</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.22791.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-20_Self-Evolving-Coding-Agents-via-Harness-Policy-Optimization.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-20_Self-Evolving-Coding-Agents-via-Harness-Policy-Optimization.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
