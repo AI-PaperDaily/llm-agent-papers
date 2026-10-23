@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent World Model in the Wild: Computer-Use Agent Environment Synthesis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Agent World Model in the Wild: Computer-Use Agent Environment Synthesis</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-24</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h2>微软UNC推WildAWM：开源合成Agent世界，GPT-6仅解60%，Qwen 35B提升10.6%</h2>
+<h3>一、当环境本身成为瓶颈</h3>
+<p>大模型智能体正在经历一场从“向人类学习”到“向世界学习”的范式转变。过去的Agent依赖人类专家标注的演示数据，成本高昂且受限于示范者的能力上限。如今，基于强化学习的Agent训练方法越来越多地依赖可执行环境中的交互反馈，环境供给因此成为制约Agent能力进化的关键瓶颈。</p>
+<p>但问题在于：直接在真实计算机系统中进行大规模在线学习不仅成本极高，而且充满安全风险——状态难以重置、在线服务持续变化、探索性操作可能引发难以预料的后果。手动搭建训练环境虽然可控，却难以规模化。合成环境与任务由此成为一条极具潜力的路径。</p>
+<p>然而，要让合成环境真正支撑通用<strong>计算机使用智能体</strong>（CUA）的训练，三个核心挑战必须被解决：<strong>任务可解性</strong>（合成任务确实存在可行的解决路径）、<strong>任务难度</strong>（足够困难以提供有效的学习信号）、<strong>验证器可靠性</strong>（能够准确区分成功与失败的完成状态）。针对这些挑战，微软研究院与北卡罗来纳大学教堂山分校等机构联合提出了<strong>WildAWM</strong>——一个完全由开源模型驱动的可扩展合成管线，用于为通用CUA构建可控的训练世界。</p>
+<p><img alt="图1：WildAWM整体概览图，包含世界合成与XAI任务合成两个阶段" src="https://arxiv.org/html/2610.26828v1/main.png" /></p>
+<h3>二、WildAWM的核心技术架构</h3>
+<h4>1. 世界合成：构建跨接口的个人计算机环境</h4>
+<p>WildAWM的世界合成阶段从<strong>用户画像</strong>出发，逐步构建一个包含网站、MCP服务、本地文件在内的完整个人计算机环境。系统首先生成具有职业、联系人、常用网站和跨越多日的持续活动的用户画像。随后，编码智能体将这些画像转化为逐日的活动计划，每个计划指定所需的应用、服务、数据库和文件。</p>
+<p>关键创新在于<strong>技能增强生成</strong>机制。编码智能体会将活动所需的操作与一个不断增长的<strong>可复用事件技能库</strong>进行匹配。当某项活动无法被现有技能覆盖时，系统会合成新技能并纳入共享库。例如，一个学生报名Coursera课程并完成作业的技能，会编码对应的工作流及数据库与文件的更新约束。这种设计使得后续世界合成可以直接复用已有实现，大幅提升效率。</p>
+<p>合成过程对状态一致性有严格要求：只有两次独立重放产生相同状态、且所有服务与网站保持健康的世界状态才会被保留。另一个独立的编码智能体会验证状态与计划的一致性。最终，系统生成了<strong>640个世界状态</strong>，涵盖<strong>36个用户画像</strong>、<strong>15个镜像网站</strong>和<strong>8个MCP服务</strong>，每个画像平均拥有<strong>17.8个世界状态</strong>。</p>
+<h4>2. XAI任务合成：跨接口任务的生成与验证</h4>
+<p>WildAWM的任务合成聚焦于<strong>跨智能体接口</strong>（Cross-Agent Interface, XAI）任务。每个任务必须要求Agent同时使用<strong>GUI、MCP和CLI</strong>三种接口类型，这比以往的单一接口环境更具挑战性。例如，一个典型的XAI任务可能要求Agent先通过MCP读取聊天线程确认指令，再通过CLI编写脚本处理本地数据，接着通过GUI完成网页购物操作，最后再次通过CLI和MCP完成文件写入与消息通知。</p>
+<p>任务验证的核心是<strong>执行驱动的多智能体质量门控</strong>。系统收集来自18个异构模型-框架组合的六次执行轨迹，然后通过三层判断机制交叉验证：合成器生成的程序化验证器、LLM语义判断器、以及主动检查环境的智能体判断器。这三层判断必须对每条轨迹给出一致结论。</p>
+<h4>3. 五重质量门控</h4>
+<p>WildAWM提出了五个质量门控来系统性评估任务的有效性：</p>
+<p><strong>判断一致性门控</strong>要求程序化验证器、LLM判断器和智能体判断器对所有执行轨迹给出完全一致的裁决。如果出现分歧，相关的证据会被返回给生成器用以修正评分标准和验证脚本。任务验证器在形式上被定义为一个二进制判定函数：</p>
+$$V(W_0, W, a) = \prod_{i=1}^{N} v_i(W_0, W, a)$$
+
+<p>其中$W_0$是初始世界状态，$W$是最终世界状态，$a$是Agent的最终答案，每个$v_i$代表一个二元检查项。</p>
+<p><strong>初始不满足门控</strong>要求$V(W_0, W_0, \emptyset) = 0$，即任务在初始状态下不应被判定为已完成。</p>
+<p><strong>任务可解性门控</strong>要求至少有一次成功执行，且成功的轨迹必须实际使用了所有声称的接口。这保证了跨接口工作流的可行性不是理论上的，而是被实际执行所验证的。</p>
+<p><strong>任务难度门控</strong>基于无提示执行的成功率进行分类：零次成功标记为困难任务，一次成功为中等任务，三次全成功则被判定为过于简单，需要返回增加难度。</p>
+<p><strong>反事实探测门控</strong>是WildAWM最具创新性的设计之一。该门控利用LLM潜在的<strong>谄媚倾向</strong>，向智能体判断器提供与真实裁决相反的虚假结论声明，要求其重新调查执行证据。如果判断器在反事实条件下改变了判断，说明其反馈不够稳健，任务候选将被拒绝。</p>
+<p><img alt="图2：XAI任务候选的漏斗进展图，展示直接通过与反馈修正后通过的任务统计" src="https://arxiv.org/html/2610.26828v1/x2.png" /></p>
+<h3>三、训练配方与实验结果</h3>
+<p>WildAWM的训练配方使用<strong>GRPO</strong>（Group Relative Policy Optimization），奖励信号结合了程序化验证器的二元成功判定与基于检查项得分的<strong>部分信用</strong>。对于执行轨迹$j$，当格式错误发生时奖励设为$-1$；否则奖励计算公式为：</p>
+$$r_j = \min\left\{1, V(W_0, W_j, a_j) + \frac{0.1}{N}\sum_{i=1}^{N} v_i(W_0, W_j, a_j)\right\}$$
+
+<p>这种设计使得成功任务获得单位奖励，而未完成的任务仍可通过部分检查项得分获得密集的梯度信号，缓解长周期任务中的信用分配困难。</p>
+<p>训练过程中，当所有执行样本产生零方差奖励组时（小型模型常见），系统会动态调整样本数量并通过混合高奖励与低奖励样本的方式来构造有意义的对比组。轨迹优势的计算公式为：</p>
+$$A_j = \begin{cases} (r_j - \mu_\tau)/\sigma_\tau, & \sigma_\tau > 0, \\ -K^{-1/2}, & \sigma_\tau = 0 \text{ 且 } e_j = 1 \ \forall j, \\ 0, & \text{否则}, \end{cases}$$
+
+<p>第二项专为格式错误场景设计，确保即使所有样本获得相同的格式惩罚奖励，仍能提供格式相关的学习信号。</p>
+<p>在实验层面，WildAWM合成了<strong>341个XAI任务</strong>，其中<strong>273个被标记为困难任务</strong>。GPT-6-Astra在该任务集上仅能解决约<strong>60%</strong>。训练结果令人瞩目：仅使用这些合成世界进行训练，<strong>Qwen3.6-35B-A3B</strong>在全部<strong>8个OOD基准</strong>上的平均得分从<strong>42.84提升至53.42</strong>，涨幅达<strong>10.58分</strong>；而<strong>Qwen3.5-4B</strong>也从<strong>21.83提升至30.04</strong>，提升<strong>8.21分</strong>。这些基准覆盖了web智能体、claw智能体和计算机使用智能体三个维度，证明了跨接口训练信号的广泛迁移能力。</p>
+<p><img alt="图3：环境多样性与任务可解性分析，包含Vendi分数对比与24个模型-框架配置的可解性热力图" src="https://arxiv.org/html/2610.26828v1/x3.png" /></p>
+<p>在质量门控的消融实验中，移除任何一项门控都会导致平均性能下降<strong>2.60至9.30分</strong>。其中<strong>判断一致性门控</strong>和<strong>初始不满足门控</strong>的影响最为显著，移除后域内验证集得分从<strong>21.59</strong>骤降至<strong>3.79</strong>和<strong>3.05</strong>，说明这两项门控在过滤无效训练数据方面发挥着不可替代的作用。</p>
+<h3>四、开源模型能否成为世界的生成者？</h3>
+<p>WildAWM最具启发性的发现或许在于其对开源边界的验证：整个合成管线仅使用<strong>GLM-5.2</strong>、<strong>DeepSeek-V4-Flash</strong>和<strong>MiniMax-M3</strong>等开源模型，无需任何专有前沿模型参与，却能生成让GPT-6-Astra仅解六成的困难任务。这暗示开源模型在环境合成这一新兴领域可能具备不亚于专有模型的能力。</p>
+<p>行为分析进一步揭示了有效的训练路径：SFT阶段从教师模型轨迹中学习<strong>跨接口行为</strong>（接口切换率从18.4%升至24.7%），而RL阶段在此基础上增加<strong>长周期任务求解能力</strong>（40步以上任务增益从SFT的9.7分提升至RL的17.0分）。这两阶段的能力积累，最终使一个35B参数的模型在多个基准上逼近甚至超越更大规模的专有模型。</p>
+<p>当环境本身成为可合成、可验证、可规模化的产物，Agent训练的瓶颈便从“去哪里学”转变为“如何生成更好的世界”。WildAWM给出的答案是：让开源模型自己来建造这个世界。</p>
+<p><strong>论文标题</strong>：Agent World Model in the Wild: Computer-Use Agent Environment Synthesis</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.26828.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-22_Agent-World-Model-in-the-Wild-Computer-Use-Agent-Environment-Synthesis.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-22_Agent-World-Model-in-the-Wild-Computer-Use-Agent-Environment-Synthesis.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
