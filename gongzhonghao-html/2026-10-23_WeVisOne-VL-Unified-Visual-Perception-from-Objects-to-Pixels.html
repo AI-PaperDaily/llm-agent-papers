@@ -463,111 +463,104 @@
             </div>
             <h1 class="article-title">WeVisOne-VL: Unified Visual Perception from Objects to Pixels</h1>
             <div class="article-meta">
-                <span class="meta-item">📅 2026-10-26</span>
+                <span class="meta-item">📅 2026-10-27</span>
             </div>
         </header>
         
         <article class="article-content">
-            <h1>腾讯微信发布视觉大模型WeVisOne-VL：Dense200 F1达71.3！</h1>
-<h2>一、引言</h2>
-<p>视觉语言模型正在从“看图说话”走向“看图定位、看图分割、看图抠像”，但细粒度视觉感知仍是短板。现有VLM在面对密集小目标、长尾类别、复杂指代和缺失目标时，常出现幻觉式检测、意图误读和漏检，导致真实场景部署可靠性不足。论文提出的<strong>WeVisOne-VL</strong>试图用一套自然语言接口统一对象级与像素级感知：既输出检测框、指代定位、计数、OCR，也输出分割掩码和连续alpha matte。模型基于Qwen3-VL构建2B与4B两个版本，使用约1亿图像和36亿框标注训练，在30多个基准上取得领先结果。其中4B模型在Dense200上平均F1达到<strong>71.3</strong>，在RefCOCOg test上达到<strong>81.8</strong>，在PixMo-Count test上计数准确率达到<strong>89.6%</strong>，并保持较强的缺失目标拒答能力。</p>
+            <h1>腾讯开源WeVisOne-VL：统一对象像素感知，检测F1达74.0？</h1>
+<p>视觉语言模型在通用图文理解上进展迅速，但细粒度视觉感知仍不够可靠：模型可能幻觉出不存在的对象，面对陌生描述时误判用户意图，在密集小目标场景中漏检，甚至在目标缺失时仍强行输出框或掩码。腾讯微信视觉团队发布的<strong>WeVisOne-VL</strong>，试图用统一语言接口解决这一问题。该模型基于Qwen3-VL构建2B与4B两个规模，将目标检测、指代定位、计数、OCR、指代分割和图像抠图统一为结构化下一token预测，支持点、框、掩码与alpha matte等任意粒度输出。训练数据覆盖约1亿图像与36亿框标注，项目代码与权重均已开源。</p>
 <p><img alt="图1：WeVisOne-VL统一对象级与像素级感知能力概览" src="https://arxiv.org/html/2610.31329v1/teaser.png" /></p>
-<h2>二、核心方法</h2>
-<p>WeVisOne-VL的核心思路是把视觉感知任务统一成<strong>结构化next-token prediction</strong>。模型不依赖独立的大型分割模型，而是让VLM自回归生成类别、坐标和特殊标记，再通过轻量像素解码器把离散token转成密集输出。</p>
-<h3>1. 统一任务形式：坐标token与<OBJ>桥接</h3>
-<p>论文引入一组专用坐标token <code>&lt;0&gt;</code> 到 <code>&lt;1000&gt;</code>，用归一化坐标编码点、框等空间输出。检测、指代定位、计数、OCR等任务被组织为“对象引用+空间坐标”的序列生成；目标不存在时，坐标字段输出<code>None</code>。对于分割和matting，模型在每个框坐标四元组后生成一个<code>&lt;OBJ&gt;</code> token，其隐藏状态作为对应实例的潜在表示，交给像素解码器生成全图mask或alpha matte。这样，同一套输出接口同时覆盖离散定位与密集预测。</p>
-<p><img alt="图2：WeVisOne-VL数据引擎概览" src="https://arxiv.org/html/2610.31329v1/data_engine.png" /></p>
-<h3>2. 数据引擎：从语义发现到像素监督</h3>
-<p>论文构建了<strong>WeVisOne-VL Data Engine</strong>，用共享知识图谱组织类别概念和组合式指代表达，并指导定向图像采集。检测标注先用SAM3和自研DINO式开放词汇检测器生成候选框，再由Qwen3-VL验证查询与实例的对应关系；指代标注基于SAM3 Agent框架并加入Rex-Omni作为定位专家；掩码标注用SAM2生成二值mask。Matting数据则结合BiRefNet、MatAnyone2和专用annotator，将实例标注扩展为连续alpha监督。数据引擎还利用模型错误构建hard negative和hard positive，并经过人工抽查与训练反馈迭代 refinement。</p>
-<h3>3. 轻量像素解码器：9.6M参数连接token与像素</h3>
-<p>像素解码器由视觉特征适配器、box-guided query decoder和instance-conditioned dense prediction三部分组成。它接收Qwen3-VL多级ViT特征、每个<code>&lt;OBJ&gt;</code> token的隐藏状态及其预测框，先构建共享多级视觉memory，再用可变形查询解码器融合实例表示与框先验，最后通过动态mask head和由粗到细的refinement生成全分辨率mask。分割与matting共享这些组件，matting额外使用轻量refinement模块处理细边界和半透明。整个解码器约<strong>9.6M参数</strong>。</p>
-<p><img alt="图3：轻量像素解码器结构" src="https://arxiv.org/html/2610.31329v1/model.png" /></p>
-<h3>4. 三阶段SFT与混合任务RL</h3>
-<p>训练采用三阶段课程SFT。Stage 1进行任务对齐，冻结视觉编码器，仅训练语言模型；Stage 2提升分辨率和密度，最大输入视觉token提升至1960，单响应最大框/点数量提升至500；Stage 3先以分割损失预热像素解码器：</p>
-$$\mathcal{L}_{\mathrm{seg}}=20\mathcal{L}_{\mathrm{focal}}+\mathcal{L}_{\mathrm{dice}}$$
+<h2>一、核心方法</h2>
+<p>WeVisOne-VL的核心思路是把多种视觉任务压缩到同一个自回归输出格式中，再用一个轻量像素解码器补足稠密预测能力。整体设计可拆为统一任务接口、数据引擎与课程训练三部分。</p>
+<p><strong>统一任务接口：坐标token与<OBJ>桥接像素</strong></p>
+<p>所有任务都被表述为结构化next-token预测。模型引入<code>&lt;0&gt;</code>到<code>&lt;1000&gt;</code>的专用token表示归一化坐标：点输出为$[x_0,y_0]$，框输出为$[x_0,y_0,x_1,y_1]$；若查询目标不存在，坐标字段填<code>None</code>。对于分割与抠图任务，模型在每个框坐标四元组后额外生成一个<code>&lt;OBJ&gt;</code> token，其隐藏状态作为对应实例的紧凑表示，再交给像素解码器生成全图掩码或alpha matte。这样，离散定位与稠密预测共享同一套语言输出接口，无需外挂独立的大分割模型。</p>
+<p><img alt="图2：WeVisOne-VL模型架构与轻量像素解码器" src="https://arxiv.org/html/2610.31329v1/model.png" /></p>
+<p>像素级输出由动态掩码头完成，实例查询经MLP生成动态核与偏置，再与像素特征作用：</p>
+$$[k_i,\beta_i]=\operatorname{MLP}(\widetilde{q}_i),\qquad M_i=k_i^\top P+\beta_i$$
 
-<p>预热完成后，VLM与解码器以1:1交替进行NTP和像素任务，联合目标为：</p>
+<p>解码器约9.6M参数，包含视觉特征适配器、可变形查询解码器和实例条件稠密预测阶段。分割与抠图共享主体结构，抠图额外使用轻量细化模块恢复发丝、毛发与半透明边界。由于<code>&lt;OBJ&gt;</code> token由VLM自回归生成，像素解码器天然继承语言查询所指代的实例身份，避免语言定位与像素分割之间的目标错位。</p>
+<p><strong>数据引擎WDE：从语义发现到像素监督</strong></p>
+<p>为支撑对象级与像素级联合训练，研究团队构建了WeVisOne-VL Data Engine。该引擎先用共享知识图谱组织类别概念与组合指代表达，节点涵盖规范类别名、别名、分类关系与整体-部分关系；再通过文本检索、视觉检索和历史错误确定采集方向。定位阶段并行调用SAM3与自研DINO风格开放词表检测器生成候选，指代任务则基于SAM3 Agent框架并加入Rex-Omni作为额外定位专家，随后由Qwen3-VL验证查询与实例的语义对应关系。验证后的框继续送入SAM2生成二值掩码，并通过MatAnyone2与BiRefNet辅助生成连续alpha监督。引擎还利用模型错误构造硬负例与硬正例：只有整图审查确认无目标满足查询时，才将其作为负样本；模型仍预测目标区域的样本则成为硬负例，用于训练拒答能力。</p>
+<p><img alt="图3：WeVisOne-VL数据引擎WDE整体流程" src="https://arxiv.org/html/2610.31329v1/data_engine.png" /></p>
+<p><strong>三阶段课程SFT与混合任务RL</strong></p>
+<p>训练采用三阶段监督微调。第一阶段进行任务对齐：冻结视觉编码器与投影层，仅训练语言模型，使用90M样例、13K步，并限制每类最多50个框或点，以缓解极密集样本导致的重复输出崩溃。第二阶段提升分辨率与密度：解冻全部参数，最大输入提升至1,960个视觉token，单响应最多500个框或点，使用约40M样例、9K步。第三阶段交替优化token与像素：先用250M分割样本、100K步预热像素解码器，再以1:1比例联合训练NTP与像素任务9,000步；随后用130M抠图样本对解码器进行100K步微调。联合损失为：</p>
 $$\mathcal{L}_{\mathrm{joint}}=\mathcal{L}_{\mathrm{NTP}}+10\mathcal{L}_{\mathrm{seg}}$$
 
-<p>Matting阶段冻结VLM，仅微调解码器，采用连续alpha监督：</p>
-$$\mathcal{L}_{\mathrm{mat}}=200\mathcal{L}_{l1}+5\mathcal{L}_{\mathrm{grad}}+50\mathcal{L}_{\mathrm{lap}}+\mathcal{L}_{\mathrm{hard}}$$
+<p>完成SFT后，混合任务RL先以奖励均值和方差构造不确定性分数：</p>
+$$U(x)=4\mu_x(1-\mu_x)\sigma_x$$
 
-<p>SFT之后，论文在不确定性筛选的语料上进行混合任务GRPO。RL直接优化完整结构化响应的grounding质量，奖励函数为：</p>
-$$r_{i}=\frac{2\sum_{(\hat{b},b^{*})\in\mathcal{M}_{i}}\operatorname{IoU}(\hat{b},b^{*})^{3}}{N_{\mathrm{gt}}+N_{\mathrm{pred}}}$$
+<p>据此筛选约14万样本，并补充框监督与指向数据至17.8万。对每个样本采样$G=8$个完整响应，经匈牙利匹配后计算定位奖励：</p>
+$$r_i=\frac{2\sum_{(\hat{b},b^*)\in\mathcal{M}_i}\operatorname{IoU}(\hat{b},b^*)^3}{N_{\mathrm{gt}}+N_{\mathrm{pred}}}$$
 
-<p>该奖励同时惩罚漏检和重复预测，并对高IoU区间更敏感，从而提升定位精度并抑制重复或幻觉输出。</p>
-<h2>三、实验</h2>
-<p>论文在对象级和像素级共七类任务上评估，包括目标检测、指代目标检测、计数、指向、OCR、指代分割和promptable matting。对比对象覆盖Qwen3-VL、Qwen3.5、Rex-Omni、LocateAnything，以及专用检测、分割和matting系统。</p>
-<p><img alt="图4：指代分割定性对比" src="https://arxiv.org/html/2610.31329v1/refseg.png" /></p>
+<p>负样本仅在模型不预测任何对象时获得奖励；指代分割的预测只有在框后跟随<code>&lt;OBJ&gt;</code> token时才视为有效。</p>
+<h2>二、实验</h2>
+<p>实验覆盖五类对象级任务与两类像素级任务，对比Qwen3-VL、Qwen3.5、Rex-Omni、LocateAnything以及GroundingDINO-T等模型。WeVisOne-VL在多个基准上取得领先，尤其在密集小目标、拒答与语言引导像素预测上优势明显。</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>任务/基准</th>
-<th style="text-align: right;">WeVisOne-VL-4B</th>
-<th style="text-align: right;">对比模型最佳VLM</th>
-<th>关键指标</th>
+<th>模型</th>
+<th style="text-align: right;">COCO Mean</th>
+<th style="text-align: right;">Dense200 Mean</th>
+<th style="text-align: right;">RefCOCOg val</th>
+<th style="text-align: right;">PixMo-Count val</th>
+<th style="text-align: right;">SROIE Mean</th>
+<th style="text-align: right;">P3M MAD↓</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>COCO 检测</td>
-<td style="text-align: right;">57.1</td>
-<td style="text-align: right;">54.7（LocateAnything-3B）</td>
-<td>F1 Mean</td>
+<td>Qwen3-VL-4B</td>
+<td style="text-align: right;">48.7</td>
+<td style="text-align: right;">15.2</td>
+<td style="text-align: right;">74.1</td>
+<td style="text-align: right;">69.6</td>
+<td style="text-align: right;">40.4</td>
+<td style="text-align: right;">—</td>
 </tr>
 <tr>
-<td>Dense200 检测</td>
-<td style="text-align: right;">71.3</td>
-<td style="text-align: right;">58.7（LocateAnything-3B）</td>
-<td>F1 Mean</td>
+<td>Rex-Omni-3B</td>
+<td style="text-align: right;">52.9</td>
+<td style="text-align: right;">58.3</td>
+<td style="text-align: right;">73.6</td>
+<td style="text-align: right;">82.2</td>
+<td style="text-align: right;">44.8</td>
+<td style="text-align: right;">—</td>
 </tr>
 <tr>
-<td>VisDrone 检测</td>
-<td style="text-align: right;">44.7</td>
-<td style="text-align: right;">39.9（LocateAnything-3B）</td>
-<td>F1 Mean</td>
+<td>LocateAnything-3B</td>
+<td style="text-align: right;">54.7</td>
+<td style="text-align: right;">58.7</td>
+<td style="text-align: right;">76.7</td>
+<td style="text-align: right;">88.7</td>
+<td style="text-align: right;">40.3</td>
+<td style="text-align: right;">—</td>
 </tr>
 <tr>
-<td>RefCOCOg test</td>
-<td style="text-align: right;">81.8</td>
-<td style="text-align: right;">77.6（LocateAnything-3B）</td>
-<td>F1 Mean</td>
+<td>WeVisOne-VL-2B</td>
+<td style="text-align: right;">55.2</td>
+<td style="text-align: right;">61.4</td>
+<td style="text-align: right;">77.1</td>
+<td style="text-align: right;">90.9</td>
+<td style="text-align: right;">62.1</td>
+<td style="text-align: right;">6.6</td>
 </tr>
 <tr>
-<td>PixMo-Count test</td>
-<td style="text-align: right;">89.6</td>
-<td style="text-align: right;">82.8（LocateAnything-3B）</td>
-<td>精确匹配</td>
-</tr>
-<tr>
-<td>SROIE OCR</td>
-<td style="text-align: right;">68.1</td>
-<td style="text-align: right;">44.8（Rex-Omni-3B）</td>
-<td>F1 Mean</td>
-</tr>
-<tr>
-<td>RefCOCO testA 分割</td>
-<td style="text-align: right;">84.5</td>
-<td style="text-align: right;">83.0（UniPixel-7B）</td>
-<td>cIoU</td>
-</tr>
-<tr>
-<td>Ref-ZOM 拒答率</td>
-<td style="text-align: right;">86.0</td>
-<td style="text-align: right;">41.9（GSVA-7B）</td>
-<td>Rejection Rate</td>
-</tr>
-<tr>
-<td>P3M-500-NP Matting</td>
-<td style="text-align: right;">7.3 / 6.6（4B/2B）</td>
-<td style="text-align: right;">15.4（SAM2-Matting SAM3）</td>
-<td>MAD↓</td>
+<td>WeVisOne-VL-4B</td>
+<td style="text-align: right;"><strong>57.1</strong></td>
+<td style="text-align: right;"><strong>71.3</strong></td>
+<td style="text-align: right;"><strong>80.8</strong></td>
+<td style="text-align: right;"><strong>93.7</strong></td>
+<td style="text-align: right;"><strong>68.1</strong></td>
+<td style="text-align: right;">7.3</td>
 </tr>
 </tbody>
 </table></div>
-<p>结果显示，WeVisOne-VL在通用、长尾和密集检测上均优于同规模VLM，在Dense200和VisDrone上优势尤其明显。指代定位在RefCOCOg、WeRef-Bench、PR-Bench等基准上领先，并显著提升缺失目标拒答率。计数任务在PixMo-Count、CLOC、MixCount等基准上取得最高精确匹配准确率。OCR在HierText、ICDAR2015、TotalText和SROIE上全面超过专用OCR系统和通用VLM。指代分割在RefCOCO系列、ReasonSeg和Ref-ZOM上表现强劲，尤其Ref-ZOM拒答率达到86.0，说明模型能在目标缺失时拒绝输出mask。Matting在box prompt和文本prompt下均优于SAM2-Matting基线，能保留胡须、毛发、半透明边界等细节。</p>
-<h2>四、展望</h2>
-<p>WeVisOne-VL把对象级定位与像素级预测压进同一个语言接口，为内容创作、工业检测、自动驾驶和具身智能提供了更可靠的视觉感知底座。论文也指出当前方法仍受限于单轮预测、无CoT推理和通用数据规模，未来可结合Agent框架进行多轮工具交互，并增强模糊用户意图推理。统一感知是否会成为下一代VLM的标配能力，值得持续观察。</p>
+<p>对象检测方面，WeVisOne-VL-4B在COCO上Mean F1达57.1，Dense200达71.3，VisDrone达44.7；在IoU=0.95严格标准下，COCO为19.5，Dense200为23.2，显示提升不仅来自召回，也来自精确定位。指代定位中，RefCOCOg val/test分别为80.8/81.8，WeRef-Bench Mean为78.7、拒答率96.4%，RefCOCOg-Rej拒答率67.4%。计数任务中，PixMo-Count val/test为93.7/89.6，MixCount val/test为42.0/40.4。OCR在SROIE上Mean F1达68.1，ICDAR2015达47.8，TotalText达52.0。像素级任务中，指代分割RefCOCO val为81.4，Ref-ZOM cIoU为72.2、拒答率86.0，ReasonSeg test为66.8；抠图在P3M-500-NP上MAD为6.6/7.3，显著低于SAM2-Matting（SAM3）的15.4，WeRefMat指代表达MAD为9.8，优于Qwen3.5-9B+SAM2-Matting的22.4。</p>
+<p><img alt="图4：通用与密集目标检测定性对比" src="https://arxiv.org/html/2610.31329v1/detection.png" /></p>
+<p>在指代分割与抠图的定性示例中，面对属性、关系、多实例与缺失目标查询，WeVisOne-VL能够区分上下文干扰项，并在目标不存在时返回空结果；在框提示与文本提示抠图中，模型对发丝、胡须、半透明边界和物体内部细节的保留更完整。</p>
+<h2>三、展望</h2>
+<p>WeVisOne-VL将对象级与像素级感知统一到同一语言接口，并以2B/4B规模开源，为私有化部署和边缘场景提供了新选择。其局限同样明确：当前训练刻意省略链式思考，仅支持单轮预测，真实用户指令的模糊性与上下文变化仍是挑战。未来若引入Agent式多轮工具交互与意图推理，统一感知模型可能成为检测、分割、抠图流水线的通用前端；但它究竟会替代专用模型，还是与专家模型协同，仍值得持续观察。</p>
 <p><strong>论文标题</strong>：WeVisOne-VL: Unified Visual Perception from Objects to Pixels</p>
 <p>欢迎投稿！欢迎合作！</p>
         </article>
