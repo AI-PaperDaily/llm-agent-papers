@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDRVLA: A Vision-Language-Action Model with Physical Dynamics Representations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">PDRVLA: A Vision-Language-Action Model with Physical Dynamics Representations</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-30</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>北大&amp;京东发布PDRVLA：物理动力学模块如何助力成功率99.3%？</h1>
+<h2>引言</h2>
+<p>视觉-语言-动作（VLA）模型将视觉观测与语言指令映射为机器人动作，但在理解物理世界方面仍显薄弱。已有分析指出，当前主流 VLA 策略对物体质量等物理属性的编码较弱，运动也难以随质量变化灵活调整。为弥补这一缺陷，部分工作引入预训练视频世界模型来预测场景演化，可一旦在控制回路中在线生成未来视频，延迟便会急剧上升。如何在<strong>不引入高延迟</strong>的前提下，让机器人策略具备物理动力学先验，成为该方向的关键问题。</p>
+<p>北京大学与京东的研究团队提出 PDRVLA，通过一个轻量级的“物理动力学模块”从视觉-语言特征中提取物理 Token，以条件化动作生成；训练阶段借助冻结视频世界模型辅助监督，部署阶段则完全无需运行视频生成器。该方法在四项仿真基准上取得 <strong>LIBERO 99.3%、LIBERO-Plus 89.9%、RoboTwin 2.0 93.6%、SimplerEnv 81.5%</strong> 的成功率。</p>
+<h2>一、核心方法</h2>
+<h3>1. 轻量级物理动力学模块：从 VLM 中间层抽取未来知识</h3>
+<p>研究团队观察到，大型语言模型的中间层往往保留更丰富的感知信息，而靠后的 VLM 层容易压制对预测物理变化有用的视觉信号。基于这一发现，PDRVLA 在 Qwen3.5-4B 主干网络的第 8 层（共 32 个解码块）接入物理动力学模块。模块使用 50 个可学习查询（learnable queries），在 4 个 Transformer 块中通过交叉注意力从 VLM 特征中抽取信息，再经自注意力和前馈网络交互，最终投影为 50 个宽度为 2560 的物理 Token。<strong>整个模块仅新增约 57.3M 参数，占 4B 主干的 1.4%</strong>。</p>
+<p><img alt="图1：PDRVLA总体架构与四基准成功率概览" src="https://arxiv.org/html/2610.37381v1/intro_overview_v3.png" /></p>
+<p>动作专家接收三路输入：最后一层 VLM 特征、物理 Token 以及当前本体感受状态向量，输出长度为 K=8 的动作块。这种“中间层+末层”双通道条件化设计，让策略既能依靠末层语义完成高层任务解析，又能通过中间层物理 Token 获取与场景演化相关的时间动态信息。</p>
+<h3>2. 双路监督：直接预测 + 世界模型辅助</h3>
+<p>物理动力学模块的训练由两类互补目标驱动。第一类是<strong>直接预测</strong>：让物理 Token 预测未来 RGB、深度、光流三种模态的 VAE 隐特征。未来目标由冻结的 Wan VAE 编码为紧凑隐表征，经自适应平均池化后，按模态、通道和空间位置分别标准化：</p>
+$$\widetilde{y}^{m}=\frac{y^{m}-\mu^{m}}{s^{m}}$$
+
+<p>直接预测损失对三种模态取平均：</p>
+$$\mathcal{L}_{\mathrm{direct}}=\frac{1}{3}\sum_{m\in\{r,d,f\}}\operatorname{MSE}\left(g_{\eta}^{m}(C_{t}),\,\widetilde{y}^{m}\right)$$
+
+<p>第二类是<strong>视频世界模型辅助监督</strong>：冻结的 LingBot-Video-Dense-1.3B 接收 RGB 隐变量片段、物理 Token 和噪声时间步，当前帧保持干净，未来帧与高斯噪声按线性路径混合：</p>
+$$z^{r}_{\sigma,\mathrm{future}}=(1-\sigma)z_{\mathrm{future}}^{r}+\sigma\epsilon$$
+
+<p>三个输出头（RGB 冻结，深度、光流可训练）预测未来潜速度，辅助损失为：</p>
+$$\mathcal{L}_{\mathrm{WM}}=\sum_{m\in\{r,d,f\}}\operatorname{MSE}\!\left(\widehat{v}_{\mathrm{future}}^{m},\epsilon-z_{\mathrm{future}}^{m}\right)$$
+
+<p>值得注意的是，世界模型仅参与预训练；联合策略训练时移除视频模型及其输出头，但保留直接预测损失继续监督物理 Token，这正是部署阶段能够免去在线视频生成的关键。</p>
+<p><img alt="图2：PDRVLA完整架构与动作专家流程" src="https://arxiv.org/html/2610.37381v1/model_architecture_v9.png" /></p>
+<h3>3. 跨具身数据管线：合成与标注扩展</h3>
+<p>训练语料全部来自公开数据集，包括约 126 万条真实机器人轨迹（14,893 小时）、122 万条 UMI 演示（10,259 小时）、187 万条仿真交互（8,868 小时），以及 805 万条通用 VL 数据和 2,363 万条空间/具身 VL 数据。</p>
+<p>为扩展具身覆盖，研究者将 EgoDex 的第一人称人类演示重定向到 12 种机械臂模型：先用 SAM3 分割并修复人手区域，再用 ProPainter 重建背景，然后按重定向动作渲染目标机械臂并合成到视频中，最后利用 DA3 深度估计处理遮挡。该管线产出约 89.7 万条双臂机器人轨迹，累计约 2,646 小时。</p>
+<p>语言标注方面，研究者构建了 17.9 亿帧子任务标注（约 110 万条 VL 示例）和约 256 万关键帧的 ECoT 标注，覆盖场景描述、任务进度评估和下一步运动描述，为 VLM 提供了超越动作轨迹的任务级推理监督。</p>
+<h2>二、实验</h2>
+<p>PDRVLA 在四个仿真基准上进行评测，比较对象包括 π0、π0.5、OpenVLA-OFT、GR00T-N1.7、Cosmos-Policy、LingBot-VA、Xiaomi-Robotics-0、Qwen-VLA-Instruct、Qwen-RobotManip 和 InternVLA-A1.5。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>LIBERO</th>
+<th>LIBERO-Plus</th>
+<th>RoboTwin 2.0</th>
+<th>SimplerEnv</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>π0.5</td>
+<td>96.9</td>
+<td>84.4</td>
+<td>79.8</td>
+<td>57.1</td>
+</tr>
+<tr>
+<td>Qwen-RobotManip</td>
+<td>99.1</td>
+<td>89.0</td>
+<td>93.0</td>
+<td>–</td>
+</tr>
+<tr>
+<td>InternVLA-A1.5</td>
+<td>98.9</td>
+<td>84.8</td>
+<td>93.2</td>
+<td>80.8</td>
+</tr>
+<tr>
+<td><strong>PDRVLA</strong></td>
+<td><strong>99.3</strong></td>
+<td><strong>89.9</strong></td>
+<td><strong>93.6</strong></td>
+<td><strong>81.5</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>在 LIBERO 上，PDRVLA 平均成功率达 99.3%，其中 Spatial 达 100.0%，Object 和 Goal 均为 99.8%；Long 子集为 97.6%，略低于 LingBot-VA 的 98.5%。在扰动更丰富的 LIBERO-Plus 上，PDRVLA 以 89.9% 领先，在光照（99.1%）、语言指令（90.7%）和背景纹理（99.4%）三类扰动下均为最佳，但在机器人初始状态扰动下仅 75.2%，是该方法的相对弱项。</p>
+<p>在双臂 RoboTwin 2.0 上，PDRVLA 在 clean 与 randomized 两个设置下分别达 93.9% 和 93.3%，平均 93.6%；在 SimplerEnv 上平均 81.5%，其中 Eggplant → Basket 任务上以 97.6% 大幅领先（InternVLA-A1.5 为 75.7%），但 Carrot → Plate 任务仅 64.6%，低于 InternVLA-A1.5 的 85.4%。</p>
+<p>在物理表征学习层面，研究者把同一批次数据分别用“仅直接预测”和“直接预测+世界模型辅助”训练，在 828 段未参与训练的 RoboCOIN 视频上比较。加入世界模型后，RGB 预测误差相对下降 <strong>4.06%</strong>，深度下降 <strong>2.12%</strong>，光流下降 0.62%，平均下降 1.32%。光流的 95% 配对 bootstrap 区间跨零，说明增益主要体现在外观和几何维度。训练曲线的早期（前 6,000 步）差距最为明显。</p>
+<p><img alt="图3：世界模型辅助下的未来特征预测训练误差曲线" src="https://arxiv.org/html/2610.37381v1/figures/physical_wm_training_main.png" /></p>
+<p>消融研究还考察了推理阶段子任务条件化、子任务刷新频率和 ECoT 训练。自生成子任务描述将 LIBERO-Plus 整体成功率从 89.93% 提升到 90.23%，在机器人初始状态和相机视角扰动下增益最明显；在 RoboCasa365 的八个任务上，每 1 或 8 个动作块刷新一次子任务描述都能把平均成功率从 26.25% 提升到约 32.2%，而刷新间隔延长到 32 个块时反而降至 20.63%。ECoT 训练在不生成推理文本的情况下可将 LIBERO Long 子集从 92.8% 提升至 96.0%，但推理时额外生成 ECoT 并未带来一致收益。</p>
+<h2>三、展望</h2>
+<p>PDRVLA 展示了一条让 VLA 模型在训练阶段“预知未来”、在部署阶段“轻装上阵”的技术路径：物理 Token 作为中间表征，既能吸收视频世界模型的时序先验，又不会给控制回路增加延迟。论文提出的后续方向包括扩展预测目标至物体几何、接触状态和材质属性，并研究这些线索如何互补地服务动作学习。当机器人在非结构化环境中面对材质、质量各异的物体时，这类物理表征能否带来比仿真基准更显著的提升，值得持续关注。</p>
+<p><strong>论文标题</strong>：PDRVLA: A Vision-Language-Action Model with Physical Dynamics Representations</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.37381.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-28_PDRVLA-A-Vision-Language-Action-Model-with-Physical-Dynamics-Representations.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-28_PDRVLA-A-Vision-Language-Action-Model-with-Physical-Dynamics-Representations.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
