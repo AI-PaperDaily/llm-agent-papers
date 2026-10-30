@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LongZero: Enhancing Long-Context Reasoning in LLMs from Zero Data</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">LongZero: Enhancing Long-Context Reasoning in LLMs from Zero Data</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-10-30</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>清华让4B大模型自造数据：五项长文本测试均分提升2.74分！</h1>
+<h2>一、引言</h2>
+<p>让大模型阅读一份长报告并不难，难的是让它从多份材料中找到相关证据、排除相似信息，再完成跨文档推理。强化学习有望改善这些能力，但训练数据必须同时满足<strong>上下文足够长、问题有难度、答案可验证</strong>等条件。人工标注成本高，自然数据又难以大规模获取。</p>
+<p>现有合成方案通常依赖真实语料或更强的教师模型。问题在于：当模型自身变强后，更优质的外部数据和教师也会变得更难获得。</p>
+<p>清华大学提出的 <strong>LongZero</strong> 换了一个顺序：让待训练模型先写出问题、证据和答案，再把证据扩写成长文档，最后通过强化学习解答自己出的题。实验显示，这种由虚构世界生成的训练任务，可以迁移到真实长文本基准。不过，“零数据”指不依赖外部训练语料或更强教师，并不意味着模型没有预训练知识，也不意味着流程完全没有人工设计。</p>
+<h2>二、核心方法</h2>
+<p><img alt="图1：LongZero的数据合成流程，左侧为多跳推理任务，右侧为多轮检索任务" src="https://arxiv.org/html/2610.30132v1/overview_figure.svg" /></p>
+<h3>1. Reasoning Data Synthesis：先固定证据，再扩写长文档</h3>
+<p>直接让模型写一篇长文，再围绕它出题，存在循环依赖：模型如果尚不擅长理解长文本，就可能无法可靠地检查自己写出的题目。</p>
+<p>LongZero 将过程倒过来。首先，程序采样领域、文体和命名风格，再让模型生成一份短小的 <strong>JSON 世界设定</strong>，其中包含虚构实体、原子事实、干扰事实、多跳问题及其答案。</p>
+<p>例如，一个示意问题可以是：“《晨光》所属出版社的创办人出生于哪里？”对应的事实链分别指出刊物所属出版社、出版社创办人以及创办人的出生地。设定中还可以加入同姓人物或名称相近的机构，避免模型只靠名字相似度作答。</p>
+<p>问题难度由三个方向共同控制：</p>
+$$
+\operatorname{Difficulty}(x,q)\propto |x|\cdot H_q\cdot K_q
+$$
+
+<p>这个关系是任务设计指导，而非拟合得到的定量规律：$|x|$ 表示上下文长度，$H_q$ 表示推理跳数，$K_q$ 表示模仿支持事实的干扰事实数量。</p>
+<p>接下来，模型将事实分配到不同文档，让同一问题的支持证据尽量分散，并把干扰事实放到其他位置。随后，它按规划独立扩写出 <strong>8 篇不同体裁的文档</strong>，程序打乱文档顺序，构成长上下文。</p>
+<p>最后还有一道<strong>忠实性检查</strong>：只有答案或等价别名在扩写文本中原样出现，问题才会保留。这能排除一部分答案被遗漏或改写的样本，但<strong>不能证明整条证据链都正确，也不能完全排除文档之间的冲突</strong>。</p>
+<h3>2. Retrieval Data Synthesis：在相似回答中定位目标</h3>
+<p>只有多跳推理还不够，长文本能力也需要精确定位。LongZero 因此补充了类似 <strong>MRCR（多轮共指检索）</strong> 的任务。</p>
+<p>模型先多次响应“写一首关于老虎的诗”之类的请求，形成自己的回答池。程序将相似请求的多条回答插入一段长对话，再要求模型复述其中第 $k$ 条，并在答案前加上指定随机前缀。</p>
+<p>由于插入位置和目标序号由程序决定，参考答案可以直接构造，不必再让模型判断长对话中的正确答案。生成时使用的少量格式和普通名词来自公开 MRCR 数据；对话内容则由待训练模型生成。</p>
+<p>两类任务各有侧重：推理任务训练模型<strong>跨文档连接事实</strong>，检索任务训练模型<strong>区分相似内容并准确复现</strong>。</p>
+<h3>3. Difficulty Filtering 与 GRPO：筛选可学习的问题</h3>
+<p>LongZero 使用<strong>组相对策略优化（GRPO）</strong>训练模型：针对同一个输入采样多个回答，再用组内奖励计算相对优势。</p>
+$$
+\hat{A}_{i,t}=\frac{r_i-\operatorname{mean}(\mathbf r)}{\operatorname{std}(\mathbf r)}
+$$
+
+<p>这个公式的实际含义是：某个回答的奖励高于组内平均值时，其生成行为会得到相对正向的训练信号；如果一组回答奖励完全相同，就没有这种区分信号。</p>
+<p>因此，多跳推理题在训练前会经过<strong>难度筛选</strong>：模型反复回答同一道题，出现过正确和错误答案的题目才被保留；在规定次数内结果始终一致的题目被丢弃。研究者还发现，持续答错的题中有一部分存在事实冲突等缺陷，但这不代表所有难题都有问题。检索数据则不经过这一步筛选。</p>
+<p>奖励由规则计算：</p>
+<ul>
+<li><strong>推理任务</strong>要求答案以指定格式结尾，并与标准答案或别名匹配；匹配时限制答案额外长度，防止通过罗列候选项得分。</li>
+<li><strong>检索任务</strong>要求输出以随机前缀开头；前缀正确后，再依据回答与目标文本的字符串相似度给部分奖励。</li>
+</ul>
+<p>训练时，GRPO 使用组内相对奖励更新策略，并通过截断和 KL 惩罚约束策略变化。这样，数据生成、难度筛选和训练都围绕同一个模型展开。</p>
+<h2>三、实验</h2>
+<p>实验分别使用 <strong>Qwen3-4B-Thinking-2507</strong> 和思考模式下的 <strong>Qwen3-8B</strong>。每个模型各自生成并筛选训练数据，最终使用 2,304 道推理题和 1,152 条检索对话，比例为 2:1。两者分别训练 72 步和 108 步；每步包含 64 个输入，每个输入采样 8 个回答。</p>
+<p>对照方法包括：用真实问答数据扩展出的 <strong>Enhanced HotpotQA</strong>，以及由 <strong>Qwen3.5-397B-A17B</strong> 基于真实文档生成并验证的多跳问答。后者也混入相同的自合成检索数据。各方法共享主要强化学习配置和对应的最终检查点，但 Enhanced HotpotQA 使用其原有提示和精确匹配奖励。</p>
+<p>评测覆盖 LongBench、LongBench v2、FRAMES、AA-LCR 和 LongReason，结果取两次运行的均值；五项平均分为<strong>不加权平均</strong>。其中，LongBench 使用 F1 衡量答案重合度，AA-LCR 的自由回答由模型裁判评分。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Qwen3-4B-Thinking-2507</th>
+<th style="text-align: right;">基础模型</th>
+<th style="text-align: right;">Enhanced HotpotQA</th>
+<th style="text-align: right;">教师合成问答</th>
+<th style="text-align: right;">LongZero</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FRAMES</td>
+<td style="text-align: right;">51.27</td>
+<td style="text-align: right;">51.46</td>
+<td style="text-align: right;">52.97</td>
+<td style="text-align: right;"><strong>55.76</strong></td>
+</tr>
+<tr>
+<td>AA-LCR</td>
+<td style="text-align: right;">36.50</td>
+<td style="text-align: right;"><strong>41.50</strong></td>
+<td style="text-align: right;">38.50</td>
+<td style="text-align: right;">39.50</td>
+</tr>
+<tr>
+<td>五项平均</td>
+<td style="text-align: right;">54.68</td>
+<td style="text-align: right;">56.57</td>
+<td style="text-align: right;">55.99</td>
+<td style="text-align: right;"><strong>57.42</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>在该 4B 模型上，LongZero 的五项平均分比基础模型提高 <strong>2.74 分</strong>，也高于两个数据基线；但它并非每项都领先，例如 AA-LCR 上 Enhanced HotpotQA 更高。虚构世界训练带来的收益出现在 FRAMES 等真实实体任务中，说明所学技能在测试条件下具有一定迁移性。</p>
+<p>在 Qwen3-8B 上，LongZero 的五项平均分从 44.63 提高到 <strong>45.66</strong>，但 LongBench v2 从 32.11 降至 32.01。该模型在评测时使用 YaRN 扩展上下文；AA-LCR 的长输入使输出空间紧张，LongZero 的 200 个回答中有 120 个没有给出最终答案，因此不能把该项低分简单归因于证据检索失败。</p>
+<p><img alt="图2：训练曲线图例" src="https://arxiv.org/html/2610.30132v1/curve_legend.svg" /></p>
+<p><img alt="图3：Qwen3-4B-Thinking-2507在自合成数据上的整体训练与验证变化" src="https://arxiv.org/html/2610.30132v1/curve_4b_all.svg" /></p>
+<p>消融实验进一步显示，两类任务的组合比单独使用更有效：在同一 4B 模型上，仅用推理数据的五项平均分为 <strong>55.38</strong>，仅用检索数据为 <strong>53.85</strong>；推理与检索按 1:1 混合达到 <strong>55.95</strong>，按 2:1 混合则达到 <strong>57.42</strong>。这组结果支持两类数据具有互补性，但也表明检索数据单独使用并不一定带来平均性能提升。</p>
+<p><strong>论文标题</strong>：LongZero: Enhancing Long-Context Reasoning in LLMs from Zero Data</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.30132.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-29_LongZero-Enhancing-Long-Context-Reasoning-in-LLMs-from-Zero-Data.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-29_LongZero-Enhancing-Long-Context-Reasoning-in-LLMs-from-Zero-Data.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
