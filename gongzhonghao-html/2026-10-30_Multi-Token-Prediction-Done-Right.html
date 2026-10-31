@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Token Prediction Done Right</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Multi-Token Prediction Done Right</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-01</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>MIT改进大模型MTP：1.2B模型解码快1.1%，只改一行！</h1>
+<h2>一、引言</h2>
+<p>大模型生成文字时，通常每次只预测下一个 token。为了同时提升训练效果和推理速度，越来越多模型引入<strong>多 token 预测（MTP）</strong>：在预测下一个 token 的同时，也训练额外模块预测更远位置的 token。</p>
+<p>这些额外模块还能充当推测解码的“起草者”：先快速提出候选，再由主模型验证。问题在于，标准 MTP 用真实数据训练起草者，而推测解码更关心的，是起草者能否与主模型的预测分布对齐。两者相关，却并不完全相同。</p>
+<p>MIT 研究者在论文 <em>Multi-Token Prediction Done Right</em> 中指出，标准 MTP 的梯度已经包含对齐主模型的信号，但它被另一部分噪声较大的梯度掩盖。研究者提出 <strong>Soft-MTP</strong>，通过调整梯度流向提取有用信号。在最大 1.2B 参数的实验中，该方法相较标准 MTP 改善了困惑度、推测解码和部分下游任务表现，同时保留原有训练计算路径。</p>
+<h2>二、核心方法</h2>
+<h3>MTP 梯度分解：找出已有的自蒸馏信号</h3>
+<p>标准 MTP 在共享主干之外增加预测头。每个预测头产生隐藏状态，再通过与下一 token 预测（NTP）共享的线性输出层，得到未来某个位置的 token 分布。训练时，NTP 和 MTP 都使用真实 token 作为交叉熵目标。</p>
+<p>关键是<strong>位置对齐</strong>。假设 MTP 在位置 $t$ 预测位置 $t+k+1$ 的 token，那么可以找到位置 $t+k$ 的 NTP 输出：两者预测的是同一个 token，只是 NTP 基于更靠后的前缀作出预测。</p>
+<p><img alt="图1：MTP预测与位置对齐的NTP分布" src="https://arxiv.org/html/2610.38331v1/images/pos_aligned_ntp.png" /></p>
+<p>记 MTP 分布为 $p$，对齐后的 NTP 分布为 $q$，真实 token 的独热向量为 $x$，共享输出层为 $W$。标准 MTP 对隐藏状态的梯度可以精确拆成：</p>
+$$
+g_{\text{hard}}
+=\underbrace{W^{\intercal}(p-q)}_{g_{\mathrm{KL}}}
++\underbrace{W^{\intercal}(q-x)}_{g_{\text{res}}}
+$$
+
+<p>这个分解表明，标准 MTP 梯度同时包含让 MTP 靠近 NTP 分布的 <strong>KL 自蒸馏梯度</strong>，以及由对齐 NTP 分布与真实 token 之差产生的<strong>残差梯度</strong>。</p>
+<p>两部分的作用不同：前者直接服务于起草者与验证者的分布对齐；后者既包含 NTP 预测误差，也包含真实 token 采样带来的噪声。移除残差会让训练目标偏向模型自己的 NTP 分布，而不再完全等同于拟合真实数据；但对推测解码而言，匹配验证者恰恰是有价值的方向。</p>
+<h3>KL 梯度恢复：复用交叉熵，改变反向传播</h3>
+<p>直接计算自蒸馏 KL 散度，需要同时取得教师和学生在整个词表上的分布。词表较大时，这会增加显存开销，也难以直接利用常见的融合交叉熵算子。</p>
+<p><strong>KL 梯度恢复技巧</strong>换了一条路径：保留原有的 NTP 和 MTP 交叉熵计算，只在隐藏状态之间增加一条反向传播路径。其构造如下：</p>
+$$
+\tilde{\mathbf h}_{t}
+=\mathbf h_{t}^{(0)}
++\sum_{\substack{k=1\\t-k\geq 1}}^{K}
+\left[\operatorname{sg}\!\left(\mathbf h_{t-k}^{(k)}\right)
+-\mathbf h_{t-k}^{(k)}\right]
+$$
+
+<p>其中 $\operatorname{sg}$ 表示停止梯度：方括号在前向计算中数值为零，却会在反向传播时向对应的 MTP 隐藏状态传入负梯度。</p>
+<p>这条负梯度恰好抵消 MTP 梯度中的残差，因此：</p>
+$$
+\nabla_{\mathbf h_t^{(k)}}
+\left(\tilde{\mathcal L}_{\text{NTP}}+\mathcal L_{\text{MTP}}^{(k)}\right)
+=g_{\text{hard}}-g_{\text{res}}=g_{\mathrm{KL}}
+$$
+
+<p>这意味着，MTP 隐藏状态及其上游模块收到的是精确恢复的 KL 自蒸馏梯度，而不需要显式构造 KL 所需的完整词表分布。</p>
+<p>示意代码中的关键改动只有一行：</p>
+<pre class="highlight"><code class="language-python">h0[:, k:] += hk.detach() - hk
+</code></pre>
+
+<p>前向时，<code>detach()</code> 前后的数值相同；反向时，只有未被 <code>detach()</code> 的部分传递负梯度。实际实现还需处理 MTP 损失权重、不同预测头的目标数量和位置掩码，不能将示意代码直接视为完整训练实现。</p>
+<p><img alt="图2：Soft-MTP的梯度路由示意" src="https://arxiv.org/html/2610.38331v1/images/soft_mtp_explanation_8.png" /></p>
+<h3>Soft-MTP：对不同模块采用不同梯度</h3>
+<p>Soft-MTP 并非把所有训练梯度都替换成 KL：</p>
+<ul>
+<li><strong>MTP 预测头和共享主干</strong>：MTP 路径上传播恢复出的 KL 梯度，使预测更贴近对齐的 NTP 分布。</li>
+<li><strong>共享输出层</strong>：保留 MTP 交叉熵梯度，继续用真实数据训练输出映射。</li>
+<li><strong>原有 NTP 路径</strong>：前向数值和 NTP 自身的梯度保持不变。</li>
+</ul>
+<p>这种分工也是 Soft-MTP 与直接最小化 KL 的重要区别。后者也会用 KL 梯度更新共享输出层；而共享输出层同时承担 NTP 和 MTP 的读出，训练它靠近数据，可能有助于避免仅通过改变读出方式来缩小两种预测的差异。</p>
+<h2>三、实验</h2>
+<p>研究者使用 LLaMA 风格模型，在 FineWeb-Edu 上训练约 315 亿 token，主实验的基础模型规模从 167M 到 1.2B 参数。MTP 采用 DeepSeek 风格的顺序预测结构，设置三个额外预测头；对比包括纯 NTP、标准 MTP、直接计算 KL 的 KL-MTP 和 Soft-MTP。</p>
+<p><strong>梯度分析支持了分解动机。</strong>实验以梯度期望方向的强度相对于批次间方差来衡量信噪比：从 167M 到 1.2B，KL 分量的信噪比分别约为残差的 4.1 倍到 4.6 倍；但残差约占传入共享主干的 MTP 梯度份额的 80%。在冻结输出层的代理分析中，沿残差对应的更新方向移动会增加 NTP 损失；这一分析用于描述梯度倾向，不等同于优化器的实际完整更新。</p>
+<p><img alt="图3：不同模型规模下的梯度信噪比" src="https://arxiv.org/html/2610.38331v1/images/snr_across_scale_muon.png" /></p>
+<p>在主实验的各个规模下，Soft-MTP 的 NTP 困惑度均低于标准 MTP；从 689M 参数起，MTP 困惑度也更低。<strong>困惑度</strong>越低，表示模型对测试文本的概率预测通常越好。另一次 332M 参数、约 73 亿 token 的较短训练中，研究者调整了 MTP 权重和预测跨度，Soft-MTP 在所测试设置下均取得更低的 NTP 与 MTP 损失。</p>
+<p><strong>推测解码的收益明确但幅度适中。</strong>在 1.2B 模型的 FineWeb-Edu 测试中，相对于各自的普通自回归解码，标准 MTP 的速度比为 1.74 倍，Soft-MTP 为 1.76 倍，后者相对前者约快 1.1%。在五个测试领域平均，Soft-MTP 在各模型规模上的接受长度提升约 1.8%—2.2%，速度提升约 1.4%—1.5%。</p>
+<p><strong>训练成本接近标准 MTP，但不等于没有 MTP 成本。</strong>单张 NVIDIA H200 上、1.2B 模型与三个预测头的测试中，标准 MTP 和 Soft-MTP 使用融合交叉熵时的峰值显存均为 107.0 GB，吞吐量分别为 49,783 和 49,748 token/秒；直接计算 KL 的 KL-MTP 为 46,990 token/秒、128.1 GB。Soft-MTP 相比纯 NTP 仍需承担额外 MTP 模块的成本。</p>
+<p>下游测试中，1.2B Soft-MTP 的平均零样本准确率为 57.31%，标准 MTP 为 56.80%；并非每个单项任务都提升。移除 MTP 头并仅用 NTP 损失微调后，Soft-MTP 在 HumanEval 的 <strong>pass@64</strong>（64 次采样中至少一次通过的指标）上达到 43.90%，标准 MTP 为 40.85%；GSM8K 准确率分别为 49.66% 和 48.60%。不过，直接 KL-MTP 在数学微调上更强：其 GSM8K 和 MATH-500 准确率分别为 50.34% 和 26.00%，高于 Soft-MTP 的 49.66% 和 25.00%。</p>
+<p><strong>论文标题</strong>：Multi-Token Prediction Done Right</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.38331.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-30_Multi-Token-Prediction-Done-Right.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-30_Multi-Token-Prediction-Done-Right.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
