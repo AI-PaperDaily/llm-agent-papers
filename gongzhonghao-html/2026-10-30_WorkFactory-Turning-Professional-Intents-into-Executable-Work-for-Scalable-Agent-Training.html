@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkFactory: Turning Professional Intents into Executable Work for Scalable Agent Training</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">WorkFactory: Turning Professional Intents into Executable Work for Scalable Agent Training</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-02</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>IQuest等用图规划训练Agent，35B-A3B涨686 Elo！</h1>
+<h2>一、引言</h2>
+<p>让Agent完成职业工作，难点往往不只是会不会调用工具，而是任务环境是否足以支撑一次可靠的执行。</p>
+<p>例如，采购任务要求比较供应商的长期成本，却没有说明某家报价是否包含运费。Agent即使生成了格式完整的表格，也可能只能依赖未经证实的假设。反过来，如果任务直接提供算好的总成本，又会让训练数据失去关键的计算和判断过程。</p>
+<p>由IQuest Research等机构提出的<strong>WorkFactory</strong>，试图解决这类问题：从职业工作目标出发，规划完成任务所需的信息及其位置，再通过试运行发现和修复缺陷，最终收集教师Agent的执行轨迹用于训练。基于这些数据训练的WorkPilot-35B-A3B，在GDPval-AA上的Elo评分从879提升至1565；其中基座分数为官方评分，微调后分数为校准到同一尺度的本地估计。</p>
+<h2>二、核心方法</h2>
+<h3>多源职业意图合成：确定要做什么工作</h3>
+<p>WorkFactory首先构建<strong>职业意图库</strong>。这里的“意图”描述的是有意义的工作目标，而不是已经填好材料和数字的具体任务。</p>
+<p>意图来自三类来源：</p>
+<ul>
+<li><strong>职业层级</strong>：从职业和岗位出发，扩展出可能出现的工作情境。</li>
+<li><strong>技能文档</strong>：将能够前后衔接的操作组合成工作流，例如先整理数据，再分析并形成报告。</li>
+<li><strong>真实职业交付物</strong>：根据现有文件的内容、受众和形式，反推可能产生该文件的工作目标。</li>
+</ul>
+<p>候选意图经过大模型审查，检查其内部一致性、可行性和职业合理性，再进入共享意图库。这一步决定了任务的工作范围；接下来的环境构建则负责让这些工作真正有条件完成。</p>
+<p><img alt="图1：WorkFactory从信息规划到试运行修复的流程" src="https://arxiv.org/html/2610.37161v1/WorkFactory_supplier_workflow_v2.png" /></p>
+<h3>信息支撑图：从交付物反推所需信息</h3>
+<p>一组看似真实的文件，并不代表任务就能完成。WorkFactory从目标交付物开始，反推所需的计算、判断和证据，并用<strong>信息支撑图</strong>表示它们之间的关系：</p>
+$$
+\mathcal{G}_{\mathrm{info}}=(\mathcal{V}_{\mathrm{info}},\mathcal{V}_{\mathrm{carrier}},\mathcal{E}_{\mathrm{info}},\mathcal{E}_{\mathrm{loc}})
+$$
+
+<p>该图分别记录信息单元、信息载体、信息之间的支撑关系，以及信息与载体的位置绑定。</p>
+<p>以供应商选择为例，最终建议依赖供应商资料和成本比较；成本比较又依赖需求预测、报价及费用发生时间等信息。图不仅记录这些依赖，还指定信息应出现在用户请求、参考文件还是可访问的外部资源中。</p>
+<p>关键是区分<strong>已提供的前提</strong>和<strong>需要求解者推导的结果</strong>：需求数据与商业条款应当可获得，成本计算和最终推荐则留给Agent完成。内部构建要求可以隐藏，但完成任务所必需的具体前提和义务必须通过求解者可见的输入表达，或能够通过资源获取。</p>
+<p>随后，规划器将信息图转成用户请求、文件规格和有向无环的构建依赖。环境构建器据此复用、改写或合成材料，再通过程序与大模型检查文件是否符合计划；有限重试后仍不合格的任务会被丢弃。</p>
+<h3>基于执行的环境修复：验证任务并收集轨迹</h3>
+<p>规划不能保证实际生成的文件一定完整一致，因此WorkFactory引入<strong>独立试运行</strong>。</p>
+<p>探测Agent只能看到请求和可访问资源，看不到信息图、构建计划或此前的执行记录。它尝试完成任务，并结合实际查阅的材料和工具观察，判断问题究竟来自环境缺陷、求解错误，还是正常的开放式选择。只有被认为会阻断任务完成的问题才触发修复。</p>
+<p>修复器可以修改请求和已有参考文件，但要保留文件数量、类型和依赖结构，也不能改变原来的工作目标。例如，补充缺失的每箱运费条款可以恢复成本比较所需的前提；直接补上算好的比较结果，则可能破坏任务。</p>
+<p>修订结果需要通过构建检查和工作保留审查，再由新的探测执行验证；修复预算耗尽仍有阻断问题的任务会被丢弃。通过验证后，独立教师模型GLM-5.3在干净沙箱中执行任务，且同样无法看到内部规划和探测诊断。</p>
+<p>教师轨迹经过轻量过滤，排除重复推理、重复工具调用或交付物不足等情况；对初始轨迹最长的5%任务，还会根据交付物两两比较进行选择性拒绝采样。保留的轨迹被转换为训练序列，通过<strong>掩码自回归监督</strong>微调学生模型。</p>
+<h2>三、实验</h2>
+<p>最终语料包含<strong>112,686个任务，覆盖612个细分职业</strong>。每个任务平均提供4.15个参考文件；也有任务不提供参考文件，而要求Agent通过网络搜索获取信息。教师轨迹平均包含57.36轮助手交互和62.95次工具调用。</p>
+<p>研究者分别微调Qwen的4B、27B和35B-A3B基座，并在四项职业工作基准上对比微调前后的表现。本地评测中，每个模型与任务组合运行三次。<strong>Elo</strong>用于衡量GDPval-AA中的相对表现，其他基准报告各自的官方指标。</p>
+<p><img alt="图2：WorkPilot-35B-A3B与基座模型的职业工作基准表现" src="https://arxiv.org/html/2610.37161v1/fig_benchmark_scores.png" /></p>
+<p>在35B-A3B基座与WorkPilot的对比中，四项指标均有提升：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>基准</th>
+<th style="text-align: right;">基座模型</th>
+<th style="text-align: right;">WorkPilot-35B-A3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GDPval-AA</td>
+<td style="text-align: right;">879</td>
+<td style="text-align: right;">1565</td>
+</tr>
+<tr>
+<td>JobBench</td>
+<td style="text-align: right;">28.91</td>
+<td style="text-align: right;">62.35</td>
+</tr>
+<tr>
+<td>Workspace-Bench</td>
+<td style="text-align: right;">47.12</td>
+<td style="text-align: right;">56.53</td>
+</tr>
+<tr>
+<td>OmegaUse-OfficeVal</td>
+<td style="text-align: right;">7.14</td>
+<td style="text-align: right;">21.18</td>
+</tr>
+</tbody>
+</table></div>
+<p>其中，GDPval-AA的879是官方v2.1 Elo，1565是校准到同一尺度的本地估计。27B版本的GDPval-AA本地估计为1612 Elo，处于表中所列部分前沿模型的分数区间，但这不意味着其在所有基准上都达到相同水平。4B、27B和35B-A3B三个版本均在四项测试上优于各自基座。</p>
+<p>这些结果也有边界：由于教师模型采用文本输入，训练和评测都通过纯文本任务接口进行，尚未验证直接从视觉证据中学习的效果；职业交付物仍需适当的人类审核。</p>
+<p><strong>数据规模实验</strong>进一步显示收益存在递减。对35B-A3B模型，前5,000个任务带来447 Elo的提升，而从75,000扩展到110,000个任务只增加13 Elo。执行长度也并非越长越好：平均交互轮数从基座的24.87轮升至2,000任务训练后的162.88轮，再在110,000任务时降至85.90轮，同时Elo继续上升。</p>
+<p><img alt="图3：训练任务规模、执行长度与工具调用失败率的变化" src="https://arxiv.org/html/2610.37161v1/fig_scala_1.svg" /></p>
+<p><strong>组件对照实验</strong>使用三组各5,000个任务，比较直接文件级规划、信息级规划，以及信息级规划加执行修复。加入信息图后，探测报告中的推导链断裂比例从24.86%降至6.86%，但信息泄漏或捷径问题从1.92%升至3.36%。继续加入执行修复后，后者降至0.84%；跨文件不一致也从25.74%降至4.84%。三组数据分别训练的模型达到1245、1293和1326 Elo，表明规划与修复在该实验中具有互补价值。</p>
+<p>最后，同一批30,000个任务上的教师对照显示：使用GLM-5.3轨迹训练的35B-A3B学生达到1483 Elo，使用DeepSeek-V4-Flash-0731轨迹的学生达到1248 Elo，两者均高于879 Elo的基座。相同任务也能产生不同训练收益，教师轨迹的生成方式仍是重要条件。</p>
+<p><strong>论文标题</strong>：WorkFactory: Turning Professional Intents into Executable Work for Scalable Agent Training</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.37161.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-10-30_WorkFactory-Turning-Professional-Intents-into-Executable-Work-for-Scalable-Agent-Training.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-10-30_WorkFactory-Turning-Professional-Intents-into-Executable-Work-for-Scalable-Agent-Training.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
