@@ -472,7 +472,7 @@
                                 <span class="card-badge">大模型/Agent</span>
                             </div>
                             <h3 class="card-title">Multi-Token-Prediction-Done-Right</h3>
-                            <p class="card-preview">MIT改进大模型MTP：1.2B模型解码快1.1%，只改一行！ 一、引言 大模型生成文字时，通常每次只预测下一个 token。为了同时提升训练效果和推理速度，越来越多模型引入多 token 预测（MTP）：在预测下一个 token 的同时，也训练额外模块预测更远位置的 token。 这些额外模块还能充当推测解码的“起草者”：先快速提出候选，再由主模型验证。问题在于，标准 MTP 用真实数据训练起草...</p>
+                            <p class="card-preview">MIT改进大模型MTP：推测解码平均快1.4%—1.5%！ 一、引言 大模型生成文本时，通常一次预测一个词元。为了减少逐个生成的等待时间，多词元预测（MTP）让模型提前预测后续多个词元，再通过推测解码批量验证候选结果。MTP既可能改善模型能力，也能为推理加速提供草稿。 但这里存在一个训练与使用目标的差异：标准MTP直接学习真实数据中的词元，而推测解码更关心MTP给出的候选分布是否接近模型自身的下一...</p>
                         </div>
                         <div class="card-action">
                             <a href="gongzhonghao-html/2026-10-30_Multi-Token-Prediction-Done-Right.html" class="card-link">
