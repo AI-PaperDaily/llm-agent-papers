@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CaPtain: A Pipeline for Post-Training Code-as-Policy Robot Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">CaPtain: A Pipeline for Post-Training Code-as-Policy Robot Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-04</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>港中文与NovaXBot训练Agent：LIBERO成功率73.8%！</h1>
+<h2>一、引言</h2>
+<p>让机器人完成“把杯子放进托盘”这样的任务，难点并不只是理解指令：系统还要识别物体、选择抓取位置、控制机械臂，并在碰撞或抓空后重新尝试。</p>
+<p><strong>代码即策略（Code-as-Policy，CaP）</strong>为此提供了一条路径：让大模型根据图像编写代码，调用机器人接口，再根据执行反馈决定下一步。但现有方案往往依赖测试时调用闭源大模型，或者把抓取、放置等关键操作交给预训练技能。小型开源模型则常常连接口都用不好。</p>
+<p>港中文与NovaXBot合作提出的<strong>CaPtain</strong>尝试将语言Agent常见的监督微调与多轮强化学习流程引入机器人操作：让4B视觉语言模型直接使用低层感知与运动接口，并借助仿真器中的物理状态解决长任务的奖励分配问题。</p>
+<h2>二、核心方法</h2>
+<p>CaPtain由执行环境、监督微调和强化学习三部分组成：环境规定模型能做什么，监督微调教会它如何交互，强化学习再根据执行结果改进操作策略。</p>
+<p><img alt="图1：CaPtain的执行闭环与训练流程" src="https://arxiv.org/html/2610.40799v1/fig1_harness.png" /></p>
+<h3>CaPtain-Harness：用低层工具建立操作闭环</h3>
+<p>Agent接收自然语言任务、接口说明以及头部和腕部相机图像，在每一轮生成Python代码，由环境执行后返回文本结果和新图像，再决定下一轮操作。每个任务最多进行60轮请求。</p>
+<p>环境提供<strong>22项低层能力</strong>，包括目标分割、指点、几何测量、位姿计算、机械臂移动和夹爪控制。它不提供“抓取”“放置”这样的高层技能：抓哪里、从哪个方向接近、何时闭合夹爪，都由模型生成的代码决定。</p>
+<p>底层仍有必要的基础设施。感知接口使用预训练模型生成分割或指点结果；运动接口负责逆运动学、自碰撞检查和力监测，在接触时按设定停止。因此，低层原语并不等于绕开感知模型或安全控制。</p>
+<p>每次调用后，环境会返回结构化<strong>执行回执</strong>，例如移动停止原因、实际距离、接触力、夹爪开合状态和目标位置。模型可以据此编写条件判断、循环和重试代码。Python会话跨轮保持变量，即使对话历史被压缩，已保存的检测结果和辅助函数仍可使用。</p>
+<h3>SFT：对齐模型与真实交互格式</h3>
+<p>基础模型选用Qwen3.5-4B。研究者先用GPT-6 Astra在同一个执行环境中生成多轮轨迹，再用这些轨迹进行<strong>监督微调（SFT）</strong>。</p>
+<p>训练样本保留部署时的任务说明、工具格式、图像和回执。损失只监督模型生成的推理与代码，不把环境返回内容当作模型输出；重复执行失败或陷入恢复循环的轮次会被屏蔽。训练更新语言模型权重，视觉编码器保持冻结。</p>
+<p>为减少模型照搬历史像素坐标的倾向，部分历史坐标会随机遮盖，迫使模型结合当前图像重新定位。完成这一阶段后，模型具备了按环境协议规划、调用工具和读取反馈的基础，再进入强化学习。</p>
+<h3>Simulator Critic：用物理状态分配多轮奖励</h3>
+<p>机器人任务中的奖励往往在结束时才出现，但一次抓取可能涉及观察、定位、靠近和闭爪等多个请求。若只根据最终成败奖励整条轨迹，很难判断哪些决策真正改变了结果。</p>
+<p>CaPtain采用<strong>非对称Actor-Critic</strong>：执行策略只能看图像和回执；训练阶段的仿真评估器（critic）则可读取策略不可见的物理状态，包括夹爪状态、物体与目标距离、子目标进度等36项特征。评估器由5个小型多层感知机组成，预测当前状态下最终成功的概率，并随策略更新持续训练。</p>
+<p>对非终止请求，单步信用定义为：</p>
+$$
+\delta_t=c_t+V_{\phi}(s_{t+1},t)-V_{\phi}(s_t,t),\qquad t<T
+$$
+
+<p>它表示请求前后预测成功概率的变化，再加上该请求的成本；差值两端使用同一个时间索引，避免仅因时间流逝产生信用。</p>
+<p>纯观察通常不改变物理状态，因此直接信用接近零；但观察若帮助后续抓取，仍可通过<strong>广义优势估计（GAE）</strong>获得后续动作传回的信用。最终优势还加入同一起始状态下多次轨迹的相对结果，用于同时比较“哪条轨迹更好”和“轨迹中的哪一步更关键”。</p>
+<p>奖励也区分了部署所需的结束行为：成功并调用<code>finish()</code>获得1分；场景成功但未声明完成获得0.25分；在失败状态下误报完成则受到惩罚。训练还对失败动作、过多动作和任务已完成后的无效请求施加成本。</p>
+<p>策略更新采用流式强化学习：每条轨迹最多采样8轮计算策略梯度，评估器仍使用全部状态；同时用KL约束限制策略偏离SFT模型。评估器只存在于训练阶段，测试时策略看不到仿真器的特权物理状态。</p>
+<h2>三、实验</h2>
+<p>训练使用LIBERO的40项任务；评估使用未参与采样的官方初始状态，以及训练中未出现的扰动。指标分为两种：<strong>环境成功率</strong>只检查最终场景是否满足目标，<strong>严格成功率</strong>还要求Agent调用<code>finish()</code>。</p>
+<p><img alt="图2：SFT与强化学习模型在LIBERO及扰动测试中的对比" src="https://arxiv.org/html/2610.40799v1/sft_vs_rl.svg" /></p>
+<p>在240个留出LIBERO测试回合中，基础Qwen3.5-4B的环境成功率为0%；SFT后达到55.4%，再经过强化学习达到<strong>73.8%</strong>。严格成功率则从SFT的52.1%升至67.5%。误报完成的比例从7.1%降至2.1%，平均请求数从39.1轮降至32.6轮。</p>
+<p>这种提升也出现在扰动测试中：LIBERO-Plus的环境成功率从48.6%升至66.1%；包含动态扰动的LIBERO-MAX测试从40.0%升至61.2%。这说明相对于SFT模型，强化学习的收益没有只停留在原始测试布局上。</p>
+<p>跨系统比较需要注意测试范围：在LIBERO-PRO的<strong>三个短任务套件</strong>上，CaPtain-4B达到78.5%，高于论文列出的K1、WAA和ASPIRE；加入长任务后的四套件平均值为68.6%。更高的OpenRUA在相同三套件比较中达到91.8%，因此结果并非全面领先所有前沿模型方案。</p>
+<p>对评估器的离线分析使用了较早的9B策略轨迹：成功抓取轮次的预测成功概率变化中位数为+0.058，失败抓取为-0.0075，纯感知轮次为-0.0002。该结果支持其设计目标：让即时信用更集中于改变物理场景的操作，而不是单纯奖励较长的观察过程。</p>
+<p>跨基准测试展示了能力与边界。未在目标域训练时，CaPtain-4B在SimplerEnv WidowX四项任务上平均成功率为83.3%；但在需要更多双臂协调的RoboTwin 2.0上为22.6%，在采用不同机械臂的RoboDojo上为0.8%。另外，受防护式运动原语限制，系统无法执行需要持续向下施力的擦拭任务。</p>
+<p><img alt="图3：CaPtain在真实机器人上完成物体放置任务" src="https://arxiv.org/html/2610.40799v1/real_robot.png" /></p>
+<p>真实机器人测试使用Astrabot XR1机械臂。由于机械臂运动学、夹爪和相机位置不同，策略先在粗略的XR1仿真环境中适配，未使用真实世界训练数据。展示的两个回合中，机器人分别完成了将黄色方块放入托盘，以及根据“天空的颜色”和“不是圆形的容器”等间接描述选择物体并放置的任务。</p>
+<p><strong>论文标题</strong>：CaPtain: A Pipeline for Post-Training Code-as-Policy Robot Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.40799.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-02_CaPtain-A-Pipeline-for-Post-Training-Code-as-Policy-Robot-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-02_CaPtain-A-Pipeline-for-Post-Training-Code-as-Policy-Robot-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
