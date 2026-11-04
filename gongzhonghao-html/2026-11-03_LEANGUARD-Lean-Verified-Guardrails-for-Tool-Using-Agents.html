@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEANGUARD: Lean-Verified Guardrails for Tool-Using Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">LEANGUARD: Lean-Verified Guardrails for Tool-Using Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-05</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>凯斯西储与UT奥斯汀用Lean守护Agent：直注成功率降至5.9%！</h1>
+<h2>一、引言</h2>
+<p>当Agent替用户修改订单或支付账单时，风险并不只来自错误理解需求：工具返回的一段恶意文本，也可能诱导模型绕过确认流程，将退款或付款转向攻击者控制的账户。此时，工具调用即使格式正确、执行成功，仍可能违反业务政策。</p>
+<p><img alt="图1：零售换货场景中，有无LeanGuard的执行对比" src="https://arxiv.org/html/2611.02332v1/figure1.svg" /></p>
+<p>凯斯西储大学与德克萨斯大学奥斯汀分校的研究提出 <strong>LeanGuard</strong>：在Agent与工具之间设置基于Lean 4的运行时检查，让模型负责提出行动，由独立策略决定行动能否执行。方法还提供两种拒绝后的恢复路径：向模型解释失败原因，或离线搜索带形式化证明的参数修复。理解这一设计，有助于区分“模型声称已获授权”和“执行边界拥有可信授权证据”。</p>
+<h2>二、核心方法</h2>
+<h3>Step 1：可信证据与受监控的执行流程</h3>
+<p>LeanGuard不要求Agent编写Lean代码。模型仍按普通工具接口生成结构化调用，但调用会先被宿主程序拦截，作为<strong>不可信输入</strong>交给检查器。</p>
+<p>领域适配器随后读取权威后端快照、校验参数，并结合执行历史构造决策上下文。例如，订单是否属于当前客户、客户是否确认了这次换货，都要由可信系统提供证据；工具输出中一句“客户已经同意”不能代替确认记录。</p>
+<p><img alt="图2：LeanGuard的证据获取、策略检查与拒绝反馈流程" src="https://arxiv.org/html/2611.02332v1/figure2.svg" /></p>
+<p>这一过程不只是单次判断，还包括执行协议：调用获准后，系统先记录一次派发预留，再运行工具，避免结果尚未返回时重复执行单次操作。用户确认也绑定到具体提案和状态版本，并且只能使用一次。</p>
+<h3>Step 2：Lean Policies——检查状态、历史与授权</h3>
+<p>LeanGuard的策略由Lean定义，既检查当前状态，也检查此前发生过什么：</p>
+<ul>
+<li><strong>状态谓词</strong>：检查订单归属、金额、资源状态等条件。</li>
+<li><strong>过去时序算子</strong>：通过previous、once和since，表达上一相关事件、过去是否出现过某事件，以及某条件是否自见证事件以来持续成立。检查可限定时间窗口，并按用户、会话或资源划定范围。</li>
+<li><strong>三类规则</strong>：permit表示行动属于可授权类别；requirement规定必须满足的义务；forbid则直接禁止行动。缺少满足的permit时默认拒绝。</li>
+</ul>
+<p>设$\mathcal P$、$\mathcal R$和$\mathcal F$分别为适用的许可、要求和禁止规则，$c_t$为当前决策上下文，准入条件为：</p>
+$$
+D_P(c_t)=\mathsf{allow}
+\Leftrightarrow
+\left(\bigvee_{p\in\mathcal P}p(c_t)\right)
+\land
+\left(\bigwedge_{r\in\mathcal R}r(c_t)\right)
+\land
+\left(\bigwedge_{f\in\mathcal F}\neg f(c_t)\right)
+\land
+\mathsf{ErrorFree}_P(c_t).
+$$
+
+<p>实际含义是：至少一项许可成立、所有适用要求成立、没有命中禁止规则，且检查过程无错误，调用才会放行。</p>
+<p>最后一项体现了<strong>故障关闭</strong>原则：缺失或格式错误的证据会产生错误，而不是被当作普通的“假”，从而避免它通过取反或逻辑组合变成授权。</p>
+<p>可执行检查器本身并不是规范。研究者还用LeanLTL为策略建立独立的时序逻辑语义，并证明检查结果与该语义等价；证明在构建策略时完成，无须为每次调用重新生成。保证的边界也很明确：它依赖策略写得正确、适配器忠实提供状态，且所有关键调用都经过检查器。</p>
+<h3>Step 3：Feedback-Guided Recovery与Proof-Guided Repair</h3>
+<p>拒绝之后，LeanGuard提供两条不同路径。</p>
+<p><strong>反馈引导恢复</strong>把失败的规则标识、相关证据和自然语言提示交给模型。例如，系统可以指出缺少客户确认，再由模型询问客户并重新提交调用。规则判定来自形式化策略，提示只是对义务的非形式化表述。</p>
+<p><strong>证明引导修复</strong>则不依赖模型重新思考。Lean的元编程搜索有限候选参数，并寻找满足下式的修复：</p>
+$$
+\exists x'\in\mathcal C_t.\;
+\mathsf{EditOK}(x_t,x')
+\land D_P(c_t(x'))=\mathsf{allow}.
+$$
+
+<p>实际含义是：候选参数既要满足预先定义的意图保持条件，也要通过当前上下文中的策略检查。</p>
+<p>搜索使用Lean战术求解具体谓词和算术等条件，只返回附带内核检查证明的修复。这里的“保持意图”取决于如何定义允许的编辑，并不等于自动理解了用户的全部意图。修复证明只对当时的上下文有效，修复后的调用仍需经过正常准入；未找到候选，也不能证明不存在其他修复。</p>
+<h2>三、实验</h2>
+<p>实验使用五个Qwen模型，在<strong>τ²-bench</strong>的零售、航空和电信任务中比较无防护、仅拒绝、拒绝并反馈三种设置。任务成功率由基准评分；形式化违规则根据执行日志，检查调用是否被Lean策略禁止，两者是不同指标。</p>
+<p>无防护运行中，至少有33次被Lean策略禁止的调用实际执行并改变了状态；启用LeanGuard后，被策略拒绝的调用没有执行。在所有模型上，无防护任务成功率为72.7%，加入反馈后为70.9%，差异未达到统计显著；仅返回拒绝时为68.9%。各任务每种设置运行一次且采用采样解码，因此不同设置的轨迹可能在首次拒绝之前就已分化。</p>
+<p><img alt="图3：LeanGuard拦截调用的失败类别分布" src="https://arxiv.org/html/2611.02332v1/figure-taxonomy.svg" /></p>
+<p>被拦截的调用涉及格式错误、状态不兼容、时序不兼容、授权失败和政策禁止；一次调用可能同时属于多个类别。评估还使用大模型裁判检查自然语言基准政策：有反馈时，被裁判标记的任务占比从无防护的9.7%降至6.5%。但裁判可能出错，形式化策略也只覆盖可由工具执行检查的政策子集，因此这一指标不能等同于形式化违规率。</p>
+<p>在<strong>DTap提示注入测试</strong>中，研究者采用只读部署：会话具有部分读取授权，但没有写入授权、载荷审查或写入确认。在这一条件下，直接攻击成功率从57.9%降至5.9%，间接攻击从22.3%降至3.8%；代价是总体正常任务成功率从53.1%降至12.5%，因为合法写入也被拦截。电信领域的正常任务通常不需要写入，其成功率则分别为75.1%和75.3%，基本接近。工具检查也无法覆盖仅通过回复文本造成的伤害。</p>
+<p>恢复实验显示，与仅返回拒绝相比，反馈设置下被阻止调用从983次降至719次，补足条件后重新执行的行动从34次增至48次；两组轨迹可能有所分化，不宜将全部差异直接归因于反馈。</p>
+<p>证明引导修复目前<strong>只在离线日志回放中评估</strong>，尚未接入运行时。在252次由参数值导致的拒绝中，Lean为88次找到并证明了可接受编辑，占34.9%；每次拒绝的修复搜索耗时中位数为2毫秒。多数修复是改用订单原支付方式退款，或将航班改签的支付方式从旅行券改为银行卡。</p>
+<p><strong>论文标题</strong>：LEANGUARD: Lean-Verified Guardrails for Tool-Using Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.02332.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-03_LEANGUARD-Lean-Verified-Guardrails-for-Tool-Using-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-03_LEANGUARD-Lean-Verified-Guardrails-for-Tool-Using-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
