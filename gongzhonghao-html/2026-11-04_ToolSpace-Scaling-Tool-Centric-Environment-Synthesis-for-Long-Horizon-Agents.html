@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-06</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>人大复旦联手打造Agent工具空间：35B模型平均提升18分！</h1>
+<h2>一、引言</h2>
+<p>让 Agent 查询资料、更新表格再发送通知，听起来只是几步操作，实际却涉及多个系统之间的数据传递、状态修改和异常处理。工具越多、任务链越长，任何一步的参数或状态出错，都可能让后续操作失效。</p>
+<p>训练数据是关键瓶颈。常见做法是先合成业务场景和数据库，再围绕它们生成工具与任务。但这样得到的工具接口可能偏离真实服务，工具之间的连接也未必经过执行验证；跨环境任务更难自然构造。</p>
+<p>来自中国人民大学、复旦大学等机构的研究者提出 <strong>ToolSpace</strong>：先从工具调用轨迹中恢复真实出现过的连接关系，再沿这些关系生成可执行、可验证的长链任务。它不仅用于训练 Agent，也能为现有基准扩展更复杂的跨环境测试。</p>
+<h2>二、核心方法</h2>
+<p><img alt="图1：ToolSpace从调用轨迹构建工具空间，并生成可验证任务" src="https://arxiv.org/html/2611.05036v1/ToolSpace_1025.png" /></p>
+<h3>Tool Space Exploration：从调用轨迹恢复工具关系</h3>
+<p>ToolSpace 首先收集工具交互轨迹，包括在真实 MCP 服务上执行的调用、开放 Agent 数据集，以及经过接口匹配过滤的合成工具轨迹。<strong>MCP</strong> 可以理解为连接模型与外部工具、数据服务的协议。</p>
+<p>系统不是简单地把每个工具当成一个节点：同一工具使用不同的<strong>归一化参数配置</strong>，也可能形成不同节点，因为它们的输出和后续依赖可能不同。</p>
+<p>接着，系统只考察轨迹中<strong>相邻的两次调用</strong>，用确定性规则提取三类边，而不是让大模型主观判断工具能否组合：</p>
+<ul>
+<li><strong>数据依赖</strong>：后一个调用使用前一个调用输出的值，且字段类型匹配。</li>
+<li><strong>状态依赖</strong>：前一个调用修改某个对象，后一个调用读取或继续修改同一对象。</li>
+<li><strong>重试依赖</strong>：前一次调用报错，轨迹切换工具后成功，记录可恢复错误及后续操作。</li>
+</ul>
+<p>例如，查询客户信息后把客户 ID 传给更新接口，属于数据依赖；修改记录后再读取同一记录，则涉及状态依赖。</p>
+<p>边的权重由轨迹中的转移频率确定：</p>
+$$w(v_i,v_j)=\frac{N_{ij}}{N_i}$$
+
+<p>其中，$N_i$ 是节点 $v_i$ 的出现次数，$N_{ij}$ 是 $v_j$ 紧随 $v_i$ 出现的次数；权重越高，表示该转移在已有轨迹中越常见。</p>
+<p>低频边和来源无法追溯的数据边会被过滤，以减少把 <code>limit=10</code> 之类常见常量误判为依赖。随后，工具按连接密度聚成环境，并结合真实 MCP 服务配置组织。</p>
+<p>环境数据也按需准备：包含新增、修改或删除操作的环境，需要合成数据库并检查状态转移；状态查询工具使用记录的输出初始化快照；无状态工具则在匹配调用时复用缓存结果。这避免了为每个工具都从头构造完整数据库。</p>
+<h3>State-Aware Random Walks：执行并回滚工具链</h3>
+<p>有了图，还不能直接把任意路径当成任务：两条边分别在历史中出现过，不代表拼接后一定能在当前状态下执行。</p>
+<p>ToolSpace 因此进行<strong>状态感知随机游走</strong>。从初始快照出发，系统先筛选满足依赖、状态前提和参数来源要求的后继节点，再按边权采样：</p>
+$$P(v_{t+1}=v\mid v_t)=\frac{w(v_t,v)}{\sum_u w(v_t,u)}$$
+
+<p>分母只包含当前状态下可选的后继节点，因此历史中更常见、且此刻可执行的连接更容易被选中。</p>
+<p>每选一步，系统就实际执行工具并更新状态。如果执行失败或结果违反所经过的依赖关系，系统会回滚到上一步快照并重新采样；多次回滚仍无法继续的链会被丢弃。轨迹中预期的可恢复错误则可作为重试关系的一部分保留。</p>
+<p>游走可以指定目标链长度和跨越的环境数量。生成后的链还要从初始状态重放，检查整条路径的状态连续性和可执行性。</p>
+<h3>Reverse Verifiable Task Synthesis：从工具链生成任务与训练数据</h3>
+<p>通过重放的工具链，接下来被“反编译”为自然语言任务：语言模型根据调用链和状态变化描述用户目标，但不直接写出工具名称或调用顺序。</p>
+<p>系统同时生成三类<strong>断言式验证</strong>：检查最终状态、检查关键中间状态，以及检查输出中必须出现的字段。只有从初始状态重放后通过全部检查的样本才会保留，并附带任务、验证脚本、工具链和初始快照。去重后，教师模型还会为保留任务生成轨迹，并再次通过验证筛选。</p>
+<p>训练阶段先使用合成轨迹进行<strong>监督微调</strong>（SFT）。部分样本进一步用于 Agent 强化学习：通过 GRPO 进行多次策略采样，以执行验证是否通过作为二元奖励，再利用同组轨迹的相对奖励更新模型。这样，训练信号关注的是任务执行结果，而不只是工具调用格式。</p>
+<h2>三、实验</h2>
+<p>ToolSpace 收集了超过 <strong>20 万条</strong>原始 Agent—工具交互轨迹，并在任务和轨迹层面排除与测试集重合的样本。最终构建的图包含 <strong>2,042 种规范工具、77,760 个调用模式节点</strong>和 <strong>804 个环境</strong>；数据、状态、重试边分别占 69%、25% 和 6%。</p>
+<p>合成数据共包含 <strong>34,376 条 SFT 样本</strong>。在至少调用工具五次的轨迹中，平均每条调用 <strong>18.86 次</strong>、跨越 <strong>2.29 个环境</strong>。强化学习还使用了 653 个经过额外难度筛选的样本。</p>
+<p>在七项长链工具使用基准上，Qwen3.6-35B-A3B 的平均得分从 <strong>23.0</strong> 提升到 <strong>41.0</strong>，加入 Agent 强化学习后达到 <strong>43.2</strong>。其中，AutomationBench 从 8.2 升至 45.8；强化学习后的 Banking 得分从 SFT 阶段的 34.0 升至 42.3。</p>
+<p>更大模型上，GLM-5.2 的七项平均分从 <strong>44.6</strong> 提升至 <strong>56.6</strong>，与表中 Claude Opus 5 的平均分持平；这并不意味着两者在每项任务上表现相同。论文综合使用官方榜单、提供方结果和本地复现结果，ToolSpace 结果取三次独立运行的平均值。</p>
+<p>ToolSpace 还将 AutomationBench 和 $\tau^3$-Bench Banking 扩展为 Pro 版本，分别包含 <strong>300</strong> 和 <strong>98</strong> 个任务。七个前沿模型在两套 Pro 测试上的得分均低于标准版本；其中 DeepSeek-V4.1-Flash-1017 在 AutomationBench 上从 <strong>60.5</strong> 降至 <strong>22.3</strong>，下降 <strong>38.2 个百分点</strong>。标准版与 Pro 版任务不同，这一差距反映的是升级测试下的表现变化，而非单独归因于某一种难度因素。</p>
+<p><img alt="图2：训练数据规模与环境规模的扩展结果" src="https://arxiv.org/html/2611.05036v1/fig_scaling.svg" /></p>
+<p>消融实验进一步说明各组件的作用：在 35B 设置下，移除状态边使 Banking 得分从 <strong>34.0</strong> 降至 <strong>21.5</strong>；用大模型判断的边替代执行轨迹挖掘的边，使 AutomationBench 从 <strong>45.8</strong> 降至 <strong>37.8</strong>。数据和环境规模扩大时，整体表现也随之改善，但中间规模存在波动。</p>
+<p>成本实验以合成文件数量作为代理指标：在抽样的 500 个环境中，按需构造使文件数从 <strong>2,724</strong> 降至 <strong>1,218</strong>，减少 <strong>55.3%</strong>。这一结果尚未直接衡量 Token、运行时间或计算成本；缓存回放也只覆盖匹配的调用，不能等同于对任意实时工具输入的完整模拟。</p>
+<p><strong>论文标题</strong>：ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.05036.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-04_ToolSpace-Scaling-Tool-Centric-Environment-Synthesis-for-Long-Horizon-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-04_ToolSpace-Scaling-Tool-Centric-Environment-Synthesis-for-Long-Horizon-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
