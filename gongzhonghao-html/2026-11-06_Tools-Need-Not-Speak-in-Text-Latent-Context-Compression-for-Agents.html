@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tools Need Not Speak in Text: Latent Context Compression for Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Tools Need Not Speak in Text: Latent Context Compression for Agents</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-08</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>清华推出Agent潜表示压缩：网页问答Token消耗最高降89.24%！</h1>
+<h2>一、引言</h2>
+<p>一个使用搜索工具的Agent，往往需要反复经历“搜索、阅读结果、继续搜索”的过程。问题在于，搜索结果虽然能提供证据，也会带来大量与当前任务无关的网页摘要和细节。每轮都把原始结果追加进上下文，模型需要处理的内容便会迅速膨胀。</p>
+<p>例如，在一个搜索轨迹示例中，到第4步时，工具返回内容已占上下文Token的96.7%。这不仅增加计算开销，也可能让关键证据淹没在噪声中。传统做法是删减Token或生成文本摘要，但压缩结果仍然需要组织成可读的离散文本。</p>
+<p>清华大学团队提出的<strong>Coca-Cola</strong>换了一种思路：工具结果不一定要以文本形式交给Agent，也可以先压缩成连续向量，再直接送入模型。在网页搜索问答实验中，这一方法既降低了Token消耗和运行时间，也改善了最终答案指标。</p>
+<p><img alt="图1：工具输出随交互累积，并包含大量与当前决策无关的信息" src="https://arxiv.org/html/2611.06500v1/intro.svg" /></p>
+<h2>二、核心方法</h2>
+<h3>Context-Aware Encoder与Latent Adapter：生成可供Agent使用的潜表示</h3>
+<p>Coca-Cola的压缩对象是每次工具调用返回的<strong>工具观测</strong>，例如一组搜索结果。它不要求压缩结果成为一句人类可读的摘要，而是将结果编码成少量<strong>潜在Token</strong>：处在连续空间中的高维向量。</p>
+<p>但一段搜索结果里哪些信息值得保留，取决于Agent正在解决什么问题、当前推理到了哪一步。因此，<strong>上下文感知编码器</strong>会同时读取任务指令、当前步骤的推理状态和工具观测。例如，Agent正在查找某位赛车手的出生年份时，搜索结果中的姓名可能是下一次搜索的关键，而比赛过程的详细描述未必有用。</p>
+<p>编码器使用小型语言模型产生隐藏状态；随后，<strong>潜表示适配器</strong>将其转换为固定数量的向量，并映射到目标Agent的输入嵌入空间：</p>
+$$z_t=A_{\phi}\!\left(C_{\theta}(q,r_t,o_t)\right)$$
+
+<p>这个公式表示，任务指令 $q$、当前推理状态 $r_t$ 和工具观测 $o_t$ 依次经过编码器与适配器，得到潜在Token $z_t$。</p>
+<p>这些向量会插入Agent的输入嵌入序列，并由特殊边界标记包围。Agent接收到的因此不是一段先解码成文字的摘要，而是一组可直接参与后续计算的连续表示。</p>
+<p>潜在Token的理论优势在于：一个文本位置只能从固定词表中选择一个符号，而一个向量位置可以通过多个数值维度联合编码信息。不过，这只是特定有限精度假设下的容量分析；向量实际能保留多少信息，还取决于压缩器的编码能力和Agent的使用能力。</p>
+<p><img alt="图2：Coca-Cola的压缩结构、动作保持训练与推理流程" src="https://arxiv.org/html/2611.06500v1/overview.png" /></p>
+<h3>Action-Preserving Training：让压缩结果保留决策信息</h3>
+<p>能把长文本压成向量，并不意味着向量恰好包含Agent需要的内容。Coca-Cola没有要求压缩器尽量还原工具原文，而是以<strong>下一步动作</strong>为训练目标。</p>
+<p>训练时，同一个冻结的目标Agent分别接收两种输入：一种包含完整工具观测，另一种用潜在Token替代当前观测。前者产生的动作分布作为教师信号，后者产生学生分布。训练同时使用分布对齐和轨迹监督：</p>
+$$\mathcal{L}=\lambda_{\mathrm{KL}}D_{\mathrm{KL}}(p_{\mathrm{full}}\parallel p_{\mathrm{latent}})+\lambda_{\mathrm{CE}}\mathrm{CE}(y_{t+1},p_{\mathrm{latent}})$$
+
+<p>这个损失让压缩观测下的动作预测接近完整观测下的预测，同时利用轨迹中记录的下一动作Token提供监督。</p>
+<p>其中，KL散度用于约束两种输入下的预测分布，交叉熵则利用记录动作提供额外监督。目标不是保证压缩后逐字复现搜索结果，而是减少压缩对后续搜索、推理或回答决策的影响。</p>
+<p>由于潜在Token可微，梯度能够穿过冻结的Agent传回压缩模块。训练过程中，目标Agent参数保持不变，只更新编码器的LoRA参数和适配器参数。这样，压缩器学习的是<strong>目标Agent能够利用的表示</strong>，而不是独立于Agent的通用文本摘要。</p>
+<h3>Inference：在每次工具调用后替换原始观测</h3>
+<p>部署时，每当工具返回结果，压缩器就结合当前任务和推理状态生成潜在Token，再用这些向量替换原始观测，交给Agent决定下一步操作。</p>
+<p>如果Agent继续调用工具，同样的过程会重复执行。与原始结果逐轮累积相比，历史工具观测以更紧凑的形式留在上下文中。需要注意的是，压缩器本身仍要读取原始工具输出，因此Agent上下文缩短，并不等于工具结果完全不产生处理开销。</p>
+<h2>三、实验</h2>
+<p>实验采用网页搜索Agent，在<strong>NQ、TriviaQA、2Wiki和HotpotQA</strong>四个问答数据集上评估；前两个主要涉及事实检索，后两个需要多跳证据推理。模型配置包括Qwen3.5-35B-A3B与Qwen3.5-4B组合，以及GLM-4.7-Flash与GLM-Z1-9B组合。</p>
+<p>比较对象包括直接追加原始结果的<strong>Vanilla Model</strong>、Token删减方法LongLLMLingua、文本摘要方法LLMSummary，以及基于原文重建训练的潜表示方法ICAE。其中，ICAE使用与Coca-Cola相同的压缩架构，有助于比较训练目标的影响。</p>
+<p><strong>效率方面</strong>，相对于不压缩的Vanilla Model，Coca-Cola在八组“模型配置—数据集”实验中，将输入和输出Token合计消耗降低了<strong>70.01%—89.24%</strong>，端到端运行时间降低了<strong>24.45%—55.97%</strong>。例如，在GLM模型组合的2Wiki实验中，平均输入Token从31,693.47降至3,003.38，运行时间从106.37秒降至46.83秒。</p>
+<p>这里的压缩率按实验报告的输入、输出Token合计计算；运行时间则反映实验配置下的端到端结果，不能直接替代其他部署环境的成本测量。</p>
+<p><strong>任务表现方面</strong>，研究使用精确匹配率（<strong>EM</strong>，最终答案与标准答案完全一致的比例）和Token级<strong>F1</strong>衡量答案质量。Coca-Cola在全部八组配置中均高于Vanilla的EM和F1，并在其中六组同时取得所有对比方法中最高的EM和F1。</p>
+<p>例如，在GLM模型组合的2Wiki实验中，F1从Vanilla的31.29%升至36.20%，同时总Token压缩率达到89.24%。但它并非每项指标都领先：在Qwen模型组合的TriviaQA实验中，ICAE的F1为69.27%，高于Coca-Cola的67.07%；对应压缩率分别为66.92%和83.68%。这体现了效果与压缩程度之间需要结合场景权衡。性能改善可能与过滤无关信息有关，但实验结果本身不能单独证明这一因果机制。</p>
+<p><img alt="图3：不同潜在Token数量对NQ实验中F1与压缩率的影响" src="https://arxiv.org/html/2611.06500v1/latte_latent_token_compression.svg" /></p>
+<p>消融实验进一步检验了压缩预算与上下文条件。在GLM模型组合的NQ实验中，潜在Token数量从8增加到128时，F1从26.34%升至31.45%，但128个Token对应的压缩率降至73.73%。在128个Token的设置下，完整输入的EM为23.50%；去掉推理状态后降至21.45%，去掉任务目标后降至20.02%，两者都去掉后为18.34%。这些结果表明，在该实验条件下，任务目标和当前推理状态都有助于压缩器筛选决策相关信息。</p>
+<p><strong>论文标题</strong>：Tools Need Not Speak in Text: Latent Context Compression for Agents</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.06500.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-06_Tools-Need-Not-Speak-in-Text-Latent-Context-Compression-for-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-06_Tools-Need-Not-Speak-in-Text-Latent-Context-Compression-for-Agents.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
