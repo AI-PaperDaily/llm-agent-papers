@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incentivizing Self-Learning in Large Language Models via Reinforcement Learning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Incentivizing Self-Learning in Large Language Models via Reinforcement Learning</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-14</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>上海AI实验室等用RL激发大模型自学，数学证明准确率达79.5%！</h1>
+<h2>一、引言</h2>
+<p>面对陌生领域的问题，大模型即使能搜索资料，也未必能用好资料：检索结果可能只提供零散事实，真正的解题过程却需要理解定义、判断定理的适用条件，并在推导受阻时寻找新的前提。</p>
+<p>这也是传统检索增强生成面临的挑战：<strong>找到相关内容，不等于学会应用相关知识</strong>。</p>
+<p>上海人工智能实验室等机构合作开展的一项研究，将这一问题转化为“读教材、做证明题”：模型不能看到习题参考答案，只能在解题过程中自主查阅教材，再独立构造证明。研究者进一步使用强化学习（RL）训练模型，鼓励有效探索，并区分有帮助和明显无效的查阅行为。</p>
+<p>实验显示，在给定教材的数学证明任务中，训练后的整体证明准确率从51.5%提高到79.5%。更值得关注的是，这套训练试图提升的不是某本书的记忆量，而是<strong>根据推理进展决定学什么、怎样使用所学知识</strong>的能力。</p>
+<h2>二、核心方法</h2>
+<h3>教材任务构建：让模型学习原理，而非查找答案</h3>
+<p>研究者从高等数学教材中提取习题，将习题及其解答与正文分离，并保留定义、定理、解释、例子和一般性结论的证明。为使题目能够独立理解，显式引用教材章节编号的习题被排除。</p>
+<p>每道题对应一本结构化教材。模型需要交替进行推理和查阅：推导遇到缺口时，可以寻找定义或定理；读到新内容后，再判断它是否适用于当前证明。最终输出应是一份自洽的证明。</p>
+<p><strong>参考解答对解题模型不可见</strong>，只供训练和评测中的裁判模型判断证明是否正确。这里的“自学习”发生在单次解题过程中：模型通过上下文获取和应用知识，测试时不更新参数，也不依赖多次尝试后的正确性反馈。</p>
+<p><img alt="图1：教材自学习与强化学习训练流程" src="https://arxiv.org/html/2610.39671v1/schema-cropped.png" /></p>
+<h3>BookNavigator：让查阅与推理交替进行</h3>
+<p>模型通过 <strong>BookNavigator</strong> 与教材交互，接口提供三种操作：</p>
+<ul>
+<li><code>get_toc</code>：查看完整目录，了解教材的章节结构。</li>
+<li><code>search_index</code>：按关键词搜索章节，返回排序结果和匹配片段。</li>
+<li><code>read_section</code>：读取指定章节的完整保留内容，检查定义、定理及其上下文。</li>
+</ul>
+<p>三种操作分别承担定位全局、寻找线索和深入阅读的作用。例如，模型可以先从目录判断可能涉及哪个主题，再搜索特定术语，最后阅读相关章节，确认定理的前提是否满足。</p>
+<p>这种方式与固定检索的区别在于：<strong>查阅行为由不断变化的推理状态驱动</strong>。如果第一次阅读暴露出新的知识缺口，模型可以继续调整搜索方向，而不是只能依赖生成前一次性提供的材料。</p>
+<h3>细粒度奖励：同时鼓励探索和减少无效调用</h3>
+<p>只奖励最终答案有一个问题：模型可能因为直接作答更省事而逐渐放弃查阅；反过来，一条正确轨迹也可能包含许多无效调用。训练因此在 <strong>GRPO</strong>（组相对策略优化）的结果奖励上加入两个机制。</p>
+<p>首先是<strong>探索奖励</strong>。设最终证明的正确性奖励为 $r(\tau)$，正确为1、错误为−1，轨迹奖励为：</p>
+$$R_n(\tau)=r(\tau)+\beta_n b(\tau)\mathbb{I}[r(\tau)=1]$$
+
+<p>这意味着只有最终证明正确且轨迹中至少有一次成功工具调用时，模型才会获得额外奖励；奖励系数随训练按余弦策略衰减，但保留正的下限。</p>
+<p>因此，反复调用工具本身不会累加这项奖励，模型仍需对最终证明负责。</p>
+<p>其次是<strong>轮次级工具信用分配</strong>。一个冻结的初始模型作为工具裁判，结合当前调用、返回内容和下一轮推理，判断此次查阅是否有用、中性或有害；裁判看不到参考答案和最终正确性判定。具体实现中，有害调用得分为0.5，有用和中性调用都得1。</p>
+<p>设整条轨迹的优势值为 $A$，轮次评分为 $c_t$，其按生成 token 数加权的平均值为 $\bar c$，则轮次优势值为：</p>
+$$\widetilde{A}_t=A+\alpha|A|(c_t-\bar c)$$
+
+<p>这一调整保留整条轨迹的加权平均优势，同时降低相对有害轮次获得的训练信用；工具返回内容只作为上下文，不参与策略损失计算。</p>
+<p>最终训练信号由两层组成：证明是否正确决定整体方向，工具评分则在轨迹内部调整各轮次的信用。</p>
+<h2>三、实验</h2>
+<p>实验使用 <strong>Intern-S2-Preview-35B</strong> 作为初始模型，从158本本科及研究生数学教材中构建5,183道证明题。训练集包含132本教材的4,557道题；测试分别考察训练教材中的未见题目、未见教材，以及未参与任务训练的概率与统计学科。</p>
+<p>正确性由裁判模型对照隐藏参考解答评估：每份证明经过8次独立审查，全部通过才判为正确。各协议报告每道题独立采样四份解答后的平均证明准确率。自学习协议最多进行八轮交互，整条轨迹长度上限为64k token。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>解题协议</th>
+<th style="text-align: right;">初始模型整体准确率</th>
+<th style="text-align: right;">对应RL训练后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>不提供教材</td>
+<td style="text-align: right;">55.7%</td>
+<td style="text-align: right;">68.5%</td>
+</tr>
+<tr>
+<td>生成前固定检索相关章节</td>
+<td style="text-align: right;">62.2%</td>
+<td style="text-align: right;">73.1%</td>
+</tr>
+<tr>
+<td>自学习：推理中交互式查阅</td>
+<td style="text-align: right;">51.5%</td>
+<td style="text-align: right;"><strong>79.5%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>初始模型使用自学习协议时，整体准确率反而低于不提供教材和固定检索；经过各自协议下的RL训练后，自学习达到79.5%，比最强固定检索基线高<strong>6.4个百分点</strong>。在未见教材和未见学科测试中，自学习准确率分别为85.2%和86.7%。</p>
+<p>不过，提升并不完全来自查书。将自学习训练后的模型移除教材与工具，其准确率仍为71.7%，高于初始模型无教材时的55.7%；重新提供配对教材后达到79.5%。把教材替换为同学科的另一本书，或删除题目来源章节及其前后共九个章节，准确率分别为75.2%和74.6%。这说明模型的独立解题能力得到增强，同时也能从不同参考材料中获益，但这些结果不能排除预训练中已有知识的作用。</p>
+<p>消融实验揭示了奖励设计的必要性。在同一自学习协议下，<strong>只奖励正确性</strong>时，整体准确率升至74.9%，但使用工具的轨迹比例从初始的36.9%降至6.7%。仅加入探索奖励后，工具使用比例升至79.9%，平均每条轨迹调用5.9次；完整方法同时加入工具信用后，使用比例为58.4%，平均调用3.0次，整体准确率提高到79.5%。这组对比表明，在该实验中，调用更多并不等于效果更好。</p>
+<p>跨任务测试则沿用各基准原有推理协议，不使用BookNavigator：训练后的模型在信息检索基准 <strong>BrowseComp-Plus</strong> 上从50.2%升至51.9%，在考察从给定上下文学习能力的 <strong>CL-bench</strong> 上从14.8%升至17.1%。但CL-bench的程序性任务执行类别从16.6%降至15.9%，显示迁移收益并非覆盖所有任务类型。</p>
+<p><strong>论文标题</strong>：Incentivizing Self-Learning in Large Language Models via Reinforcement Learning</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2610.39671.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-12_Incentivizing-Self-Learning-in-Large-Language-Models-via-Reinforcement-Learning.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-12_Incentivizing-Self-Learning-in-Large-Language-Models-via-Reinforcement-Learning.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
