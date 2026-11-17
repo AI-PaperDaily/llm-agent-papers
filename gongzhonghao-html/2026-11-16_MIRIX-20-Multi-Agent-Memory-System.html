@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIRIX-2.0: Multi-Agent Memory System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">MIRIX-2.0: Multi-Agent Memory System</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-18</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>MIRIX AI等推出Agent记忆系统：LoCoMo达91.4%！</h1>
+<h2>一、引言</h2>
+<p>一个长期使用的个人助手，需要记住用户几个月前提过的偏好；一个购物 Agent，则需要从失败经历中学会检查商品规格。两者都需要长期记忆，却对记忆提出了不同要求：前者要保留具体细节，后者要提炼可复用的行动方法。</p>
+<p>现有方案往往面临取舍：压缩历史可能丢失日期和数量，完整保存又会让检索越来越困难；用模型参数记忆则需要训练，也不方便接入闭源模型。</p>
+<p>MIRIX-2.0 将记忆保存、关系索引和后台整理拆成不同层次：用多智能体写入分类记录，用可追溯超图连接证据，再通过 AutoDream 整理实体和任务技能。理解这套设计的关键，是区分<strong>记录本身</strong>与<strong>找到记录的索引</strong>。</p>
+<h2>二、核心方法</h2>
+<p><img alt="图1：MIRIX-2.0 的存储、索引、检索与后台整理架构" src="https://arxiv.org/html/2611.12068v1/mirix_fig1_v2.svg" /></p>
+<h3>Typed Evidence Plane：分类保存记忆记录</h3>
+<p>系统由 <strong>Meta Memory Manager</strong> 判断一条输入应更新哪些记忆，再交给对应的写入智能体。六类记忆分别是核心记忆、情景记忆、语义记忆、程序性记忆、资源记忆和 Knowledge Vault。</p>
+<p>其中，情景记忆记录发生过的经历，语义记忆保存相对稳定的事实；程序性记忆则保存可供 Agent 复用的技能。只有情景和语义记录进入后续超图索引。</p>
+<p>每条情景或语义记录都有不可变的行 ID，并携带文本、事件时间、提及或写入时间、来源信息和检索向量。具体记录保存在向量数据库中，图里主要保存结构及指向记录的引用。</p>
+<p>写入顺序很重要：<strong>先提交记录，再构建图索引</strong>。即使图写入失败，也不会回滚已经保存的记忆；图读取报错时，系统还能回退到直接检索证据。这保护的是已写入记录，而不意味着写入阶段一定捕获了输入中的所有细节。</p>
+<h3>Provenance Hypergraph：用多元事实连接可追溯证据</h3>
+<p>普通关系图通常把事实拆成一组二元关系，但一次旅行可能同时涉及旅客、出发地、目的地、同行者和时间。拆散后，哪些信息属于同一次旅行就可能变得难以判断。</p>
+<p>MIRIX-2.0 用<strong>多元事实帧</strong>保留这些参与者及其角色：</p>
+$$f=\left(p,\,\{(r_j,a_j)\}_{j=1}^{d_f},\,\ell_f,\,\tau_e,\,\tau_m,\,C_f\right)$$
+
+<p>这里的 $p$ 是关系，$r_j$ 和 $a_j$ 表示参与者角色与实体，$\ell_f$ 保存日期、价格等具体值，$C_f$ 指向支持该事实的来源记录。</p>
+<p>写入图时，系统先抽取实体和事实，再用近邻搜索提出可能重复的实体，由语言模型谨慎判断是否为同一对象；向量相似度本身不能直接决定合并。针对高信号细节的遗漏，系统还可以进行一次受限的补充抽取。</p>
+<p>情景事件与稳定事实采用不同的身份规则：重复出现的语义事实可以累积来源引用；情景事实则加入事件时间，没有明确事件时间时使用不可变记录 ID，避免仅因措辞相似就合并不同经历。</p>
+<p>查询时，检索器先按问题类型制定预算，再从匹配问题的实体锚点进入图：</p>
+<ul>
+<li><strong>基础召回通道</strong>查找锚点关联的记录，并沿事实帧找到相关来源。</li>
+<li><strong>关系引用通道</strong>筛选与问题关系匹配的事实帧，取回其明确引用的记录。</li>
+<li>两路结果经过排序和去重后，将<strong>图事实与来源记录一起</strong>交给回答模型。</li>
+</ul>
+<p>例如，单值查询的预算为最多 6 条基础记录和 4 条关系引用记录；计数问题需要更宽的证据范围，预算分别为 8 条和 12 条。回答草稿若出现明确不确定、缺失所需数值或与证据不一致等情况，还可触发额外检索和改写。预算限制的是单次检索查看的证据规模，并不等同于已经证明历史增长时的实际延迟恒定。</p>
+<h3>AutoDream：后台整理实体与任务技能</h3>
+<p>AutoDream 不在关键写入路径上运行，而且对语义记忆和程序性记忆采取不同策略。</p>
+<p>对语义记忆，它只从新增语义记录涉及的实体出发，在同类型近邻中寻找可能重复的对象。语言模型确认后，系统合并锚点的引用并调整关联边，但不改写向量数据库中的记忆，也不合并事件事实节点。合并候选有数量上限，被否定的候选对会缓存，避免反复判断。</p>
+<p>对程序性记忆，AutoDream 则从已完成的任务会话中提炼“值得复用的经验”和“需要避免的错误”，再由整理器创建、修改或删除技能。技能编辑可以引用经验，引用中的原文需经过核验。这个分支会改变提供给 Agent 的行动指导，因此不能与语义分支的“保留记录、只整理索引”混为一谈。</p>
+<h2>三、实验</h2>
+<p>在用户记忆实验中，研究者比较了三种配置：<strong>M0</strong> 为无图、无 AutoDream 的平面向量记忆；<strong>M1</strong> 加入超图但关闭 AutoDream；<strong>M2</strong> 则同时启用超图和 AutoDream。</p>
+<p><img alt="图2：不同组件在对话记忆任务上的消融结果" src="https://arxiv.org/html/2611.12068v1/results_user_ablation.svg" /></p>
+<p>在对话记忆基准 <strong>LoCoMo</strong> 上，M0、M1、M2 的准确率依次为 85.7%、88.4% 和 91.4%；在 <strong>LongMemEval-S</strong> 上依次为 58.8%、70.0% 和 72.6%。两项测试均采用语言模型裁判评分。M2 在 LongMemEval-S 上比最强对比方法 HyperMem 高 <strong>14.3 个百分点</strong>；但在 LoCoMo 的开放域和单跳问题上，HyperMem 仍有更高分数。</p>
+<p>长文档问答使用关闭 AutoDream 的 M1：单跳任务达到 83.0%，多跳任务达到 71.0%，分别比 HyperMem 高 31.0 和 22.0 个百分点。不过，在需要推理的 DetectiveQA 上，M1 的 64.8% 低于 HyperMem 的 66.2%。这些结果比较的是完整流程，不能单独证明某个组件带来了全部收益。</p>
+<p><img alt="图3：Agent 在未见过的交互任务上的平均成功率" src="https://arxiv.org/html/2611.12068v1/results_agent_heldout.svg" /></p>
+<p>程序性记忆实验先用训练任务提炼技能，再冻结记忆，测试其在新任务上的复用能力。在 <strong>ALFWorld</strong> 中，使用 GPT-6 Luna 时，MIRIX-2.0 的平均成功率为 76.4%，无记忆为 69.4%，对比方法 AWM 为 73.6%；但 MIRIX-2.0 在三次运行中的标准差为 6.2 个百分点，优势的稳定性仍需更多验证。</p>
+<p>在 <strong>WebShop</strong> 中，MIRIX-2.0 的平均成功率为 37.4%，高于无记忆的 31.9% 和 AWM 的 36.0%。在跨 30 天任务的 MetaClaw-Bench Part I 上，使用 GPT-5.2 时，其得分为 49.2%，MetaClaw 技能库的报告值为 44.0%；这一比较并非完全受控的重新运行。</p>
+<p><img alt="图4：记忆构建时间与单题回答时间对比" src="https://arxiv.org/html/2611.12068v1/results_cost.svg" /></p>
+<p>效率实验均关闭 AutoDream。M1 在五项计时基准上的回答速度快于 HyperMem，但文档图构建使录入时间达到平面记忆的 <strong>3.8 至 4.0 倍</strong>；完整 M2 系统的总耗时未测量。在 WebShop 上，MIRIX-2.0 每次运行的训练和测试 token 分别为 1.815M 和 4.975M，均为对比记忆方法中最低；但在 ALFWorld 上，其测试 token 为 3.813M，反而是这些记忆方法中最高的。</p>
+<p><strong>论文标题</strong>：MIRIX-2.0: Multi-Agent Memory System</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.12068.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-16_MIRIX-20-Multi-Agent-Memory-System.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-16_MIRIX-20-Multi-Agent-Memory-System.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
