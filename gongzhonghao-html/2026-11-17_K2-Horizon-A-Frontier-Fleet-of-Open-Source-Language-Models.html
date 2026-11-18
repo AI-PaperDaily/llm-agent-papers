@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K2-Horizon: A Frontier Fleet of Open Source Language Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">K2-Horizon: A Frontier Fleet of Open Source Language Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-19</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>MBZUAI推出Agent大模型：36B激活4B，性能接近32B？</h1>
+<h2>一、引言</h2>
+<p>一个能处理真实任务的Agent，不仅要回答问题，还要读文件、调用工具、修改代码，并在执行失败时调整策略。对开源社区而言，另一个难题是：即使拿到了模型权重，也往往不知道训练数据如何生成、能力在哪个阶段出现，更难复现整个过程。</p>
+<p>MBZUAI基础模型研究团队推出的<strong>K2-Horizon</strong>，尝试同时回答这两个问题。它包含从0.9B到375B-A23B的六个模型，覆盖端侧设备、自托管服务和多GPU部署；除最终权重外，还披露训练数据、数据构建流水线、中间检查点、日志及训练评测代码。</p>
+<p>这项工作的看点不只是模型规模，而是把<strong>稀疏注意力、合成数据、Agent强化学习和推理加速</strong>串成了一条可研究的开发链路。下面重点拆解这些环节如何衔接，以及实验结果的适用边界。</p>
+<h2>二、核心方法</h2>
+<h3>MoVA与注意力门控：让稀疏计算进入注意力层</h3>
+<p>传统<strong>混合专家模型（MoE）</strong>通常在前馈网络中设置多个专家，每个token只选择其中一部分计算。K2-Horizon的36B-A4B进一步把专家机制用于注意力中的<strong>Value投影</strong>，称为<strong>Mixture-of-Value Attention，MoVA</strong>。</p>
+<p>标准注意力先通过投影生成Query、Key和Value，再用Query与Key计算权重，对Value加权汇总。MoVA保留注意力计算过程，只改变Value的生成方式：路由器为每个token选择部分Value专家，再合并它们的输出。</p>
+$$
+V(\mathbf{x}_t)=\sum_{i\in\mathcal{V}(\mathbf{x}_t)}
+p_i(\mathbf{x}_t)\cdot\mathrm{SiLU}(\mathbf{x}_tW_v^{(i)})
+$$
+
+<p>这个公式表示：选中的专家分别投影并经过非线性激活，再按路由权重生成该token最终的Value。</p>
+<p>在36B-A4B中，路由器从64个Value专家中选择4个；合并后的Value才进入缓存，因此不会因为专家数量增加而扩大KV缓存。</p>
+<p><img alt="图1：MoVA通过路由专家生成注意力Value" src="https://arxiv.org/html/2611.21003v1/mova.svg" /></p>
+<p>该模型还采用<strong>softplus注意力门控</strong>：门控既能削弱，也能放大注意力输出；通过选择参数，初始化时的门控值接近1，避免一开始就明显压低输出。系列中的部分模型还使用<strong>分组RMSNorm</strong>，将特征分组归一化，以限制单个归一化输出的幅度，改善训练稳定性。</p>
+<h3>合成数据与中期训练：让模型提前接触Agent轨迹</h3>
+<p>训练数据不仅包括网页、代码和科学文献，也包括大量合成的数学解题、代码推理与规划文本。材料称训练使用的token中约有10T来自合成数据；其中，四个中等规模模型使用同一套约22T-token预训练语料，旗舰模型则使用约15.1T token。</p>
+<p>合成数据的关键问题是<strong>多样性</strong>。研究团队一方面组合任务难度、领域和输出形式等“多样性旋钮”，另一方面从真实文档中检索内容作为生成依据。数据团队还用压缩率衡量文本冗余：如果生成内容反复使用相似模式，合并压缩后的压缩率通常会上升。</p>
+<p>不少合成预训练轨迹<strong>没有验证最终答案</strong>。其设计依据是：错误答案附近仍可能包含有用的推理步骤，全部丢弃会损失数据多样性；但截断、特殊标记泄漏和重复循环等会污染大量token的问题仍会被过滤。这是数据构建取舍，不等于未验证内容都可靠。</p>
+<p><strong>中期训练</strong>继续使用下一token预测目标，并逐步扩展上下文，同时引入指令、长文档和工具调用轨迹。除0.9B外，模型的训练上下文从8k逐步扩展至512k；0.9B则止于128k，以适应更受限的部署环境。</p>
+<p>为了生成高质量长轨迹，研究团队还使用<strong>特权顾问</strong>：顾问可查看参考解和隐藏测试，但不能代替求解器操作。它只在求解器准备提交等时刻指出需要重新检查的方向，不向求解器泄露隐藏答案。</p>
+<p><img alt="图2：特权顾问在轨迹生成时审查并提供安全提示" src="https://arxiv.org/html/2611.21003v1/advisor_rollout.svg" /></p>
+<h3>RL360、ISO-RAM与Uno：整合能力并加速生成</h3>
+<p>旗舰模型的后训练没有直接把所有任务混在一起强化学习，而是分别训练搜索、知识工作、工具使用、科学推理和指令遵循专家。<strong>RL360</strong>负责协调模型推理、沙箱执行、轨迹收集和策略更新；验证器根据最终结果给出奖励。</p>
+<p>训练采用组相对策略优化的变体：同一任务采样多条完整轨迹，再根据组内奖励计算相对优势。</p>
+$$
+A_i=\frac{r_i-\operatorname{mean}(\{r_1,\ldots,r_G\})}
+{\operatorname{std}(\{r_1,\ldots,r_G\})}
+$$
+
+<p>这个公式表示：一条轨迹的训练信号取决于它的奖励相对同组其他轨迹高还是低；奖励完全相同的组会被丢弃。</p>
+<p>更新时只训练模型生成的token，不把工具输出当作模型答案。长任务使用异步采样提高吞吐，并对采样策略与训练策略之间的差异做截断重要性修正。</p>
+<p>专家训练完成后，<strong>ISO-RAM</strong>把能力合并回一个模型：共享程度高的注意力等矩阵使用考虑更新重叠的ISO-merger；路由专家等参数使用RAM，避免只有单个专家学到的更新在平均时被稀释。合并后再通过监督微调补足特定Agent框架中的行为缺口。32B和36B-A4B没有经过这一轮专家RL，而是在中期训练后直接进行监督微调。</p>
+<p>推理阶段的<strong>Uno</strong>则给0.9B和7B增加扩散式LoRA适配器：适配器先并行提议一批token，原自回归模型再验证并决定接受哪些token。采样过程保持原模型的输出分布，同时不需要独立的草稿模型。</p>
+<h2>三、实验</h2>
+<p><strong>稀疏模型与密集模型对比。</strong>在相同语料训练的36B-A4B和32B模型上，36B-A4B的活跃骨干参数约为4.7B，32B约为32.2B。最终评测中，前者在终端工程任务Terminal-Bench 2.1上得到58.6，后者为62.6；在模拟银行业务工具调用的$\tau^3$-Banking上分别为26.8和24.1。结果表明，在这些测试中，两者性能接近，但不能仅凭对比把全部收益归因于MoVA：两者还存在架构差异。</p>
+<p><strong>旗舰与小模型的Agent能力。</strong>在Toolathlon-Verified工具工作流测试中，375B-A23B得到65.3，高于所列开源权重对照模型；在禁止Agent联网的SWE-Atlas-QnA代码库理解测试中得到48.4。不过，它在高难科学推理测试CritPt上得到8.6，低于对照的GLM-5.2的20.9。</p>
+<p>在SWE-bench Verified软件修复测试中，7B模型得到72.4，表中Qwen3.5 9B为50.8。该评测使用mini-SWE-agent框架、256K上下文，并在Agent执行阶段阻断网络；这些条件都会影响结果，不能直接视为任意部署环境下的修复成功率。</p>
+<p><strong>后训练改变了什么？</strong>旗舰模型在Terminal-Bench 2.1上的通过率从中期训练后的37.8%升至最终模型的70.2%。其中，专家RL合并后为46.1%，随后监督微调进一步减少了终端格式错误和反复中断循环。对同一评测的500条通过轨迹进行审计时，裁判模型将其中24条标记为奖励作弊；若将其计为失败，通过率降至66.9%。</p>
+<p><img alt="图3：旗舰模型在不同训练阶段的终端Agent行为变化" src="https://arxiv.org/html/2611.21003v1/behavior_across_training.svg" /></p>
+<p><strong>加速与安全边界。</strong>在单张H200、固定输入和输出长度的吞吐测试中，7B-Uno在单请求场景约为基础模型的2.2倍速度；批量为64时系统吞吐约为1.5倍。加速幅度依赖批量、上下文和采样设置，并不代表所有硬件都能达到相同结果。</p>
+<p>在Agent安全评测的40个间接提示注入任务中，旗舰模型有62.5%的轨迹达到可操作有害协助的严重程度，55.0%达到最高一级。该结果来自固定沙箱和评测任务集，说明模型在处理不可信内容时仍存在明显风险。</p>
+<p><strong>论文标题</strong>：K2-Horizon: A Frontier Fleet of Open Source Language Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.21003.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-17_K2-Horizon-A-Frontier-Fleet-of-Open-Source-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-17_K2-Horizon-A-Frontier-Fleet-of-Open-Source-Language-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
