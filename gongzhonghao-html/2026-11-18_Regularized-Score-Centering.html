@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regularized Score Centering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">Regularized Score Centering</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-20</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>UIUC与CMU稳住Agent异步训练：BabyAI得分达最强基线9.9倍！</h1>
+<h2>一、引言</h2>
+<p>训练能够调用工具、操作环境的Agent，往往需要同时生成轨迹和更新模型。异步强化学习可以提高训练吞吐量，却也带来一个问题：轨迹生成完成时，学习器可能已经更新过多次，产生数据的策略与当前策略不再一致。</p>
+<p>即使模型权重没有变化，训练与推理使用不同精度或计算内核，也可能让两者对同一动作给出不同概率。面对这种<strong>离策略数据</strong>，简单复用旧轨迹可能使更新方向偏离当前模型真正需要的方向；重要性采样虽然能校正一部分差异，又可能带来极端梯度。</p>
+<p>UIUC与CMU等机构的研究者提出<strong>Regularized Score Centering（RSC，正则化分数中心化）</strong>：在消除奖励基线干扰的同时，限制学习器偏离数据生成策略的程度。理解这一方法，有助于区分异步Agent训练中的两类问题：单次更新是否稳定，以及旧轨迹是否仍能代表当前策略。</p>
+<h2>二、核心方法</h2>
+<h3>重要性采样：修正动作分布，但可能放大梯度</h3>
+<p>设当前学习器为 $\pi_\theta$，生成训练数据的行为策略为 $\mu$。在同一历史 $h$ 下，动作 $a$ 的重要性比率是 $\rho(h,a)=\pi_\theta(a\mid h)/\mu(a\mid h)$；它衡量该动作在两个策略下的相对概率。</p>
+<p>完整的序列级重要性采样需要连乘整条回复的 token 比率，长序列容易出现高方差。<strong>截断重要性采样（TIS）</strong>改为限制 token 权重，减轻极端梯度，但截断也会引入偏差。</p>
+<p>更重要的是，token 级校正只针对给定历史下的下一动作：它既不校正此前历史的分布，也不修正动作之后由旧策略生成的后续轨迹。</p>
+<h3>Score Centering：消除奖励基线造成的更新漂移</h3>
+<p><strong>Score Centering（SC，分数中心化）</strong>处理的是另一类偏差。策略的“分数”是对数概率的梯度，记为 $\psi_\theta$。在学习器自己的动作分布下，分数的均值为零；但在行为策略下，这个均值不一定为零。</p>
+<p>因此，本来不应区分动作的共同奖励基线，也可能推动参数更新。SC 在同一历史下减去行为策略的平均分数：</p>
+$$
+\mathbb{E}_{\mu}\!\left[R\bigl(\psi_{\theta}-\mathbb{E}_{\mu}[\psi_{\theta}]\bigr)\right]
+=\mathbb{E}_{\mu}[A_t^\mu\psi_{\theta}]。
+$$
+
+<p>这表示精确中心化后，期望更新只保留行为策略下的动作优势 $A_t^\mu$ 所对应的部分，消除了共同基线的贡献。</p>
+<p>SC 也能与 TIS 组合：此时被减去的是<strong>加权分数的条件均值</strong>，辅助动作与实际动作使用相同的截断规则。实践中，条件均值通过在同一历史下从行为策略独立采样辅助 token 来估计，不需要额外运行环境或计算奖励。</p>
+<p>但中心化不能解决所有离策略问题。动作优势仍取决于行为策略如何继续完成轨迹；学习器变化较大时，旧策略认为无价值的动作，可能恰好能被新策略用于后续决策。</p>
+<h3>Regularized Score Centering：用反向KL限制策略偏移</h3>
+<p>RSC 在 SC 或 SC+TIS 上加入<strong>反向 KL 正则化</strong>，比较同一历史下学习器与行为策略的下一 token 分布。它不是让两个策略永远相同，而是在使用旧数据拟合期间，对过大的偏移施加代价。</p>
+<p><img alt="图1：RSC在分数中心化基础上约束学习器与行为策略的分布差异" src="https://arxiv.org/html/2611.21791v1/kl_role_agentic.png" /></p>
+<p>固定行为策略和 token 优势后，RSC 的代理目标可写为：</p>
+$$
+\mathcal{W}(\pi_{\theta})=
+\mathbb{E}_{Y\sim\mu}\!\left[
+\sum_{t=1}^{H}
+\left(
+A_t^\mu F_a(\rho_t)
+-\beta(\rho_t\log\rho_t-\rho_t+1)
+\right)
+\right]。
+$$
+
+<p>其中第一项依据旧策略下的优势奖励动作，第二项在行为策略下取条件期望后对应反向 KL 惩罚，$\beta$ 控制限制强度。</p>
+<p>这里 $F_a$ 由所选权重函数决定；不使用重要性采样时，它退化为 $\log\rho$。实际训练不能直接得到每个 token 的期望优势，而是使用组内中心化的响应奖励，并结合辅助 token 估计中心项：</p>
+$$
+\widehat{g}_{i,t}^{\rm RSC}
+=A_i\!\left(
+\rho_{i,t}^{\rm TIS}\psi_{i,t}
+-\widehat{\mathbb{E}}_{\mu}[\rho^{\rm TIS}\psi_\theta\mid h_{i,t}]
+\right)
+-\beta\widehat{\mathbb{E}}_{\mu}
+[\rho^{\rm KL}\log\rho^{\rm KL}\psi_\theta\mid h_{i,t}]。
+$$
+
+<p>这一更新由<strong>中心化奖励梯度</strong>和<strong>KL 惩罚梯度</strong>组成：前者减少基线干扰，后者限制策略偏移；KL 权重也可以单独截断，此时对应的是修改后的正则目标。</p>
+<p>行为策略刷新后，KL 参照也随之更新；完全异步训练中，不同样本则对应各自产生时的行为策略。理论分析在有限确定性 token 树、二元终止奖励等条件下表明，充分拟合正则化目标可以转化为奖励进展；该保证依赖指定的拟合和采样条件，不能直接视为任意实际训练都单调提升。</p>
+<h2>三、实验</h2>
+<p>首先，中心估计本身会影响训练。与原 SC 使用的 Top-128 概率及尾部近似相比，在 Countdown 和数学任务中，测试过的蒙特卡洛中心估计都取得了更高的最终评估分数。数学对比每种设置使用一个随机种子，Countdown 使用三个随机种子。</p>
+<p><img alt="图2：蒙特卡洛中心估计与Top-128近似的训练和评估对比" src="https://arxiv.org/html/2611.21791v1/countdown_failure_estimators.svg" /></p>
+<p>更准确的中心估计仍不足以消除策略陈旧问题。在相同采样器刷新间隔下，稠密模型的数学任务中，加入 KL 对最终平均准确率的改变小于一个百分点；而在交互环境 Crafter 中，RSC（TIS）明显优于 SC+TIS。这组对比同时涉及不同任务和模型，因此不能把差异完全归因于任务结构。</p>
+<p>延长刷新间隔后，学习器可以在旧策略固定期间更新更多次。Countdown 的最大测试间隔下，即使使用蒙特卡洛中心，RSC（TIS）的最终留出奖励仍比 SC 高约 <strong>65 个百分点</strong>；MoE 数学实验中，SC 在最长间隔下也落后于 SC+TIS。</p>
+<p><img alt="图3：采样器刷新间隔增加时的Countdown和MoE数学任务表现" src="https://arxiv.org/html/2611.21791v1/staleness_comparison.png" /></p>
+<p>在六项受控异步 Agent 任务中，RSC（TIS）整体处于领先水平。下表为三个随机种子的最终评估均值；Crafter 使用几何成就分数，Craftax 使用总回合奖励，其余列出的任务以百分比报告。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>任务</th>
+<th>对比基线</th>
+<th style="text-align: right;">基线得分</th>
+<th style="text-align: right;">RSC（TIS）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WebShop</td>
+<td>IS-PPOClip</td>
+<td style="text-align: right;">74.81%</td>
+<td style="text-align: right;">74.80%</td>
+</tr>
+<tr>
+<td>AppWorld dev</td>
+<td>SC+TIS</td>
+<td style="text-align: right;">12.28%</td>
+<td style="text-align: right;">14.04%</td>
+</tr>
+<tr>
+<td>BabyAI</td>
+<td>IS-PPOClip</td>
+<td style="text-align: right;">1.83%</td>
+<td style="text-align: right;">18.06%</td>
+</tr>
+<tr>
+<td>Crafter</td>
+<td>IS-PPOClip</td>
+<td style="text-align: right;">9.34</td>
+<td style="text-align: right;">14.21</td>
+</tr>
+<tr>
+<td>Craftax</td>
+<td>IS-PPOClip</td>
+<td style="text-align: right;">4.04</td>
+<td style="text-align: right;">4.71</td>
+</tr>
+</tbody>
+</table></div>
+<p>其中，AppWorld 相对 SC+TIS 提升 <strong>14.3%</strong>；BabyAI 得分约为最强非 RSC 基线 IS-PPOClip 的 <strong>9.9 倍</strong>。WebShop 上两者基本持平，IS-PPOClip 的均值略高。训练曲线还显示，在 Crafter 和 Craftax 中，相同采样响应数量下，RSC（TIS）获得了更高训练奖励。</p>
+<p><img alt="图4：六项交互任务的训练奖励曲线" src="https://arxiv.org/html/2611.21791v1/agentic_training.png" /></p>
+<p>最后，在完全异步的软件工程训练中，轨迹完成时间和队列等待共同形成策略延迟。SWE-bench Verified 的 Average@8 评估显示：学习率为 $10^{-6}$ 时，不使用 IS 的 RSC 得分为 <strong>61.14%</strong>，高于 SC 的 <strong>58.48%</strong>；学习率为 $2\times10^{-6}$ 时，RSC（TIS）为 <strong>54.47%</strong>，高于 SC+TIS 的 <strong>36.04%</strong>。这两组配置每种方法各使用一个随机种子，且只评估了部分基线。</p>
+<p><img alt="图5：完全异步软件工程训练的奖励与策略概率差异" src="https://arxiv.org/html/2611.21791v1/swe_preliminary.svg" /></p>
+<p><strong>论文标题</strong>：Regularized Score Centering</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.21791.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-18_Regularized-Score-Centering.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-18_Regularized-Score-Centering.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
