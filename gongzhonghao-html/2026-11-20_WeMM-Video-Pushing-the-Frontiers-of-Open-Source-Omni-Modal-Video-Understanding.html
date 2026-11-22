@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeMM-Video: Pushing the Frontiers of Open-Source Omni-Modal Video Understanding</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">WeMM-Video: Pushing the Frontiers of Open-Source Omni-Modal Video Understanding</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-23</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>腾讯 WeMM-Video：通过渐进训练统一音视频理解，9B模型在多项评测超过30B-A3B基线</h1>
+<h2>一、引言</h2>
+<p>理解一段有声视频，不只是分别识别画面和语音。判断“是谁在说话”，模型还需要把声音与画面中人物的动作、出现时间对应起来；理解一段短剧，也可能需要结合对白、背景声音和跨镜头的事件。</p>
+<p>现有多模态模型已经具备一定的视觉或音频能力，但在复杂视频中仍可能漏掉关键细节，把声音关联到错误的画面，或者生成缺少证据的描述。单纯增加一种模态的输入，也不意味着模型能可靠地联合使用两种信息。</p>
+<p>WeMM-Video围绕这一问题，将音频接入视觉语言模型，并通过渐进预训练和多阶段后训练，使模型学习音视频联合感知与推理。模型同时提供直接回答和显式推理两种模式，覆盖2B、4B、9B和35B-A3B四种规模。</p>
+<h2>二、核心方法</h2>
+<p>WeMM-Video的处理链路可以概括为：先把画面和声音转换成模型能够接收的序列，再按时间组织信息，由语言模型生成文本回答。训练则围绕这条链路分阶段进行：先对齐音频表示，再用多模态数据扩展能力，最后通过蒸馏、偏好优化和强化学习改善输出。</p>
+<h3>从视频输入到时间对齐的多模态序列</h3>
+<p>WeMM-Video沿用所选基座的视觉编码器和投影机制，处理图片及视频帧；2B、4B、9B版本分别基于对应规模的Qwen3.5，35B-A3B版本基于Qwen3.6-35B-A3B。</p>
+<p>音频走一条独立的处理路径。声音以16 kHz采样、按30秒切块，先经过基于Whisper的音频编码器提取特征，再由窗口级<strong>Q-Former</strong>压缩：每0.1秒的局部窗口映射为一个音频token，也就是每秒10个音频token。这样，连续声音被转换成语言模型可以接收的表示。</p>
+<p><img alt="图2：WeMM-Video的多模态输入与模型架构" src="https://arxiv.org/html/2611.26409v1/wemmvideo.svg" /></p>
+<p>对于带声音的视频，视觉token和音频token按时间顺序交错，并加入显式文本时间戳。图2中的视觉路径与音频路径最终汇入同一个语言模型，由它结合输入及问题自回归地产生文本回答。时间顺序和时间戳为跨模态对齐提供了线索，但实际能否正确关联声音与画面，仍取决于训练和任务难度。</p>
+<p>模型支持两种输出方式：<strong>Instruct模式</strong>直接作答，适合低延迟场景；<strong>Thinking模式</strong>生成逐步推理过程，用于需要整合多处证据的问题。两者是同一模型支持的生成模式，而不是两套独立的视频处理系统。</p>
+<h3>用渐进训练建立音视频能力</h3>
+<p>为让模型学会联合使用多种信息，训练数据不仅包含音视频，还覆盖单独的音频、视觉和文本任务。整个语料约为<strong>1.2万亿token</strong>，其中音视频联合数据占45.4%，是最大的模态组成部分。</p>
+<p><img alt="图3(a)：训练数据的模态分布" src="https://arxiv.org/html/2611.26409v1/wemm_tokens.svg" /></p>
+<p>从任务类型看，描述生成占37.7%。这类数据既包含运动、游戏等场景中的细粒度动作描述，也包含电影、短剧、直播等视频的联合描述，沿时间线覆盖画面动作、对白和环境声音。训练集还包括语音识别、音乐理解、视频对比以及音视频推理问答等任务。</p>
+<p><img alt="图3(b)：训练数据的任务分布" src="https://arxiv.org/html/2611.26409v1/wemm_task.svg" /></p>
+<p>预训练分三步完成，区别不仅是数据变化，也包括哪些参数参与更新：</p>
+<ol>
+<li><strong>音频对齐</strong>：使用基础音频—文本样本，只训练Q-Former，冻结语言模型和模态编码器，让音频表示进入基座可用的输入空间。</li>
+<li><strong>多模态知识注入</strong>：扩大上下文，混合文本、视觉、音频及联合音视频数据训练；除视觉编码器外，其余模型参数解冻。</li>
+<li><strong>长上下文扩展</strong>：保持第二阶段的参数配置，继续扩大上下文，加入长视频、长音频和多视频样本，学习跨较长时间范围的信息关联。</li>
+</ol>
+<p>这一过程先解决“声音如何接入”，再让模型在混合任务中学习如何使用声音，最后扩展到更长的多模态序列。</p>
+<h3>后训练：增强能力、抑制重复，再优化专项任务</h3>
+<p>预训练后的模型已有基础感知能力，但复杂任务仍需要更强推理，生成过程也可能出现反复输出甚至无法结束。后训练按三个阶段处理这些问题。</p>
+<p>首先是<strong>多教师在策略蒸馏（OPD）</strong>。模型使用更强的外部教师监督文本和视觉语言任务，同时使用同系列教师保留音频、音视频能力；跨模态蒸馏则将文本侧知识用于音频任务。其目标是在增强通用能力的同时，减少已有多模态能力的退化。</p>
+<p>接着是<strong>多轮直接偏好优化（MrDPO）</strong>。研究者离线挖掘视频、音频和视觉语言任务中出现重复解码的困难负例，用这些样本开展多轮偏好优化。每轮只更新LoRA适配器，轮次之间将适配器合并并重新初始化。离线挖掘针对的是重复输出这类相对少见、但会干扰后续训练的退化案例。</p>
+<p>最后是<strong>专项强化学习</strong>。研究者先离线生成并评估任务样本，筛掉模型已经稳定解决的实例，再针对困难任务提供反馈：答案可确定验证时使用规则奖励，开放式任务则使用评分标准和教师一致性奖励。动态奖励路由根据任务选择奖励，训练时随机采样两种回答模式，并将更长的视频和序列纳入优化。报告没有给出完整的强化学习算法及可训练参数范围，因此不能把该阶段归结为某一种具体策略优化实现。</p>
+<h2>三、实验</h2>
+<p>评测覆盖音视频联合理解、无声视频、音频、图像和文本，共超过120项基准。视频评测同时报告35B-A3B的Instruct和Thinking结果；较小模型在视频任务中主要报告Thinking结果。因此，跨模型比较也包含回答模式差异，不能直接视为相同推理成本下的比较。</p>
+<p><strong>音视频联合理解</strong>是主要验证场景。在带音频的Video-MME上，WeMM-Video-35B-A3B的Thinking模式得分为86.4，超过Seed2.0-Mini-0428的83.6和Qwen3.5-Omni-Flash的79.3，但低于Gemini-3.0-Flash的88.6。在Daily-Omni上，该模型得分83.4，略高于Gemini的82.4。整体来看，它在多项测试中接近较强的闭源模型，但并非全面领先。</p>
+<p>较小模型也有代表性结果：WeMM-Video-9B的Thinking模式在带音频的Video-MME上得到85.1，Qwen3-Omni-30B-A3B-Instruct为77.3；在音视频说话人识别基准AV-SpeakerBench上，两者分别为71.1和50.4。需要注意，30B-A3B是总参数约30B、每次激活约3B参数的模型，参数总量差异不能直接等同于运行成本差异。</p>
+<p><strong>显式推理通常有帮助，但不是每项任务都更好。</strong>35B-A3B在带音频的Video-MME-v2上，Thinking为54.9，Instruct为47.5；在FutureOmni上则分别为56.2和58.4。video-SALMONN 2测试集使用越低越好的总错误率，Thinking为28.3，Instruct为27.5。这说明额外推理并不保证在所有任务上改善结果。</p>
+<p>加入音频后，模型还需要保住原有的视觉和语言能力。无声视频Video-MME上，35B-A3B的Thinking得分为80.4，其视觉语言基座Qwen3.6-35B-A3B为82.5；在TempCompass上，两者分别为84.3和83.7。图像基准MMMU上两者分别为81.1和81.7，文本基准GPQA上分别为83.8和86.0。结果支持“整体保持接近基座”的判断，也显示部分任务存在差距。</p>
+<p>独立音频测试中，35B-A3B的Instruct模式在MMAU-Pro上得到70.6，高于Qwen3-Omni-30B-A3B-Instruct的60.2；但在LibriSpeech语音识别上，其两个测试集的词错误率分别为1.6和3.4，高于后者的1.2和2.5，表明音频理解优势并不等于每项语音识别指标都领先。</p>
+<p><strong>论文标题</strong>：WeMM-Video: Pushing the Frontiers of Open-Source Omni-Modal Video Understanding</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.26409.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-20_WeMM-Video-Pushing-the-Frontiers-of-Open-Source-Omni-Modal-Video-Understanding.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-20_WeMM-Video-Pushing-the-Frontiers-of-Open-Source-Omni-Modal-Video-Understanding.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
