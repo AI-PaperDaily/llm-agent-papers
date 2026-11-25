@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Models as Native Latent Action Models</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">World Models as Native Latent Action Models</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-26</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>商汤等提出Native LAM：从视频世界模型提取潜在动作，RoboTwin成功率达93.6%</h1>
+<h2>一、引言</h2>
+<p>人类操作视频和不同机器人的录像记录了丰富的物理运动，但它们很难直接用于训练机器人策略：人类视频通常没有动作标签，不同机器人记录的控制指令也不在同一个空间里。</p>
+<p>潜在动作模型提供了一种思路：从视频变化中推断动作表示，再用它重建后续画面。不过，常见方法需要从头训练两个模型，同时学习运动和画面生成。潜在表示容量过大时可能泄漏未来画面，容量过小时又难以描述动作；模型还可能把注意力放在相机运动等干扰上。</p>
+<p><strong>Native LAM</strong>换了一个起点：预训练视频世界模型已经学会生成场景变化，能否直接从中读出紧凑的动作表示？研究者让同一个世界模型既读取视频动作，也根据动作重现运动，再用得到的表示监督机器人策略。策略训练和执行时不需要生成视频。</p>
+<h2>二、核心方法</h2>
+<p>方法分为两个训练阶段。首先，Native LAM从机器人、人类和仿真视频中学习提取潜在动作；训练时，世界模型根据这些动作重建视频，重建误差会更新动作读取路径和共享模型参数。随后，冻结Native LAM，为视频生成动作标签；<strong>PAWlicy</strong>用这些标签预训练策略，再用目标机器人的示范数据微调。</p>
+<h3>让同一个世界模型读取并重现动作</h3>
+<p>Native LAM基于预训练视频世界模型Kairos 3.1，使用同一个视频扩散Transformer承担两种任务：</p>
+<ul>
+<li><strong>逆动力学模式</strong>：读取完整视频，提取其中发生的动作。</li>
+<li><strong>前向动力学模式</strong>：从首帧和提取出的动作出发，生成后续视频。</li>
+</ul>
+<p><img alt="图2：Native LAM通过动力学寄存器连接视频读取和生成" src="https://arxiv.org/html/2611.30898v1/method.png" /></p>
+<p>读取时，模型先将视频转换为视觉潜表示，再在视频token后加入一组可学习的<strong>动力学寄存器</strong>。通过注意力掩码，寄存器可以读取视频token，但视频token不能反过来读取寄存器；寄存器的最终状态经过小型MLP，得到按时间排列的连续潜在动作。</p>
+<p>生成时，同一个模型接收首帧、潜在动作和带噪的未来视频潜表示。潜在动作经另一层MLP转换后，取代原有的文本或动作条件；模型不接收文本，也不直接接收干净的未来帧。实际生成时，它从噪声出发逐步生成后续画面。</p>
+<p>训练沿用世界模型的<strong>流匹配</strong>目标。设干净的未来视频潜表示为 $\mathbf v_{1:N}$，噪声为 $\boldsymbol\epsilon$，时间为 $\tau$，则带噪输入为 $\mathbf v^\tau_{1:N}=(1-\tau)\mathbf v_{1:N}+\tau\boldsymbol\epsilon$。模型根据首帧和潜在动作预测速度 $u_\theta$：</p>
+$$
+\mathcal L_{\mathrm{fm}}
+=\mathbb E_{\tau,\boldsymbol\epsilon}w(\tau)
+\left\|
+u_\theta\!\left(\mathbf v^\tau_{1:N},\tau\mid
+\mathbf v_0,\mathrm{MLP}_{\mathrm{in}}(\hat{\mathbf a})\right)
+-(\boldsymbol\epsilon-\mathbf v_{1:N})
+\right\|^2 .
+$$
+
+<p>这个损失衡量预测速度与目标速度的差距；梯度会经过生成路径，更新潜在动作、寄存器和两种模式共享的模型权重。</p>
+<h3>用反事实视频迫使模型关注动作</h3>
+<p>仅有重建目标还不够。预训练世界模型看到首帧后，已经能猜出常见的后续运动，可能忽略新加入、尚未训练好的动作路径。这样即使画面看起来合理，寄存器也未必学到了有用的动作。</p>
+<p>为此，训练为每个视频构造一个<strong>反事实时间配对</strong>：两段视频来自同一素材、首帧相同，但通过静止、暂停、变速或重新安排时间等方式呈现不同运动。两个片段分别提取潜在动作，生成训练时共享首帧、噪声和扩散时间。模型要区分两种未来，就需要利用动作条件，而不能只依靠首帧猜测。</p>
+<p>其中两个机器人数据源还提供末端执行器轨迹。一个辅助预测头从潜在动作预测未来若干位置、旋转和夹爪变化，使表示与真实运动建立联系；其他数据源只提供视频。</p>
+<p>设原片段和重排片段分别为 $x$、$x'$，$\mathcal L_{\mathrm{kin}}$ 为运动学预测损失，$\mathbf 1_{\mathrm{kin}}$ 表示样本是否来自有轨迹标签的数据源，则总目标为：</p>
+$$
+\mathcal L_{\mathrm{LAM}}
+=\mathcal L_{\mathrm{fm}}(x)+\mathcal L_{\mathrm{fm}}(x')
++\lambda_{\mathrm{kin}}\mathbf 1_{\mathrm{kin}}
+\left[\mathcal L_{\mathrm{kin}}(x)+\mathcal L_{\mathrm{kin}}(x')\right].
+$$
+
+<p>前两项要求模型重现配对中的两种运动，后一项只在有运动学标签时提供额外监督。</p>
+<h3>PAWlicy：把视频动作变成策略监督</h3>
+<p>Native LAM训练完成后被冻结，离线为视频片段生成并缓存潜在动作。这样，没有机器人控制标签的人类视频也能为策略提供动力学监督；有动作标签的机器人视频则同时监督真实控制指令。</p>
+<p><img alt="图3：PAWlicy用潜在动作教师监督策略，并生成机器人动作" src="https://arxiv.org/html/2611.30898v1/pawlicy.png" /></p>
+<p>PAWlicy包含三个通过注意力连接的部分：视觉语言模型编码图像和指令；潜在动作DiT预测教师动作；动作DiT结合视觉语言特征及潜在动作DiT各层的键值，生成一段机器人动作。</p>
+<p>为了让策略更容易对齐教师的表示空间，输入除了当前图像，还可以包含一张过去帧。潜在动作DiT同时重建已经观察到的一段动作，并预测之后三段动作。前者的答案包含在两张输入图像中，可以为后续预测提供锚点。训练时也会随机丢弃过去帧，以适应任务刚开始时没有历史帧的情况。</p>
+<p>两个DiT均使用流匹配训练。设教师动作和真实机器人动作分别为 $\hat{\mathbf a}^{*}_t$、$\mathbf a^{*}_{t:t+K}$，$\mathbf 1_{\mathrm{act}}$ 表示是否有真实动作标签：</p>
+$$
+\mathcal L_{\mathrm{PAW}}
+=\lambda\mathcal L_{\mathrm{fm}}(\hat{\mathbf a}_t;\hat{\mathbf a}^{*}_t)
++\mathbf 1_{\mathrm{act}}\mathcal L_{\mathrm{fm}}
+(\mathbf a_{t:t+K};\mathbf a^{*}_{t:t+K}).
+$$
+
+<p>因此，每段视频都训练潜在动作预测；只有带控制标签的样本才额外训练真实动作生成。微调沿用同一目标，推理时两个DiT同步生成潜在动作和控制指令，不运行视频世界模型。</p>
+<h2>三、实验</h2>
+<p><strong>先看提取出的表示是否真的包含动作信息。</strong>在LARY评测中，Native LAM保持冻结，评测器分别从其表示中预测动作类别和机器人末端控制量。其平均分类准确率为71.77%，控制回归的归一化均方误差为0.25；对比此前最强的WLA 3，分别为70.75%和0.37。</p>
+<p>反事实配对的对照实验解释了这一表示如何形成：训练2,000步时，不使用配对的模型无论输入运动片段还是其静止版本的潜在动作，都生成伸向杯子的运动；使用配对后，静止动作已能生成静止画面，但运动片段还未完全匹配。训练到13,000步后，两种生成结果才都与来源相符。</p>
+<p>迁移实验则从源视频读取动作，再从改变机器人、场景或人手形态后的首帧生成视频。</p>
+<p><img alt="图4：从源视频读取的潜在动作在不同主体和场景中重放" src="https://arxiv.org/html/2611.30898v1/transfer.png" /></p>
+<p>生成结果保留了源运动，但这是保持初始几何关系的定性测试，不能直接等同于任意机器人之间的真实控制迁移。</p>
+<p><strong>再看动作表示能否改善策略。</strong>RoboTwin 2.0只用每任务50条干净示范训练时，PAWlicy在干净和随机化场景上的平均成功率为74.02%；使用相同过去帧和图像增强的 $\pi_{0.5}$ 为68.54%。加入每任务500条随机化示范后，PAWlicy在干净、随机化场景分别达到93.8%和93.4%，平均93.6%。</p>
+<p>真实机器人实验中，每项任务使用100条示范训练、评估30次。PAWlicy在三块积木堆叠和鞋子入盒任务上的成功率分别为76.7%和90.0%；配置相同过去帧及增强的 $\pi_{0.5}$ 分别为66.7%和80.0%。推理耗时测试中，PAWlicy为106毫秒，与不生成视频的Fast-WAM的103毫秒接近；这一比较不包含离线训练教师和生成缓存标签的成本。</p>
+<p><strong>论文标题</strong>：World Models as Native Latent Action Models</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.30898.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-24_World-Models-as-Native-Latent-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-24_World-Models-as-Native-Latent-Action-Models.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
