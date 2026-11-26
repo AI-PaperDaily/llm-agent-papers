@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoT-Proxy: Cross-Format Transfer for Distilling Long-Horizon Policies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">CoT-Proxy: Cross-Format Transfer for Distilling Long-Horizon Policies</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-27</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>英伟达等提出CoT-Proxy：用动作与推理摘要蒸馏长程策略，4B模型AppWorld成功率达48.2%</h1>
+<h2>一、引言</h2>
+<p>让大模型完成跨多个步骤的Agent任务，需要它根据任务目标和环境反馈，持续选择下一步动作。除了在环境中进行强化学习，一种常见做法是让较强的教师模型先完成任务，再用其轨迹微调较小的学生模型。</p>
+<p>常规轨迹蒸馏会让学生同时模仿教师的思维链和动作，但闭源教师的思维链通常被API隐藏，能够取得的可能只有可见输出和简短的推理摘要。即使能取得完整思维链，教师的推理方式也未必适合较小的学生。</p>
+<p><strong>CoT-Proxy</strong>研究的是：能否不模仿教师的完整思维链，只把长程行动策略教给已经具备推理能力的学生？其做法是在训练时用空推理块配合教师动作，或再加入一段推理摘要；推理时则重新开启学生自己的思考。研究同时用回放正则化限制微调对学生原有能力的改变。</p>
+<h2>二、核心方法</h2>
+<p>训练数据来自教师在目标环境中执行任务的轨迹。例如，在AppWorld中，教师根据用户请求生成应用API调用，执行框架运行调用并返回结果；在软件工程任务中，教师通过shell命令检查和修改代码，再根据命令输出决定下一步。任务、历史动作与环境观察共同构成后续决策的上下文。</p>
+<p>收集轨迹后，学生通过监督微调学习教师在这些上下文中选择的动作，而不是根据环境奖励进行强化学习。环境反馈保留在轨迹中，供模型理解当时的状态；学生更新的是LoRA适配器参数。关键问题转而变成：教师每一轮输出应当以什么形式提供给学生？</p>
+<h3>用空推理块训练动作，让学生在推理时自行思考</h3>
+<p>常规的<strong>完整思维链训练</strong>把教师的推理和动作都作为监督目标。CoT-Proxy首先比较了一种更简单的形式：每轮预填一个空的<code>&lt;think&gt;&lt;/think&gt;</code>，然后只监督后面的动作。</p>
+<p>空推理块只是动作生成的条件，<strong>本身不计算损失</strong>，因此训练并不是教学生主动输出空推理。对于某一轮的训练样本，之前的教师回合也采用相同表示，避免历史上下文泄露教师思维链。教师可见回复中用于说明步骤的文字会被剔除，只保留解析出的动作代码块。</p>
+<p>推理时，设置反过来：只预填<code>&lt;think&gt;</code>的开头，让学生先生成自己的推理，再决定动作；本轮推理也会保留在后续历史中。训练时没有教师推理、使用时却启用学生推理，学到的策略仍能迁移，研究者将这一现象称为<strong>跨格式迁移</strong>。</p>
+<h3>在动作前加入推理摘要</h3>
+<p>动作表明教师做了什么，却不一定能说明它为何选择这个动作。为补充决策信息，CoT-Proxy在空推理块和动作之间加入一段简短摘要：</p>
+<pre class="highlight"><code class="language-text">&lt;think&gt;&lt;/think&gt;
+&lt;summary&gt;教师本轮推理的简短摘要&lt;/summary&gt;
+动作
+</code></pre>
+
+<p>摘要和动作都是监督目标，但摘要位于推理块<strong>之外</strong>，不要求学生把它当成自己的思维链逐字模仿。</p>
+<p>对开放教师，摘要由模型离线阅读该轮教师推理后生成，最多两句话；生成时不给它看动作或后续观察。对闭源教师，则直接使用API返回的推理摘要，不需要恢复隐藏思维链。如果既没有思维链也没有摘要，还可以根据任务、最近观察和动作事后生成解释，但实验显示这种信号较弱。</p>
+<h3>用跨领域回放限制能力漂移</h3>
+<p>学生需要学会新策略，同时保留原有的数学、指令遵循等能力。为此，微调前先让初始学生在目标环境之外的提示上生成回答，保存为固定的<strong>回放集</strong>。训练时，每次更新同时使用教师轨迹和少量回放样本：前者学习动作与摘要，后者约束学生不要偏离初始模型的预测分布。</p>
+<p>设$\mathcal{T}$为教师样本中受监督的token位置，$\mathcal{R}$为回放样本位置，$h_i$和$y_i$分别为位置$i$的上下文与目标token，$p_{\mathrm{init}}$为初始学生分布，训练目标是：</p>
+$$
+\mathcal{L}(\theta)=
+-\frac{1}{N_t}\sum_{i\in\mathcal{T}}\log p_\theta(y_i\mid h_i)
++\frac{1}{N_r}\sum_{i\in\mathcal{R}}
+\mathrm{KL}\!\left(
+p_{\mathrm{init}}(\cdot\mid h_i)\,\|\,p_\theta(\cdot\mid h_i)
+\right).
+$$
+
+<p>第一项提高教师目标的预测概率，第二项在回放上下文的完整词表分布上限制学生漂移；两项分别按各自的token数归一化。</p>
+<p>实验每次更新混合17条教师轨迹和3条回放样本。初始模型的分布可通过关闭LoRA适配器取得，无需教师模型的logits，也不需要在训练期间持续与环境交互。</p>
+<h2>三、实验</h2>
+<p>实验使用已有推理能力的Qwen3-4B和Qwen3-32B作为学生，教师分别是开放模型Qwen3.6-27B和闭源模型GPT-5.6 Luna。两类教师及学生在同一任务上使用相同的执行框架、提示、预算和评分方式。</p>
+<p>AppWorld测试包含168个任务，指标是任务目标完成率；SWE-bench Verified包含500个软件问题，指标是解决率。两者的交互上限分别为50轮和75步。训练任务与评测任务分开，SWE训练数据也排除了评测所用的代码仓库。</p>
+<p>下表展示4B学生的主要结果；除闭源教师的SWE实验为单次运行外，其余数字均为三个种子的均值。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>教师与训练目标</th>
+<th style="text-align: right;">AppWorld完成率</th>
+<th style="text-align: right;">SWE解决率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初始学生</td>
+<td style="text-align: right;">7.3%</td>
+<td style="text-align: right;">2.7%</td>
+</tr>
+<tr>
+<td>开放教师：完整思维链</td>
+<td style="text-align: right;">29.2%</td>
+<td style="text-align: right;">3.9%</td>
+</tr>
+<tr>
+<td>开放教师：仅动作</td>
+<td style="text-align: right;">17.9%</td>
+<td style="text-align: right;">5.5%</td>
+</tr>
+<tr>
+<td>开放教师：CoT-Proxy</td>
+<td style="text-align: right;">34.5%</td>
+<td style="text-align: right;">15.1%</td>
+</tr>
+<tr>
+<td>闭源教师：仅动作</td>
+<td style="text-align: right;">35.1%</td>
+<td style="text-align: right;">18.0%</td>
+</tr>
+<tr>
+<td>闭源教师：CoT-Proxy</td>
+<td style="text-align: right;">48.2%</td>
+<td style="text-align: right;">27.8%</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>仅动作训练确实能迁移策略</strong>：以开放教师为例，4B学生在两个任务上都优于初始模型；32B学生的AppWorld完成率也从11.5%升至25.4%。加入摘要后，开放教师设置下32B学生的AppWorld完成率达到29.8%。</p>
+<p>摘要在所有主要设置中的均值都优于仅动作训练，但不宜据此认定它总是显著优于完整思维链。开放教师的四组比较中，CoT-Proxy均值均最高，与完整思维链的差异只有4B学生的SWE结果达到统计显著。</p>
+<p>闭源教师实验说明，该方法可以使用API可见输出和摘要完成蒸馏。不过，闭源教师的SWE训练使用了更多数据：从4,000条轨迹中保留2,970条成功轨迹，并训练五遍；开放教师使用250条轨迹。因此，两类教师的SWE结果不能只归因于教师能力差异。</p>
+<p><strong>摘要的位置和训练数据处理会影响效果。</strong>在4B学生、开放教师的AppWorld实验中，把同一摘要放进推理块内作为短思维链监督，完成率为23.4%；放在空推理块之后则为34.5%。如果保留教师动作前后的可见文字，仅动作训练从17.9%降至4.6%。这些结果说明，摘要不是简单地替换教师的任意文本。</p>
+<p>回放数据的来源同样关键。将回放集从数学、聊天等跨领域数据换成初始学生的AppWorld轨迹后，CoT-Proxy完成率从34.5%降至8.3%；这与正则化同时压制目标任务上的策略改变相符。在跨领域回放设置下，CoT-Proxy学生的AIME 2025准确率为73.3%，接近初始学生的74.7%；不使用回放时为71.4%。</p>
+<p>最后，推理轨迹分析显示，开放教师的4B CoT-Proxy学生在AppWorld测试中没有生成摘要标签，却仍取得了提升。它的推理长度和措辞也发生了变化：与完整思维链训练后更接近教师的措辞不同，仅动作和CoT-Proxy学生在所检查的措辞标记上更多保留了初始学生的风格。</p>
+<p><strong>论文标题</strong>：CoT-Proxy: Cross-Format Transfer for Distilling Long-Horizon Policies</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.33148.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-25_CoT-Proxy-Cross-Format-Transfer-for-Distilling-Long-Horizon-Policies.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-25_CoT-Proxy-Cross-Format-Transfer-for-Distilling-Long-Horizon-Policies.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
