@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoboEvo^2: Recursive Robot Self-Improvement via Harness-Policy Co-Evolution</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --bg-start: #ffffff;
+            --bg-end: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --card-bg: #ffffff;
+            --card-bg-light: #f1f5f9;
+            --border: rgba(148, 163, 184, 0.3);
+            --code-bg: rgba(99, 102, 241, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+        
+        .back-link::before {
+            content: '←';
+            font-size: 1.1rem;
+        }
+        
+        .article-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .article-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .article-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .article-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 48px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-content h1 {
+            font-size: 1.6rem;
+            color: #1e293b;
+            margin: 40px 0 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--primary), transparent) 1;
+        }
+        
+        .article-content h2 {
+            font-size: 1.35rem;
+            color: #1e293b;
+            margin: 32px 0 16px;
+            padding-left: 16px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .article-content h3 {
+            font-size: 1.15rem;
+            color: #6366f1;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .article-content h4 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin: 24px 0 10px;
+        }
+        
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul, .article-content ol {
+            margin: 20px 0;
+            padding-left: 28px;
+        }
+        
+        .article-content li {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .article-content ul li::marker {
+            color: var(--primary);
+        }
+        
+        .article-content ol li::marker {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .article-content code {
+            background: var(--code-bg);
+            color: #4f46e5;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88em;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+        
+        .article-content pre {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .article-content pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: #1e293b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .article-content blockquote {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .article-content blockquote p {
+            margin-bottom: 0;
+        }
+        
+        .article-content .table-wrapper {
+            overflow-x: auto;
+            margin: 24px 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .article-content th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white !important;
+            padding: 16px 20px;
+            text-align: left !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        
+        .article-content td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            text-align: left !important;
+            font-size: 0.95rem;
+        }
+        
+        .article-content tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .article-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .article-content tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .article-content th,
+        .article-content td {
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        .article-content th:last-child,
+        .article-content td:last-child {
+            border-right: none;
+        }
+        
+        .article-content a {
+            color: #6366f1;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .article-content a:hover {
+            color: #4f46e5;
+            border-bottom-color: #6366f1;
+        }
+        
+        .article-content hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 40px 0;
+        }
+        
+        .article-content img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            display: block;
+        }
+        
+        .article-content strong {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .article-content em {
+            color: #8b5cf6;
+        }
+        
+        .highlight {
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-radius: 12px;
+        }
+        
+        .article-links {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 32px 48px;
+            margin-top: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .article-links h3 {
+            font-size: 1.1rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .links-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.2rem;
+        }
+        
+        .link-text {
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content, .article-links {
+                padding: 28px 24px;
+            }
+            
+            .links-grid {
+                flex-direction: column;
+            }
+            
+            .link-item {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .article-header, .article-content {
+                padding: 28px 24px;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .article-meta {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">
+            ← 返回首页
+        </a>
+        
+        <header class="article-header">
+            <div class="header-content">
+                <span class="platform-badge">📝 公众号深度解读</span>
+            </div>
+            <h1 class="article-title">RoboEvo^2: Recursive Robot Self-Improvement via Harness-Policy Co-Evolution</h1>
+            <div class="article-meta">
+                <span class="meta-item">📅 2026-11-28</span>
+            </div>
+        </header>
+        
+        <article class="article-content">
+            <h1>港大RoboEvo 2：机器人策略与执行框架共同进化，LIBERO-PRO独立成功率达84.1%</h1>
+<h2>一、引言</h2>
+<p>机器人进入陌生场景后，需要通过交互学会新技能，再把这些技能变成能够熟练执行的动作。现有两类方法各有长处：视觉-语言-动作模型可以快速输出控制动作，但遇到任务或物体位置变化时，往往需要额外的人类示范；具备推理和工具调用能力的Agent可以编写程序、检查执行结果并修复失败，但反复推理和调用接口会带来时间与费用开销。</p>
+<p>RoboEvo 2试图把两者连成一个持续学习过程：让Agent针对当前控制策略的失败寻找修正，再用验证成功的轨迹训练策略。策略变强后，既能独立处理更多任务，也能作为动作技能参与下一轮搜索，而剩余失败继续指引Agent改进执行框架。</p>
+<h2>二、核心方法</h2>
+<p>系统维护两类可更新对象：一个是神经网络控制策略，负责根据机器人观察和任务目标输出动作；另一个是Agent的<strong>执行框架（Harness）</strong>，包含可执行技能、经验记忆，以及决定何时调用代码或策略的路由逻辑。初始策略由预训练机器人模型在已有示范上微调得到，初始框架则包含机器人API和参数化代码技能。</p>
+<p>每一轮中，策略先尝试完成任务，任务结果将轨迹分为成功与失败。Agent分析失败、搜索并验证修正；成功轨迹随后用于更新策略参数。候选策略和候选框架分别在匹配的开发任务、初始状态和执行预算下与旧版本比较，只有相应成功率改善才保留更新。</p>
+<p><img alt="图2：RoboEvo 2的策略到框架、框架到策略的共同进化流程" src="https://arxiv.org/html/2611.34675v1/method_roboevo2.png" /></p>
+<h3>从策略失败中搜索可复用的修正</h3>
+<p>在<strong>策略到框架（P2H）</strong>阶段，视觉语言模型驱动的编码Agent读取失败时的观察、动作历史和任务结果，并检索已有技能与相关经验。随后，它并行尝试三条路线：</p>
+<ul>
+<li><strong>Code</strong>：调用现有代码技能；失败时根据反馈修改运动目标、抓取策略、阶段切换或恢复逻辑。</li>
+<li><strong>Code+ICL</strong>：从初始示范集中抽取一条目标任务示范，从中提取操作顺序、时序和运动方式，指导代码修订。</li>
+<li><strong>Code+Policy</strong>：将当前策略作为可调用的动作技能，与代码配合，并调整子目标分配、调用时机和交接条件。</li>
+</ul>
+<p>三条路线在隔离分支中执行；条件允许时从相关失败状态恢复，否则从匹配的任务初始状态重新开始。每次尝试都会得到执行反馈，Agent据此继续修复，直到成功或耗尽预算。<strong>这一阶段策略参数保持冻结</strong>，改变的是程序和调用方式。</p>
+<p>每条路线最多保留一个经过任务验证的成功候选。多个候选在匹配条件下比较时，系统选择归一化运动急动度最低的轨迹，即动作变化更平滑的解；没有成功候选的失败则保留供后续诊断。</p>
+<p>修复结果不只用于当前任务。兼容的新程序被合并进技能库，涉及技能选择或代码与策略切换的改动进入路由逻辑；失败上下文、尝试过程和有效修复经验写入记忆。即使直接调用已有技能就完成恢复，没有修改代码，成功轨迹和经验仍可用于后续训练与检索。合并后的框架还要通过兼容性检查和评估，并非每次修复都会自动成为永久更新。</p>
+<h3>从成功修正中训练控制策略</h3>
+<p>找到修正后，<strong>框架到策略（H2P）</strong>阶段要解决的是：如何让策略自己也能做出这些动作，而不是每次都依赖Agent。</p>
+<p>第一类监督来自成功轨迹：当前策略自己完成的轨迹，以及框架生成的完整任务轨迹或恢复片段，都进入数据池，用策略原本的监督学习目标训练。第二类监督来自符合条件的<strong>失败—修正配对</strong>：失败动作与成功动作必须从同一状态出发、执行条件匹配，且成功结果经过验证。不满足配对条件的成功恢复仍可用于监督学习，但不进入偏好训练。</p>
+<p>对一个配对，令 $x$ 表示共同的观察和目标，$y^+$、$y^-$ 分别是成功与失败的动作目标。<strong>反事实偏好蒸馏（CPD）</strong>先比较当前策略与本轮开始时的冻结参考策略在两个目标上的预测损失：</p>
+$$
+\delta^{\pm}=\ell_{\theta}(y^{\pm}\mid x)-\ell_{\bar{\theta}_{r}}(y^{\pm}\mid x),
+\qquad
+\Delta=\delta^{+}-\delta^{-}.
+$$
+
+<p>这里的 $\Delta$ 衡量成功目标相对失败目标的损失差，相对于参考策略发生了多少变化。</p>
+<p>CPD希望这个差值至少下降一个间隔 $m$，同时约束两种动作目标的损失变化，其中 $[z]_+=\max(z,0)$，$\kappa$ 控制允许的失败目标损失增量：</p>
+$$
+\mathcal{L}_{\mathrm{gap}}
+=\mathbb{E}\left[\left(\max\{\Delta,-m\}+m\right)^2\right],
+\qquad
+\mathcal{L}_{\mathrm{prox}}
+=\mathbb{E}\left[[\delta^{+}]_{+}^{2}+[\delta^{-}-\kappa]_{+}^{2}\right].
+$$
+
+<p>前一项让策略相对更偏好成功修正；后一项抑制成功动作的预测退化，也避免过度压低失败动作的相对可能性。</p>
+<p>最终训练把策略自身的监督损失、CPD和防遗忘正则项组合起来；其中 $F_{r,i}$ 估计参数对已学任务的重要性：</p>
+$$
+\mathcal{L}_{\mathrm{total}}
+=\mathcal{L}_{\mathrm{sup}}
++\lambda_{\mathrm{pref}}
+(\mathcal{L}_{\mathrm{gap}}+\lambda_{\mathrm{prox}}\mathcal{L}_{\mathrm{prox}})
++\frac{\lambda_{\mathrm{EWC}}}{2}
+\sum_i F_{r,i}(\theta_i-\bar{\theta}_{r,i})^2.
+$$
+
+<p>这一目标同时学习成功动作、利用成对失败信息，并限制重要参数偏离旧策略；没有合格配对时，偏好项不参与更新。</p>
+<p>采样也兼顾新旧任务：一半权重按任务均衡分配，另一半偏向当前成功率低的任务。更新后的策略进入下一轮，既直接执行任务，也可在Code+Policy路线中作为更强的动作技能；新的失败则决定框架接下来需要修复什么。</p>
+<p>完成进化后，系统既支持策略直接控制机器人的<strong>独立执行</strong>，也支持Agent协调策略和代码技能的<strong>混合执行</strong>。前者检验技能是否进入了模型参数，后者保留任务分解和恢复能力。</p>
+<h2>三、实验</h2>
+<p>在分布变化下，LIBERO-PRO考察任务与位置扰动，RoboTwin C2R考察50个双臂任务中的随机场景。进化使用未出现在初始训练数据中的种子，评估又使用独立的未见种子；两个基准分别评估800和5000个回合，期间不增加人类示范。</p>
+<p><img alt="图3：两个基准上多轮进化的成功率与每轮编码Agent API费用" src="https://arxiv.org/html/2611.34675v1/coevolution_rounds.svg" /></p>
+<p>LIBERO-PRO经过8轮后，独立成功率从11.0%升至84.1%，混合成功率从30.4%升至90.5%；RoboTwin C2R经过5轮后，两项分别从46.0%、48.8%升至77.5%、87.4%。图中的每轮<strong>编码Agent API费用</strong>也分别从430.63美元降至98.92美元、从719.05美元降至323.84美元；这不是部署时单次推理成本。</p>
+<p>数据效率对比中，RoboTwin C2R使用2500条初始干净示范，加上5000条自主收集的成功轨迹，独立成功率达到77.5%；同样总量下，干净示范加随机场景示范的常规训练为67.2%，增加到27500条轨迹时为76.8%。</p>
+<p>消融结果支持双向更新的作用。在LIBERO-PRO第三轮，完整方法的独立和混合成功率为52.3%与68.3%；固定框架、只更新策略时为33.6%与49.0%，固定策略、只更新框架时混合成功率为46.1%。使用相同训练数据、初始化和防遗忘设置时，仅监督学习的独立成功率为20.1%，加入偏好间隔后为29.9%，使用完整CPD后为32.1%。</p>
+<p>真实机器人实验将仿真中进化的框架迁移到Unitree G1-D，适配机器人接口并从真实观察估计运动目标。框架先为每个任务收集10条成功示范；策略失败后，操作员近似恢复机器人和场景，Agent再搜索修正，每个任务额外收集20条成功轨迹。操作员不遥操作修正动作，但数据收集并非完全无人参与。</p>
+<p><img alt="图4：Unitree G1-D上的真实机器人操作" src="https://arxiv.org/html/2611.34675v1/main_qualitative_real_g1d.png" /></p>
+<p>四个双臂任务各测试10次时，仅用迁移后的固定代码框架平均成功率为47.5%；用120条自动收集轨迹训练的策略达到85.0%，200条人类遥操作示范训练的基线为80.0%；该策略与固定框架混合执行达到95.0%。这些结果展示了修正轨迹在该真实机器人设置下的训练价值，但每项任务的测试次数较少。</p>
+<p><strong>论文标题</strong>：RoboEvo^2: Recursive Robot Self-Improvement via Harness-Policy Co-Evolution</p>
+<p>欢迎投稿！欢迎合作！</p>
+        </article>
+        
+        
+        <div class="article-links">
+            <h3>📎 相关资源</h3>
+            <div class="links-grid">
+
+                <a href="https://arxiv.org/pdf/2611.34675.pdf" class="link-item" target="_blank">
+                    <span class="link-icon">📄</span>
+                    <span class="link-text">论文 PDF</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/gongzhonghao/2026-11-26_RoboEvo2-Recursive-Robot-Self-Improvement-via-Harness-Policy-Co-Evolution.md" class="link-item" target="_blank">
+                    <span class="link-icon">📝</span>
+                    <span class="link-text">公众号原文</span>
+                </a>
+
+                <a href="https://github.com/AI-PaperDaily/llm-agent-papers/blob/main/xiaohongshu/2026-11-26_RoboEvo2-Recursive-Robot-Self-Improvement-via-Harness-Policy-Co-Evolution.md" class="link-item" target="_blank">
+                    <span class="link-icon">📕</span>
+                    <span class="link-text">小红书原文</span>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
